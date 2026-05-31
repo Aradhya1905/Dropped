@@ -1,0 +1,5 @@
+# Design reference is a separate HTML/CSS/JSX prototype (not app code) — it is
+# read for tokens/markup but never compiled or linted as part of the RN app.
+design-reference/
+node_modules/
+.tmpbundle/
