@@ -10,11 +10,28 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native/new-app-screen": "0.85.3",
+    "@react-navigation/bottom-tabs": "^7.16.2",
+    "@react-navigation/native": "^7.2.5",
+    "@react-navigation/native-stack": "^7.16.0",
+    "@tanstack/react-query": "^5.100.14",
+    "axios": "^1.16.1",
     "react": "19.2.3",
     "react-native": "0.85.3",
+    "react-native-geolocation-service": "^5.3.1",
+    "react-native-gesture-handler": "^3.0.0",
+    "react-native-mmkv": "^4.3.1",
+    "react-native-modal": "^14.0.0-rc.1",
+    "react-native-nitro-image": "0.15.0",
+    "react-native-nitro-modules": "^0.35.9",
+    "react-native-reanimated": "^4.4.0",
     "react-native-safe-area-context": "^5.5.2",
-    "react-native-svg": "^15.12.1"
+    "react-native-screens": "^4.25.2",
+    "react-native-svg": "^15.12.1",
+    "react-native-vision-camera": "5.0.11",
+    "react-native-worklets": "^0.9.1",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
