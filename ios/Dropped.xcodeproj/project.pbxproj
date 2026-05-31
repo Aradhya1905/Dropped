@@ -11,6 +11,23 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		EBC08FD0E53C4396AFD550D5 /* Caveat-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A5C371129BC645D288EDE336 /* Caveat-Medium.ttf */; };
+		AE44835D63ED41AE9D849DB2 /* Caveat-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB2CF24594C844F190F11F80 /* Caveat-Regular.ttf */; };
+		BDC41EE3FE61442B840AFBF1 /* Caveat-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 52527C28F7CA40499AE3F622 /* Caveat-SemiBold.ttf */; };
+		39C41C1ED4CF4B1390707DF1 /* Geist-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 67185807ADBF4288A600B669 /* Geist-Bold.ttf */; };
+		7CB356FF231C4A11ACE69C38 /* Geist-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 71BDFEACA2964B7CAF31C7EF /* Geist-BoldItalic.ttf */; };
+		413C17362E8B4D429B0DDD42 /* Geist-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 044895E01A0E443881339089 /* Geist-Light.ttf */; };
+		231421578B2D4103A935167A /* Geist-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AACFC4C039BE44C0B8035F4D /* Geist-Medium.ttf */; };
+		2AA7E0FAA3D54509800FED48 /* Geist-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = EC15F1B0F06C404F88350708 /* Geist-Regular.ttf */; };
+		D3887BE1591A45D9AAFAC732 /* Geist-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D91773D79FF4457697C06C7A /* Geist-SemiBold.ttf */; };
+		1373B0DEEB164C7CAE21C7AC /* GeistMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3D1DC27E650744FD85F48BF6 /* GeistMono-Medium.ttf */; };
+		83AB0E47873E48BBAF8C3BC4 /* GeistMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 314C34DE29B842FD9956B3DE /* GeistMono-Regular.ttf */; };
+		9B9742CC803D4FA991AC274A /* Newsreader-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1317E1E30317405D81E26FF6 /* Newsreader-Italic.ttf */; };
+		0F9E1D53FD7842F09BF13DD0 /* Newsreader-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA661377597B490892FD8976 /* Newsreader-Light.ttf */; };
+		8735226A36F441298C72D25E /* Newsreader-LightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7CAFAAF4FEED40F6A08257FF /* Newsreader-LightItalic.ttf */; };
+		FF9439FD587740B8A32216CE /* Newsreader-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D9D792FCD41545C09077E954 /* Newsreader-Medium.ttf */; };
+		F0A4906CBD93493CAB116883 /* Newsreader-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FB9C69B7CC3B45D6927137DE /* Newsreader-Regular.ttf */; };
+		47D4A695503C4553BAB37C5D /* .gitkeep in Resources */ = {isa = PBXBuildFile; fileRef = 394B213DB4C245F1826D4BB0 /* .gitkeep */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +41,23 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Dropped/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Dropped/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		A5C371129BC645D288EDE336 /* Caveat-Medium.ttf */ = {isa = PBXFileReference; name = "Caveat-Medium.ttf"; path = "../assets/fonts/Caveat-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		BB2CF24594C844F190F11F80 /* Caveat-Regular.ttf */ = {isa = PBXFileReference; name = "Caveat-Regular.ttf"; path = "../assets/fonts/Caveat-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		52527C28F7CA40499AE3F622 /* Caveat-SemiBold.ttf */ = {isa = PBXFileReference; name = "Caveat-SemiBold.ttf"; path = "../assets/fonts/Caveat-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		67185807ADBF4288A600B669 /* Geist-Bold.ttf */ = {isa = PBXFileReference; name = "Geist-Bold.ttf"; path = "../assets/fonts/Geist-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		71BDFEACA2964B7CAF31C7EF /* Geist-BoldItalic.ttf */ = {isa = PBXFileReference; name = "Geist-BoldItalic.ttf"; path = "../assets/fonts/Geist-BoldItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		044895E01A0E443881339089 /* Geist-Light.ttf */ = {isa = PBXFileReference; name = "Geist-Light.ttf"; path = "../assets/fonts/Geist-Light.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		AACFC4C039BE44C0B8035F4D /* Geist-Medium.ttf */ = {isa = PBXFileReference; name = "Geist-Medium.ttf"; path = "../assets/fonts/Geist-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		EC15F1B0F06C404F88350708 /* Geist-Regular.ttf */ = {isa = PBXFileReference; name = "Geist-Regular.ttf"; path = "../assets/fonts/Geist-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		D91773D79FF4457697C06C7A /* Geist-SemiBold.ttf */ = {isa = PBXFileReference; name = "Geist-SemiBold.ttf"; path = "../assets/fonts/Geist-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		3D1DC27E650744FD85F48BF6 /* GeistMono-Medium.ttf */ = {isa = PBXFileReference; name = "GeistMono-Medium.ttf"; path = "../assets/fonts/GeistMono-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		314C34DE29B842FD9956B3DE /* GeistMono-Regular.ttf */ = {isa = PBXFileReference; name = "GeistMono-Regular.ttf"; path = "../assets/fonts/GeistMono-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		1317E1E30317405D81E26FF6 /* Newsreader-Italic.ttf */ = {isa = PBXFileReference; name = "Newsreader-Italic.ttf"; path = "../assets/fonts/Newsreader-Italic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		FA661377597B490892FD8976 /* Newsreader-Light.ttf */ = {isa = PBXFileReference; name = "Newsreader-Light.ttf"; path = "../assets/fonts/Newsreader-Light.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		7CAFAAF4FEED40F6A08257FF /* Newsreader-LightItalic.ttf */ = {isa = PBXFileReference; name = "Newsreader-LightItalic.ttf"; path = "../assets/fonts/Newsreader-LightItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		D9D792FCD41545C09077E954 /* Newsreader-Medium.ttf */ = {isa = PBXFileReference; name = "Newsreader-Medium.ttf"; path = "../assets/fonts/Newsreader-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		FB9C69B7CC3B45D6927137DE /* Newsreader-Regular.ttf */ = {isa = PBXFileReference; name = "Newsreader-Regular.ttf"; path = "../assets/fonts/Newsreader-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		394B213DB4C245F1826D4BB0 /* .gitkeep */ = {isa = PBXFileReference; name = ".gitkeep"; path = "../assets/fonts/.gitkeep"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +108,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				9E2453BB67E243599541E92B /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -96,6 +131,31 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		9E2453BB67E243599541E92B /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				A5C371129BC645D288EDE336 /* Caveat-Medium.ttf */,
+				BB2CF24594C844F190F11F80 /* Caveat-Regular.ttf */,
+				52527C28F7CA40499AE3F622 /* Caveat-SemiBold.ttf */,
+				67185807ADBF4288A600B669 /* Geist-Bold.ttf */,
+				71BDFEACA2964B7CAF31C7EF /* Geist-BoldItalic.ttf */,
+				044895E01A0E443881339089 /* Geist-Light.ttf */,
+				AACFC4C039BE44C0B8035F4D /* Geist-Medium.ttf */,
+				EC15F1B0F06C404F88350708 /* Geist-Regular.ttf */,
+				D91773D79FF4457697C06C7A /* Geist-SemiBold.ttf */,
+				3D1DC27E650744FD85F48BF6 /* GeistMono-Medium.ttf */,
+				314C34DE29B842FD9956B3DE /* GeistMono-Regular.ttf */,
+				1317E1E30317405D81E26FF6 /* Newsreader-Italic.ttf */,
+				FA661377597B490892FD8976 /* Newsreader-Light.ttf */,
+				7CAFAAF4FEED40F6A08257FF /* Newsreader-LightItalic.ttf */,
+				D9D792FCD41545C09077E954 /* Newsreader-Medium.ttf */,
+				FB9C69B7CC3B45D6927137DE /* Newsreader-Regular.ttf */,
+				394B213DB4C245F1826D4BB0 /* .gitkeep */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -159,6 +219,23 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				EBC08FD0E53C4396AFD550D5 /* Caveat-Medium.ttf in Resources */,
+				AE44835D63ED41AE9D849DB2 /* Caveat-Regular.ttf in Resources */,
+				BDC41EE3FE61442B840AFBF1 /* Caveat-SemiBold.ttf in Resources */,
+				39C41C1ED4CF4B1390707DF1 /* Geist-Bold.ttf in Resources */,
+				7CB356FF231C4A11ACE69C38 /* Geist-BoldItalic.ttf in Resources */,
+				413C17362E8B4D429B0DDD42 /* Geist-Light.ttf in Resources */,
+				231421578B2D4103A935167A /* Geist-Medium.ttf in Resources */,
+				2AA7E0FAA3D54509800FED48 /* Geist-Regular.ttf in Resources */,
+				D3887BE1591A45D9AAFAC732 /* Geist-SemiBold.ttf in Resources */,
+				1373B0DEEB164C7CAE21C7AC /* GeistMono-Medium.ttf in Resources */,
+				83AB0E47873E48BBAF8C3BC4 /* GeistMono-Regular.ttf in Resources */,
+				9B9742CC803D4FA991AC274A /* Newsreader-Italic.ttf in Resources */,
+				0F9E1D53FD7842F09BF13DD0 /* Newsreader-Light.ttf in Resources */,
+				8735226A36F441298C72D25E /* Newsreader-LightItalic.ttf in Resources */,
+				FF9439FD587740B8A32216CE /* Newsreader-Medium.ttf in Resources */,
+				F0A4906CBD93493CAB116883 /* Newsreader-Regular.ttf in Resources */,
+				47D4A695503C4553BAB37C5D /* .gitkeep in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -9,6 +9,12 @@ coordinate. Others can only **read** a secret after physically walking **within
 Core loop: **drop → walk → reveal**. No accounts — users are identified by an
 anonymous device id. Moderation is the hard problem, not engineering.
 
+## Working conventions
+- **Plans** — when producing an implementation plan, write it as a dated markdown
+  file in `.claude/plans/` (e.g. `.claude/plans/2026-05-31-reveal-flow.md`).
+- **Commit & sync** — use the `/sync` slash command. It stages, commits with a
+  generated message, and pushes (asking first before any push to `main`).
+
 ## Stack
 - Bare **React Native 0.85.3 / React 19** (not Expo), **TypeScript**. New Architecture on by default.
 - Installed:
@@ -20,6 +26,14 @@ anonymous device id. Moderation is the hard problem, not engineering.
   - **Camera/media** — `react-native-vision-camera` v5 + `react-native-nitro-image` (paired), `react-native-svg`
   - **UI** — `react-native-modal`, `@react-native-clipboard/clipboard`
 - Deferred: a **map provider** (added last, behind `services/maps`); local notifications.
+
+### Fonts
+Four families in `assets/fonts/`, linked via `react-native-asset` (Android `assets/fonts/`, iOS `Info.plist`):
+Newsreader (serif), Geist (sans), Geist Mono (mono), Caveat (hand). Each weight is a separate file.
+**Reference them via `tokens.typography.fonts.*`** (e.g. `fonts.serif`, `fonts.sansMedium`) — not raw strings,
+and **don't also set `fontWeight`**. iOS uses each font's PostScript name (e.g. `Newsreader24pt-Regular`),
+Android uses the filename; the token's `Platform.select` handles the split. Newsreader uses the 24pt optical cut.
+To add a weight later: drop the `.ttf` in `assets/fonts/`, re-run `npx react-native-asset`, add a token entry.
 
 ### Native setup still pending (do when wiring features, not yet)
 - `index.js`: add `import 'react-native-gesture-handler';` as the **first** line.
