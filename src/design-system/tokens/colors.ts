@@ -1,28 +1,50 @@
 /**
  * Dropped color tokens.
- * Pulled from the design export (`design-reference/Dropped Onboarding…html`):
- * serif ink on a warm paper ground, with a moss accent.
+ * Exact palette from the design export (`design-reference/project/dropped.css`
+ * `:root`): warm paper ground, near-black warm ink, a single quiet sage accent.
  */
 export const colors = {
+  /** Warm paper background (stage / screen ground). */
+  paper: '#F1EBDE',
+  /** Deeper paper — gradient edges, pressed surfaces. */
+  paperDeep: '#E8E0D0',
+  /** Raised paper surfaces (notes, cards, sheets, chips). */
+  paperCard: '#F7F2E8',
+  /** Bright paper highlight at the top of radial grounds. */
+  paperBright: '#F8F3E9',
+
   /** Primary text / wordmark — near-black warm ink. */
-  ink: '#211D18',
-  /** Accent — moss green (tagline, active states, "near" pulse). */
-  moss: '#566E5B',
-
-  /** Warm paper background. */
-  bg: '#F4F0E8',
-  /** Raised surfaces (cards, sheets). */
-  surface: '#FFFFFF',
-
-  /** Muted ink for secondary text. */
-  inkMuted: '#6F675C',
+  ink: '#211D17',
+  /** Secondary text. */
+  inkSoft: '#6E655A',
+  /** Faint labels / captions. */
+  inkFaint: '#A79D8D',
   /** Hairlines / borders. */
-  line: '#E2DBCD',
+  line: 'rgba(33,29,23,0.14)',
+  /** Softer hairlines (card rings). */
+  lineSoft: 'rgba(33,29,23,0.07)',
+
+  /** Accent — sage (wax seals, pulses, underlines). */
+  accent: '#76957C',
+  /** Deep sage (kickers, emphasized text, seal gradient edge). */
+  accentDeep: '#566E5B',
+  /** Translucent sage wash (tags, tapes, tints). */
+  accentTint: 'rgba(118,149,124,0.14)',
+
+  // ---- legacy aliases (pre-design seed) ----
+  /** @deprecated use `accentDeep` */
+  moss: '#566E5B',
+  /** @deprecated use `paper` */
+  bg: '#F1EBDE',
+  /** @deprecated use `paperCard` */
+  surface: '#F7F2E8',
+  /** @deprecated use `inkSoft` */
+  inkMuted: '#6E655A',
 
   /** Reveal states. */
-  locked: '#6F675C',
+  locked: '#6E655A',
   near: '#566E5B',
-  revealed: '#211D18',
+  revealed: '#211D17',
 
   /** Feedback. */
   danger: '#B3402E',

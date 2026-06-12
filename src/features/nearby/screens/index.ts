@@ -1,1 +1,1 @@
-export {};
+export { SecretDetailScreen } from './SecretDetailScreen';

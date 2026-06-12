@@ -1,1 +1,1 @@
-export {};
+export { Compass } from './Compass';

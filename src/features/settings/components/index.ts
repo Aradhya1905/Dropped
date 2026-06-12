@@ -1,1 +1,1 @@
-export {};
+export { Passport } from './Passport';

@@ -1,1 +1,1 @@
-export {};
+export { SealBurst } from './SealBurst';

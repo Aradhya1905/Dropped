@@ -36,6 +36,7 @@ export const fonts = {
   serifLight: f('Newsreader-Light', 'Newsreader24pt-Light'),
   serifMedium: f('Newsreader-Medium', 'Newsreader24pt-Medium'),
   serifItalic: f('Newsreader-Italic', 'Newsreader24pt-Italic'),
+  serifLightItalic: f('Newsreader-LightItalic', 'Newsreader24pt-LightItalic'),
 
   // Caveat — handwriting accent.
   hand: f('Caveat-Regular', 'Caveat-Regular'),
