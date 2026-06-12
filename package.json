@@ -3,11 +3,24 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
+    "android": "react-native run-android --port 8085",
+    "ios": "react-native run-ios --port 8085",
     "lint": "eslint .",
-    "start": "react-native start",
-    "test": "jest"
+    "start": "react-native start --port 8085",
+    "start-free": "node scripts/start-metro.js -p 8086",
+    "start-auto": "node scripts/start-metro.js",
+    "test": "jest",
+    "adb-reverse": "adb reverse tcp:8085 tcp:8085",
+    "adb-reverse_NothingPhone": "adb -s 001206481004686 reverse tcp:8085 tcp:8085",
+    "adb-reverse_Samsung": "adb -s RZ8M31LX0QY reverse tcp:8085 tcp:8085",
+    "android-dev": "yarn android --active-arch-only",
+    "android-dev-free": "node scripts/android-dev.js",
+    "runOn_Sumsung": "node scripts/android-dev.js --device RZ8M31LX0QY",
+    "runOn_NothingPhone": "node scripts/android-dev.js --device 001206481004686",
+    "installApk-free": "node scripts/install-apk.js",
+    "installOn_Sumsung": "node scripts/install-apk.js --device RZ8M31LX0QY",
+    "installOn_NothingPhone": "node scripts/install-apk.js --device 001206481004686",
+    "installDebugApkAndStart": "adb reverse tcp:8085 tcp:8085 && adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell am start -n com.motocar/.MainActivity"
   },
   "dependencies": {
     "@react-native-clipboard/clipboard": "^1.16.3",
