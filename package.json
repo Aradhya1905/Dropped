@@ -23,6 +23,7 @@
     "installDebugApkAndStart": "adb reverse tcp:8086 tcp:8086 && adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell am start -n com.dropped/.MainActivity"
   },
   "dependencies": {
+    "@maplibre/maplibre-react-native": "^11.3.4",
     "@notifee/react-native": "^9.1.8",
     "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native/new-app-screen": "0.85.3",

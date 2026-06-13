@@ -28,10 +28,10 @@ import type {
 import { PaperScreen, PulseRing } from '../../../design-system/components';
 import { HeadingIcon, LockIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
+import { useMaplibreAdapter } from '../../../services/maps';
 import { FindCard } from '../components/FindCard';
 import { MapStatus } from '../components/MapStatus';
 import { RouteLine } from '../components/RouteLine';
-import { RouteMap } from '../components/RouteMap';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MapStackParamList, 'Walk'>,
@@ -162,6 +162,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const [beat, setBeat] = useState<WalkBeat>(route.params?.beat ?? 'approach');
   const cfg = BEATS[beat];
+  const { MaplibreView } = useMaplibreAdapter();
 
   const advance = () => {
     LayoutAnimation.configureNext(LayoutAnimation.create(600, 'easeInEaseOut', 'opacity'));
@@ -196,7 +197,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   return (
     <PaperScreen>
       <Pressable style={StyleSheet.absoluteFill} onPress={beat === 'arrived' ? undefined : advance}>
-        <RouteMap />
+        <MaplibreView />
         <RouteLine />
 
         {/* the 50 m unlock zone */}

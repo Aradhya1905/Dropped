@@ -25,7 +25,8 @@ anonymous device id. Moderation is the hard problem, not engineering.
   - **Location** — `react-native-geolocation-service` (GPS watch, distance-to-drop)
   - **Camera/media** — `react-native-vision-camera` v5 + `react-native-nitro-image` (paired), `react-native-svg`
   - **UI** — `react-native-modal`, `@react-native-clipboard/clipboard`
-- Deferred: a **map provider** (added last, behind `services/maps`); local notifications.
+  - **Map** — `@maplibre/maplibre-react-native` with Protomaps CDN tiles, custom paper/ink/sage style JSON (`services/maps/droppedStyle.ts`), adapter at `services/maps/maplibreAdapter.ts`
+- Deferred: local notifications.
 
 ### Fonts
 Four families in `assets/fonts/`, linked via `react-native-asset` (Android `assets/fonts/`, iOS `Info.plist`):
@@ -89,8 +90,11 @@ RootStack: Welcome → HowItWorks → Location → Main
   screens & navigation: [Documentation/2026-06-12-screens-and-navigation.md](Documentation/2026-06-12-screens-and-navigation.md);
   remaining work / roadmap: [Documentation/2026-06-13-remaining-work.md](Documentation/2026-06-13-remaining-work.md).
 
+## Package manager
+Use **yarn** (not npm) for all installs. `yarn add <pkg>` / `yarn add -D <pkg>`.
+
 ## Commands
-- `npm start` — Metro dev server
-- `npm run android` / `npm run ios` — build & run
-- `npm test` — Jest
-- `npm run lint` — ESLint
+- `yarn start` — Metro dev server
+- `yarn android` / `yarn ios` — build & run
+- `yarn test` — Jest
+- `yarn lint` — ESLint

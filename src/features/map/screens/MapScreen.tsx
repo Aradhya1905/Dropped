@@ -16,11 +16,11 @@ import type {
 } from '../../../app/navigation/types';
 import {
   FloatBob,
-  MapTexture,
   PaperScreen,
   PulseRing,
   WaxSeal,
 } from '../../../design-system/components';
+import { useMaplibreAdapter } from '../../../services/maps';
 import { LayersIcon, QuillIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { LocChip } from '../components/LocChip';
@@ -37,12 +37,13 @@ type Props = CompositeScreenProps<
 
 export function MapScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { MaplibreView } = useMaplibreAdapter();
   // a sealed pin far away → its "walk closer" sheet (05)
   const openPin = () => navigation.navigate('SecretDetail');
 
   return (
     <PaperScreen>
-      <MapTexture dense />
+      <MaplibreView />
       <View style={styles.park} />
       <Text style={styles.parkLbl}>PARK</Text>
 

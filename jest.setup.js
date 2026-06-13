@@ -19,3 +19,17 @@ jest.mock('react-native-safe-area-context', () => {
   ).default;
   return { SafeAreaProvider, ...rest };
 });
+
+// MapLibre has no Jest preset; mock the whole package so tests don't need
+// native modules. The useMaplibreAdapter hook is tested via the adapter unit
+// tests (which use noopAdapter), not via the real MapLibre implementation.
+jest.mock('@maplibre/maplibre-react-native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MapMock = ({ children, style }) => React.createElement(View, { style }, children);
+  const CameraMock = React.forwardRef((_props, _ref) => null);
+  return {
+    Map: MapMock,
+    Camera: CameraMock,
+  };
+});
