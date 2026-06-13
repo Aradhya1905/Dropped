@@ -23,9 +23,9 @@ const { spawnSync } = require('child_process');
 const PORT_FILE = path.join(__dirname, '.metro-port');
 // Project root is one level up from scripts/, so paths work regardless of cwd.
 const APK_DIR = path.join(__dirname, '..', 'android', 'app', 'build', 'outputs', 'apk', 'debug');
-const APP_ID = 'com.motocar';
-// Port the app requests the bundle on; reverse-forwarded to the host Metro port.
-const DEVICE_PORT = 8085;
+const APP_ID = 'com.dropped';
+// Device-side port the app requests the bundle on; mirrors the host Metro port,
+// so the reverse maps it 1:1 (e.g. tcp:8086 -> tcp:8086).
 
 // Builds with ABI splits (e.g. --active-arch-only) emit per-arch APKs like
 // app-arm64-v8a-debug.apk rather than a single app-debug.apk. Pick the APK that
@@ -139,8 +139,8 @@ console.log(`Installing: ${path.basename(apkPath)}\n`);
 // Scope every adb command to the chosen device so nothing leaks to the other phone.
 const adbTarget = ['-s', device];
 
-// App requests bundle on 8085 -> forward to the actual Metro port on the host.
-run('adb', [...adbTarget, 'reverse', `tcp:${DEVICE_PORT}`, `tcp:${port}`]);
+// Map the device port 1:1 to the host Metro port (e.g. tcp:8086 -> tcp:8086).
+run('adb', [...adbTarget, 'reverse', `tcp:${port}`, `tcp:${port}`]);
 
 const installStatus = run('adb', [...adbTarget, 'install', '-r', apkPath]);
 if (installStatus !== 0) {
