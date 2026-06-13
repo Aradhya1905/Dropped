@@ -7,7 +7,7 @@
     "ios": "react-native run-ios --port 8085",
     "lint": "eslint .",
     "start": "react-native start --port 8085",
-    "start-free": "node scripts/start-metro.js -p 8086",
+    "start-free": "node scripts/start-metro.js -p 8085",
     "start-auto": "node scripts/start-metro.js",
     "test": "jest",
     "adb-reverse": "adb reverse tcp:8085 tcp:8085",
@@ -23,6 +23,7 @@
     "installDebugApkAndStart": "adb reverse tcp:8085 tcp:8085 && adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell am start -n com.motocar/.MainActivity"
   },
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native/new-app-screen": "0.85.3",
     "@react-navigation/bottom-tabs": "^7.16.2",
