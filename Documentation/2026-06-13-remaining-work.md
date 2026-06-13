@@ -25,7 +25,6 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
   the onboarding backdrop — it's a design element there).
 - **`services/notifications`** — local notification when the GPS watch detects
   an undiscovered secret within ~200 m ("quiet hum" setting).
-- **`services/analytics`** — pick a sink (even just a logger first).
 
 ## 2. Backend (doesn't exist yet — biggest missing piece)
 
@@ -40,7 +39,7 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
   "cruelty gets erased" enforcement, shadow-removal. Needs its own design doc
   before the composer goes live.
 - Privacy posture: store coordinates fuzzed/snapped if possible; the design
-  promises "it never leaves your device" for *your* location — only drops have
+  promises "it never leaves your device" for _your_ location — only drops have
   coordinates, reveals send a one-shot position check.
 
 ## 3. State & data wiring (Zustand + React Query are installed, unused)
@@ -54,20 +53,20 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
 
 ## 4. Make each screen real (UI exists, logic doesn't)
 
-| Screen | Remaining |
-|---|---|
-| Welcome (01) | Skip onboarding when the flag is set; route straight to Main. |
-| How it works (02) | Nothing — static by design. |
-| Location (03) | "Allow while using the app" must trigger the real OS prompt via `services/location`; handle denied/blocked states ("Not now" path + re-prompt from settings). |
-| Map (04) | Real map provider, real pins from the nearby query (only near ones, per the rules), live "you" dot from GPS, working layers button, count in the loc chip, range card appears only when actually within 50 m. |
-| Walk (04a/b/c) | Drive beats from live GPS distance instead of taps; live distance pill + step count; footsteps from the actual walked path; out-of-range → in-range → arrived transitions from `isWithin`. |
-| Walk closer (05) | Real distance/ETA, compass needle from magnetometer heading toward the drop, save action persisting to storage/API. |
-| Opening (06) | Trigger only after a server-verified reveal; play once (not looped) then auto-advance; haptic on the snap. |
-| Secret (07) | Real secret payload, increment "stood here", working save + heart mutations, the "read once · reseal or fade" rule. |
-| Composer (08) | Replace the static text + fake caret with a real `TextInput` (keep the ruled-paper styling), char counter, mood persisted, drop pinned to the current GPS coordinate, submit mutation + optimistic Dropped screen. |
-| Dropped (09) | Show the actual created drop; "Walk away" / "Drop another" already wired. |
-| Trail (10) | Real found/saved/dropped lists from storage/API; tabs actually filter; real stats (steps needs a pedometer/health source — or drop the stat). |
-| You (11) | Real device id from storage; settings rows become actual controls (map style, radius is fixed 50 m product-wide — display only?, notification mode); add report/erasure contact + privacy policy link. |
+| Screen            | Remaining                                                                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Welcome (01)      | Skip onboarding when the flag is set; route straight to Main.                                                                                                                                                      |
+| How it works (02) | Nothing — static by design.                                                                                                                                                                                        |
+| Location (03)     | "Allow while using the app" must trigger the real OS prompt via `services/location`; handle denied/blocked states ("Not now" path + re-prompt from settings).                                                      |
+| Map (04)          | Real map provider, real pins from the nearby query (only near ones, per the rules), live "you" dot from GPS, working layers button, count in the loc chip, range card appears only when actually within 50 m.      |
+| Walk (04a/b/c)    | Drive beats from live GPS distance instead of taps; live distance pill + step count; footsteps from the actual walked path; out-of-range → in-range → arrived transitions from `isWithin`.                         |
+| Walk closer (05)  | Real distance/ETA, compass needle from magnetometer heading toward the drop, save action persisting to storage/API.                                                                                                |
+| Opening (06)      | Trigger only after a server-verified reveal; play once (not looped) then auto-advance; haptic on the snap.                                                                                                         |
+| Secret (07)       | Real secret payload, increment "stood here", working save + heart mutations, the "read once · reseal or fade" rule.                                                                                                |
+| Composer (08)     | Replace the static text + fake caret with a real `TextInput` (keep the ruled-paper styling), char counter, mood persisted, drop pinned to the current GPS coordinate, submit mutation + optimistic Dropped screen. |
+| Dropped (09)      | Show the actual created drop; "Walk away" / "Drop another" already wired.                                                                                                                                          |
+| Trail (10)        | Real found/saved/dropped lists from storage/API; tabs actually filter; real stats (steps needs a pedometer/health source — or drop the stat).                                                                      |
+| You (11)          | Real device id from storage; settings rows become actual controls (map style, radius is fixed 50 m product-wide — display only?, notification mode); add report/erasure contact + privacy policy link.             |
 
 ## 5. Native/platform setup still pending
 
@@ -96,7 +95,7 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
   `useIsFocused`), memoize SVG-heavy components, profile the Map screen.
 - **Release** — signing configs, CI (typecheck + lint + jest on PR), versioned
   release builds, store listings; privacy policy + data-safety forms (location
-  + UGC make both stores strict about this).
+  - UGC make both stores strict about this).
 
 ## Suggested sequence
 
