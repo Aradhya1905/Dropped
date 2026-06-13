@@ -25,7 +25,7 @@ import type {
   RootStackParamList,
   WalkBeat,
 } from '../../../app/navigation/types';
-import { PaperScreen, PulseRing } from '../../../design-system/components';
+import { PulseRing } from '../../../design-system/components';
 import { HeadingIcon, LockIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useMaplibreAdapter } from '../../../services/maps';
@@ -195,7 +195,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
     );
 
   return (
-    <PaperScreen>
+    <View style={styles.root}>
       <Pressable style={StyleSheet.absoluteFill} onPress={beat === 'arrived' ? undefined : advance}>
         <MaplibreView />
         <RouteLine />
@@ -332,11 +332,12 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
           style={styles.findCard}
         />
       )}
-    </PaperScreen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.paper },
   anchor: { position: 'absolute', width: 0, height: 0, alignItems: 'center', justifyContent: 'center' },
   uzone: {
     width: 212,

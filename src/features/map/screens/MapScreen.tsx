@@ -16,7 +16,6 @@ import type {
 } from '../../../app/navigation/types';
 import {
   FloatBob,
-  PaperScreen,
   PulseRing,
   WaxSeal,
 } from '../../../design-system/components';
@@ -42,7 +41,7 @@ export function MapScreen({ navigation }: Props) {
   const openPin = () => navigation.navigate('SecretDetail');
 
   return (
-    <PaperScreen>
+    <View style={styles.root}>
       <MaplibreView />
       <View style={styles.park} />
       <Text style={styles.parkLbl}>PARK</Text>
@@ -114,11 +113,12 @@ export function MapScreen({ navigation }: Props) {
         onPress={() => navigation.navigate('Opening')}
         style={styles.rangeCard}
       />
-    </PaperScreen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.paper },
   park: {
     position: 'absolute',
     left: -40,

@@ -19,10 +19,18 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
   This service powers the whole core loop.
 - **`services/api`** — axios instance, base URL per env, device-id header,
   error normalization, retry/backoff.
-- **`services/maps`** — pick the provider (deferred deliberately: MapLibre /
-  Mapbox / Google), implement the `MapAdapter` interface, and swap the
-  decorative `MapTexture` SVG for a real map on the Map screen (keep the SVG as
-  the onboarding backdrop — it's a design element there).
+- **`services/maps`** ✅ **Done (2026-06-13)** — MapLibre GL +
+  Protomaps CDN tiles. `useMaplibreAdapter()` hook returns `MaplibreView`
+  (drop-in background component) and a `MapAdapter` (flyTo / setMarkers /
+  getCenter). Style JSON at `services/maps/droppedStyle.ts` matches the
+  paper/ink/sage palette exactly (paper ground, sage water/parks, muted roads,
+  no POI labels). `MapScreen` and `WalkSequenceScreen` both use `MaplibreView`
+  as their map background; all RN overlay components (pins, cards, FABs, route
+  line) are unchanged above it. `MapTexture` SVG kept on onboarding screens
+  as a design element. **Remaining:** add `PROTOMAPS_API_KEY` (free signup at
+  protomaps.com), add `ACCESS_FINE_LOCATION` / `NSLocationWhenInUseUsageDescription`
+  permissions (§5), then wire live GPS → camera center + real pins from nearby
+  query (§4 Map row).
 - **`services/notifications`** — local notification when the GPS watch detects
   an undiscovered secret within ~200 m ("quiet hum" setting).
 
@@ -58,7 +66,7 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
 | Welcome (01)      | Skip onboarding when the flag is set; route straight to Main.                                                                                                                                                      |
 | How it works (02) | Nothing — static by design.                                                                                                                                                                                        |
 | Location (03)     | "Allow while using the app" must trigger the real OS prompt via `services/location`; handle denied/blocked states ("Not now" path + re-prompt from settings).                                                      |
-| Map (04)          | Real map provider, real pins from the nearby query (only near ones, per the rules), live "you" dot from GPS, working layers button, count in the loc chip, range card appears only when actually within 50 m.      |
+| Map (04)          | ✅ Real map provider done (MapLibre + Protomaps). Remaining: real pins from nearby query, live "you" dot from GPS, count in loc chip, range card only when actually within 50 m. |
 | Walk (04a/b/c)    | Drive beats from live GPS distance instead of taps; live distance pill + step count; footsteps from the actual walked path; out-of-range → in-range → arrived transitions from `isWithin`.                         |
 | Walk closer (05)  | Real distance/ETA, compass needle from magnetometer heading toward the drop, save action persisting to storage/API.                                                                                                |
 | Opening (06)      | Trigger only after a server-verified reveal; play once (not looped) then auto-advance; haptic on the snap.                                                                                                         |
@@ -102,7 +110,7 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
 1. Storage + device id + onboarding flag (small, unblocks identity).
 2. Location service + real permission flow on screen 03.
 3. Backend MVP (drops + nearby + reveal) and API/Query wiring.
-4. Map provider on screen 04; GPS-driven walk sequence.
+4. ✅ Map provider (MapLibre + Protomaps) on screen 04 — done. Next: GPS-driven walk sequence + real nearby pins.
 5. Composer with real input → drop → trail lists.
 6. Moderation pipeline before any public release.
 7. Notifications, polish, e2e, release plumbing.

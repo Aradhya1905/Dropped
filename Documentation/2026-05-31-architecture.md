@@ -15,8 +15,9 @@ Core loop: **drop → walk → reveal**.
 ## Stack
 - **Bare React Native 0.85.3 / React 19** (not Expo).
 - TypeScript, path-based `src/` layout.
-- Deferred (installed per-feature, not yet): React Navigation, a map provider,
-  Zustand (state), React Query (data), geolocation + local notifications.
+- Deferred (installed per-feature, not yet): Zustand (state), React Query (data), local notifications.
+- **Map** — `@maplibre/maplibre-react-native` + Protomaps CDN vector tiles (2026-06-13).
+  See [Map provider](#map-provider-maplibre--protomaps) below.
 
 ## Folder map
 ```
@@ -33,7 +34,7 @@ src/
   services/       cross-cutting integrations behind adapters
     api/          HTTP client + interceptors
     storage/      MMKV/AsyncStorage (anon device id, seen-secrets cache)
-    maps/         provider-agnostic MapAdapter (noop stub until provider chosen)
+    maps/         MapAdapter interface + MapLibre/Protomaps implementation (droppedStyle.ts, maplibreAdapter.tsx)
     location/     GPS watch + distance-to-drop + within-50 m logic
     notifications/ local push when near an undiscovered secret
     analytics/
@@ -56,9 +57,38 @@ Each `features/*` contains `screens/ · components/ · hooks/ · api/ · types.t
 - `design-system/tokens/*` — colors (`ink #211D18`, `moss #566E5B`), type, spacing, radii.
 - `types/index.ts` — `Coordinate`, `Drop`, `Secret`, `RevealState`, `REVEAL_RADIUS_M = 50`.
 - `utils/geo.ts` — `haversineMeters`, `isWithin` (50 m default).
-- `services/maps/` — `MapAdapter` interface + `noopAdapter`.
+- `services/maps/` — `MapAdapter` interface + `noopAdapter` + live MapLibre adapter (see below).
 
 Everything else is a compile-clean barrel + README so the tree self-documents.
+
+## Map provider — MapLibre + Protomaps
+
+_Added 2026-06-13._
+
+**Why this stack:** MapLibre GL is the open-source fork of Mapbox GL; same render engine, zero cost. Protomaps delivers OpenStreetMap-derived vector tiles via CDN (free tier: 100k tiles/month, no credit card). Combined they produce Mapbox-quality maps at $0.
+
+**Files:**
+
+| File | Role |
+|---|---|
+| `services/maps/droppedStyle.ts` | MapLibre style JSON. Paper `#F1EBDE` ground, sage `rgba(118,149,124,…)` water + parks, `#E8E0D0` roads, `inkSoft` street labels. POI + transit layers hidden. |
+| `services/maps/maplibreAdapter.tsx` | `useMaplibreAdapter()` hook. Returns `MaplibreView` (the `<Map>` component ready to drop in) and a `MapAdapter` object (`flyTo`, `setMarkers`, `getCenter`). Center tracked synchronously via `onRegionDidChange`. |
+| `services/maps/noopAdapter.ts` | Kept for unit tests — no native bridge needed. |
+
+**How screens use it:**
+
+```tsx
+const { MaplibreView } = useMaplibreAdapter();
+// render <MaplibreView /> at StyleSheet.absoluteFill as the lowest layer;
+// all RN overlay components (pins, cards, FABs) sit above it unchanged.
+```
+
+`MapScreen` replaces `<MapTexture dense />`. `WalkSequenceScreen` replaces `<RouteMap />`.
+`MapTexture` SVG is **kept** on onboarding screens — it's a design element, not a map.
+
+**API key:** `PROTOMAPS_API_KEY` const in `maplibreAdapter.tsx` (line ~29). Sign up free at protomaps.com. Replace with `Config.PROTOMAPS_API_KEY` once `react-native-config` is added.
+
+**Jest:** `@maplibre/maplibre-react-native` is mocked in `jest.setup.js` (no native bridge in tests). Added to `transformIgnorePatterns` in `jest.config.js` so TypeScript source is transpiled by Babel.
 
 ## Conventions
 - Features never import a vendor SDK directly — go through a `services/*` adapter.

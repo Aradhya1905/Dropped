@@ -11,7 +11,7 @@
  * you can hard-code a key here temporarily, or use react-native-config.
  */
 import React, { useCallback, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, type NativeSyntheticEvent } from 'react-native';
 import {
   Camera,
   type CameraRef,
@@ -30,9 +30,10 @@ import type { MapAdapter, MapMarker } from './types';
 
 /**
  * Your Protomaps API key. Sign up free at https://protomaps.com.
- * Replace this with `Config.PROTOMAPS_API_KEY` once react-native-config is set up.
+ * Mirrors PROTOMAPS_API_KEY in .env; move to `Config.PROTOMAPS_API_KEY`
+ * once react-native-config is set up.
  */
-const PROTOMAPS_API_KEY = '';
+const PROTOMAPS_API_KEY = '0e4ff5084fbca43f';
 
 /** Default center shown before location permission is granted (New York, matching design). */
 const DEFAULT_CENTER: Coordinate = { lat: 40.7128, lng: -74.006 };
@@ -80,10 +81,13 @@ export function useMaplibreAdapter(
     return centerRef.current;
   }, []);
 
-  const onRegionDidChange = useCallback((e: ViewStateChangeEvent) => {
-    const [lng, lat] = e.center;
-    centerRef.current = { lat, lng };
-  }, []);
+  const onRegionDidChange = useCallback(
+    (e: NativeSyntheticEvent<ViewStateChangeEvent>) => {
+      const [lng, lat] = e.nativeEvent.center;
+      centerRef.current = { lat, lng };
+    },
+    [],
+  );
 
   const style = droppedMapStyle(PROTOMAPS_API_KEY);
 
@@ -94,16 +98,18 @@ export function useMaplibreAdapter(
         style={[styles.map, viewStyle]}
         mapStyle={style as never}
         onRegionDidChange={onRegionDidChange}
-        logoEnabled={false}
-        attributionEnabled={false}
-        compassEnabled={false}
-        scaleBarEnabled={false}
-        initialViewState={{
-          center: [initialCenter.lng, initialCenter.lat],
-          zoom: DEFAULT_ZOOM,
-        }}
+        logo={false}
+        attribution={false}
+        compass={false}
+        scaleBar={false}
       >
-        <Camera ref={cameraRef} />
+        <Camera
+          ref={cameraRef}
+          initialViewState={{
+            center: [initialCenter.lng, initialCenter.lat],
+            zoom: DEFAULT_ZOOM,
+          }}
+        />
       </Map>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,5 +124,5 @@ export function useMaplibreAdapter(
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  map: { ...StyleSheet.absoluteFillObject },
+  map: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 });
