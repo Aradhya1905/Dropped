@@ -35,30 +35,59 @@ and **don't also set `fontWeight`**. iOS uses each font's PostScript name (e.g. 
 Android uses the filename; the token's `Platform.select` handles the split. Newsreader uses the 24pt optical cut.
 To add a weight later: drop the `.ttf` in `assets/fonts/`, re-run `npx react-native-asset`, add a token entry.
 
-### Native setup still pending (do when wiring features, not yet)
-- `index.js`: add `import 'react-native-gesture-handler';` as the **first** line.
-- `babel.config.js`: add the **`react-native-worklets/plugin`** plugin (last in the list) — reanimated 4 uses worklets' plugin, not the old `react-native-reanimated/plugin`.
-- Permissions: location (geolocation) + camera/mic (vision-camera) in `AndroidManifest.xml` / `Info.plist`.
-- iOS: `pod install` after native deps change.
+### Native setup
+- ✅ Done: `index.js` imports `react-native-gesture-handler` first; root `App.tsx`
+  hands off to `src/app/App.tsx` (providers + navigation).
+- Still pending (do when the relevant feature lands):
+  - `babel.config.js`: the **`react-native-worklets/plugin`** plugin (last in the
+    list) — only once reanimated is actually used; all current screen animations
+    run on the core Animated API, so it isn't needed yet.
+  - Permissions: location (geolocation) + camera/mic (vision-camera) in
+    `AndroidManifest.xml` / `Info.plist` — UI permission screens exist, but
+    nothing requests OS permissions yet.
+  - iOS: `pod install` after native deps change.
 
 ## Layout (`src/`)
-- `app/` — shell: providers + navigation
-- `design-system/` — UI kit: `tokens/` (colors, type, spacing, radii), components, icons
-- `features/` — one folder per domain (`onboarding map nearby drop reveal settings`);
-  each has `screens/ components/ hooks/ api/ types.ts`
+- `app/` — shell: `providers/` (gesture root + safe area) and `navigation/`
+  (RootNavigator, MainTabs with the custom paper TabBar, route param types)
+- `design-system/` — UI kit: `tokens/` (colors, type, spacing, radii, shadows),
+  `components/` (PaperScreen, MapTexture, WaxSeal, AppButton, Sheet, TabBar,
+  FadeUp/FloatBob/PulseRing, …), `icons/` (18 stroke icons from the design)
+- `features/` — one folder per domain (`onboarding map nearby drop reveal trail settings`);
+  each has `screens/ components/ hooks/ api/ types.ts`. `trail/` was added for
+  the design's Trail tab (found/saved/dropped scrapbook).
 - `services/` — vendor integrations behind adapters (`api storage maps location notifications analytics`)
 - `store/` — global Zustand stores
 - `utils/` — `geo.ts` (haversine, isWithin), format, validators
 - `types/` — `Coordinate`, `Drop`, `Secret`, `RevealState`, `REVEAL_RADIUS_M = 50`
 
-Most of the tree is compile-clean barrels/READMEs. Real logic so far:
-`types/index.ts`, `utils/geo.ts`, `design-system/tokens/*`, `services/maps/` adapter stub.
+Implemented: all 14 design screens (UI-only, mock copy from the design) + the
+full navigation graph. `hooks/ api/ store/` and most `services/*` are still
+barrels — no GPS, backend, state, or map provider yet. See
+[Documentation/2026-06-12-screens-and-navigation.md](Documentation/2026-06-12-screens-and-navigation.md)
+for the screen→code map and design-translation notes.
+
+### Navigation map
+```
+RootStack: Welcome → HowItWorks → Location → Main
+           Main = tabs (Map · Trail · You); MapTab nests MapHome → Walk (04a/b/c beats)
+           + SecretDetail (05) · Opening (06) → Secret (07) · Composer (08) → Dropped (09)
+```
 
 ## Conventions
 - Features **never** import a vendor SDK directly — go through a `services/*` adapter.
-- `design-reference/` is a read-only design export (HTML). Don't edit it.
-- Root `App.tsx` stays the RN template until `src/app/App.tsx` is wired in.
-- Full architecture notes: [Documentation/2026-05-31-architecture.md](Documentation/2026-05-31-architecture.md).
+  (React Navigation and react-native-svg count as app infrastructure, not vendor SDKs.)
+- `design-reference/` is a read-only design export (HTML). Don't edit it. The 14
+  screens live in `project/dropped-screens.js` (markup), `dropped.css` (visual
+  spec) and `dropped.js` (shared SVGs) — treat those as the source of truth for
+  pixel checks.
+- Visual style: exact design palette via `tokens.colors` (paper/ink/sage), CSS
+  shadows via `tokens.shadows` as `boxShadow` strings (New Arch), ambient
+  animations on the core Animated API (no reanimated yet).
+- Root `App.tsx` just re-exports `src/app/App.tsx` — edit the shell there.
+- Full architecture notes: [Documentation/2026-05-31-architecture.md](Documentation/2026-05-31-architecture.md);
+  screens & navigation: [Documentation/2026-06-12-screens-and-navigation.md](Documentation/2026-06-12-screens-and-navigation.md);
+  remaining work / roadmap: [Documentation/2026-06-13-remaining-work.md](Documentation/2026-06-13-remaining-work.md).
 
 ## Commands
 - `npm start` — Metro dev server
