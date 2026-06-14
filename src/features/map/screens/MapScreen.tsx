@@ -9,7 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Marker, UserLocation } from '@maplibre/maplibre-react-native';
+import { Marker } from '@maplibre/maplibre-react-native';
+import { UserDot } from '../components/UserDot';
 
 import type {
   MainTabParamList,
@@ -70,7 +71,11 @@ export function MapScreen({ navigation }: Props) {
   return (
     <View style={styles.root}>
       <MaplibreView>
-        <UserLocation animated minDisplacement={2} />
+        {coord ? (
+          <Marker id="user-location" lngLat={[coord.lng, coord.lat]}>
+            <UserDot />
+          </Marker>
+        ) : null}
         {drops.map((secret, i) => (
           <Marker
             key={secret.id}
