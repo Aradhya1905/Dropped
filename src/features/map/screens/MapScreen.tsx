@@ -20,7 +20,11 @@ import {
   WaxSeal,
 } from '../../../design-system/components';
 import { useMaplibreAdapter } from '../../../services/maps';
-import { LayersIcon, QuillIcon, SealPinIcon } from '../../../design-system/icons';
+import {
+  LayersIcon,
+  QuillIcon,
+  SealPinIcon,
+} from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation } from '../hooks';
 import { LocChip } from '../components/LocChip';
@@ -66,13 +70,36 @@ export function MapScreen({ navigation }: Props) {
       <Text style={styles.parkLbl}>PARK</Text>
 
       {/* sealed pins scattered on the map — tap one to walk it into range */}
-      <MapPin style={{ top: insets.top + 134, left: 34 }} deltaY={-9} duration={9000} onPress={openPin} />
-      <MapPin style={{ top: insets.top + 96, right: 48 }} deltaY={9} duration={11000} onPress={openPin} />
-      <MapPin style={{ top: insets.top + 246, right: 30 }} deltaY={-9} duration={12000} onPress={openPin} />
-      <MapPin style={{ top: insets.top + 416, left: 24 }} deltaY={9} duration={10000} onPress={openPin} />
+      <MapPin
+        style={{ top: insets.top + 134, left: 34 }}
+        deltaY={-9}
+        duration={9000}
+        onPress={openPin}
+      />
+      <MapPin
+        style={{ top: insets.top + 96, right: 48 }}
+        deltaY={9}
+        duration={11000}
+        onPress={openPin}
+      />
+      <MapPin
+        style={{ top: insets.top + 246, right: 30 }}
+        deltaY={-9}
+        duration={12000}
+        onPress={openPin}
+      />
+      <MapPin
+        style={{ top: insets.top + 416, left: 24 }}
+        deltaY={9}
+        duration={10000}
+        onPress={openPin}
+      />
 
       {/* you + the live secret within reach */}
-      <View style={[styles.rangeStage, { marginTop: insets.top }]} pointerEvents="none">
+      <View
+        style={[styles.rangeStage, { marginTop: insets.top }]}
+        pointerEvents="none"
+      >
         {[0, 1200, 2400].map(delay => (
           <PulseRing
             key={delay}
@@ -87,7 +114,13 @@ export function MapScreen({ navigation }: Props) {
           />
         ))}
         <View style={styles.youDot} />
-        <FloatBob rotate={0} deltaRotate={0} deltaY={7} duration={7000} style={styles.livePinWrap}>
+        <FloatBob
+          rotate={0}
+          deltaRotate={0}
+          deltaY={7}
+          duration={7000}
+          style={styles.livePinWrap}
+        >
           <PulseRing
             size={54}
             fromScale={0.9}
@@ -111,7 +144,11 @@ export function MapScreen({ navigation }: Props) {
       />
       <Pressable
         accessibilityLabel="Map layers"
-        style={({ pressed }) => [styles.layersFab, { top: insets.top + 8 }, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.layersFab,
+          { top: insets.top + 8 },
+          pressed && styles.pressed,
+        ]}
       >
         <LayersIcon size={21} />
       </Pressable>
@@ -176,7 +213,8 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     backgroundColor: colors.accent,
-    boxShadow: '0 0 0 4px rgba(118,149,124,0.25), 0 2px 6px rgba(86,110,91,0.5)',
+    boxShadow:
+      '0 0 0 4px rgba(118,149,124,0.25), 0 2px 6px rgba(86,110,91,0.5)',
   },
   livePinWrap: {
     position: 'absolute',
@@ -204,5 +242,11 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.8 },
   dropFab: { position: 'absolute', right: 18, bottom: 100, zIndex: 21 },
-  rangeCard: { position: 'absolute', left: 16, right: 16, bottom: 12, zIndex: 20 },
+  rangeCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 12,
+    zIndex: 20,
+  },
 });
