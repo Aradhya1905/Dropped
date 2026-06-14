@@ -13,10 +13,13 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
 - **`services/storage`** — MMKV wrapper. First real need: generate + persist the
   **anonymous device id** (the app's only identity), onboarding-complete flag,
   saved/seen-secrets cache, settings (map style, radius, notification mode).
-- **`services/location`** — wrap `react-native-geolocation-service`: permission
-  request + status, foreground GPS watch, current coordinate stream, and a
-  `distanceTo(drop)` helper built on `utils/geo.haversineMeters` / `isWithin`.
-  This service powers the whole core loop.
+- **`services/location`** ✅ **Done (2026-06-14)** — wraps
+  `react-native-geolocation-service`: `requestPermission()`
+  (granted/denied/blocked), `getCurrent()`, `watch()`, plus `distanceTo` /
+  `isWithinDrop` over `utils/geo`. Reverse-geocoding added in `services/maps`
+  (Nominatim, no key) + a `useDeviceLocation()` hook in `features/map/hooks`
+  that ties permission + watch + address together. See
+  [2026-06-14-location-and-address.md](2026-06-14-location-and-address.md).
 - **`services/api`** — axios instance, base URL per env, device-id header,
   error normalization, retry/backoff.
 - **`services/maps`** ✅ **Done (2026-06-13)** — MapLibre GL +
@@ -65,9 +68,9 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Welcome (01)      | Skip onboarding when the flag is set; route straight to Main.                                                                                                                                                      |
 | How it works (02) | Nothing — static by design.                                                                                                                                                                                        |
-| Location (03)     | "Allow while using the app" must trigger the real OS prompt via `services/location`; handle denied/blocked states ("Not now" path + re-prompt from settings).                                                      |
-| Map (04)          | ✅ Real map provider done (MapLibre + Protomaps). Remaining: real pins from nearby query, live "you" dot from GPS, count in loc chip, range card only when actually within 50 m. |
-| Walk (04a/b/c)    | Drive beats from live GPS distance instead of taps; live distance pill + step count; footsteps from the actual walked path; out-of-range → in-range → arrived transitions from `isWithin`.                         |
+| Location (03)     | ✅ **Done (2026-06-14)** — "Allow" fires the real OS prompt via `services/location`; granted warms GPS + enters app, blocked shows the themed `LocationPermissionSheet` → Settings, denied stays for retry / "Not now".                                                      |
+| Map (04)          | ✅ Real map provider (MapLibre + Protomaps) + ✅ **live location (2026-06-14)**: loc chip shows the real reverse-geocoded address, camera centers on the first GPS fix. Remaining: real pins from nearby query, live "you" dot, loc-chip count, range card only when actually within 50 m — all need the backend. |
+| Walk (04a/b/c)    | ✅ **Real place label (2026-06-14)** in the status header. **Still scripted (tap-to-advance):** distance pill + step count + beat transitions — these wait on a real drop target (backend). Then drive beats from live GPS distance via `isWithin`, footsteps from the walked path.                         |
 | Walk closer (05)  | Real distance/ETA, compass needle from magnetometer heading toward the drop, save action persisting to storage/API.                                                                                                |
 | Opening (06)      | Trigger only after a server-verified reveal; play once (not looped) then auto-advance; haptic on the snap.                                                                                                         |
 | Secret (07)       | Real secret payload, increment "stood here", working save + heart mutations, the "read once · reseal or fade" rule.                                                                                                |
@@ -78,10 +81,12 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
 
 ## 5. Native/platform setup still pending
 
-- **Permissions** — `ACCESS_FINE_LOCATION` (+ `ACCESS_COARSE_LOCATION`) in
-  `AndroidManifest.xml`; `NSLocationWhenInUseUsageDescription` in `Info.plist`.
-  Camera/mic (vision-camera) only if/when a media feature ships — the house
-  rules say "No photos. Just words.", so possibly remove vision-camera instead.
+- **Permissions** — ✅ **Location done (2026-06-14)**: `ACCESS_FINE_LOCATION` +
+  `ACCESS_COARSE_LOCATION` in `AndroidManifest.xml`;
+  `NSLocationWhenInUseUsageDescription` filled in `Info.plist` (iOS needs
+  `pod install` on a Mac to verify). Camera/mic (vision-camera) only if/when a
+  media feature ships — the house rules say "No photos. Just words.", so
+  possibly remove vision-camera instead.
 - **Worklets babel plugin** — add `react-native-worklets/plugin` only when
   something actually uses reanimated (current animations are core Animated).
 - **iOS** — `pod install`, first device build, verify fonts' PostScript names
@@ -108,7 +113,8 @@ order. Architecture context: [2026-05-31-architecture.md](2026-05-31-architectur
 ## Suggested sequence
 
 1. Storage + device id + onboarding flag (small, unblocks identity).
-2. Location service + real permission flow on screen 03.
+2. ✅ Location service + real permission flow on screen 03 — done (2026-06-14);
+   reverse-geocoded address shown on Map + Walk.
 3. Backend MVP (drops + nearby + reveal) and API/Query wiring.
 4. ✅ Map provider (MapLibre + Protomaps) on screen 04 — done. Next: GPS-driven walk sequence + real nearby pins.
 5. Composer with real input → drop → trail lists.
