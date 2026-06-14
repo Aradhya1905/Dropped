@@ -76,3 +76,6 @@ yarn-error.log
 
 # ENV files
 .env
+
+# Claude Plans
+.claude/plans
