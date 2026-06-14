@@ -111,7 +111,3 @@ Start by reading the files above and the shared types, then present the design d
 for approval BEFORE implementing. Ask me anything ambiguous (expected scale,
 launch moderation aggressiveness) rather than guessing.
 ```
-
-npx neonctl@latest init
-
-postgresql://neondb_owner:npg_faF6lqUixZr8@ep-purple-sunset-ao75u44p.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
