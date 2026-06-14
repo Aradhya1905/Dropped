@@ -7,10 +7,10 @@
  * Usage: render <MaplibreView> in the map screen; call the returned adapter
  * methods (flyTo, setMarkers, getCenter) from hooks/features.
  *
- * API key: pass your Protomaps key via the PROTOMAPS_API_KEY env var. In dev
- * you can hard-code a key here temporarily, or use react-native-config.
+ * API key: set PROTOMAPS_API_KEY in `.env` (loaded via react-native-config).
  */
 import React, { useCallback, useRef, useState } from 'react';
+import Config from 'react-native-config';
 import { StyleSheet, type NativeSyntheticEvent } from 'react-native';
 import {
   Camera,
@@ -29,11 +29,10 @@ import type { MapAdapter, MapMarker } from './types';
 // ---------------------------------------------------------------------------
 
 /**
- * Your Protomaps API key. Sign up free at https://protomaps.com.
- * Mirrors PROTOMAPS_API_KEY in .env; move to `Config.PROTOMAPS_API_KEY`
- * once react-native-config is set up.
+ * Protomaps API key, loaded from `.env` via react-native-config.
+ * Sign up free at https://protomaps.com.
  */
-const PROTOMAPS_API_KEY = '0e4ff5084fbca43f';
+const PROTOMAPS_API_KEY = Config.PROTOMAPS_API_KEY;
 
 /** Default center shown before location permission is granted (New York, matching design). */
 const DEFAULT_CENTER: Coordinate = { lat: 40.7128, lng: -74.006 };

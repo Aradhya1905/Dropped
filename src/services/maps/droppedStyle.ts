@@ -9,7 +9,7 @@
  * For dev, pass a hardcoded key or leave as empty string to get a watermarked
  * demo response.
  */
-export function droppedMapStyle(apiKey: string): object {
+export function droppedMapStyle(apiKey?: string): object {
   const tilesUrl = apiKey
     ? `https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=${apiKey}`
     : 'https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt';
