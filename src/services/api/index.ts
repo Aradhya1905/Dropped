@@ -2,10 +2,6 @@
  * api — the only module that touches axios. One configured client with the
  * anonymous device id attached to every request, normalized errors, and
  * retry/backoff on idempotent GETs.
- *
- * NOTE: the backend doesn't exist yet (remaining-work §2). `baseURL` is a
- * placeholder; there are deliberately no endpoint functions or mock data here —
- * those land with the server. This file just makes the transport real.
  */
 import axios, {
   AxiosError,
@@ -15,9 +11,10 @@ import axios, {
 } from 'axios';
 
 import { getDeviceId } from '../storage';
+import type { Coordinate, Mood } from '../../types';
 
-/** TODO: per-env base URL once the backend exists. */
-export const DROPPED_API_URL = 'https://api.dropped.invalid';
+// Dev server — update to prod URL before release
+export const DROPPED_API_URL = 'https://droppeddev.duckdns.org';
 
 const MAX_RETRIES = 2;
 const RETRY_BASE_DELAY_MS = 300;
@@ -29,6 +26,8 @@ export interface ApiError {
   /** Machine code: 'network' | 'timeout' | 'http' | 'unknown'. */
   code: 'network' | 'timeout' | 'http' | 'unknown';
   message: string;
+  /** Present on 403 reveal failures — metres from the drop. */
+  distanceMeters?: number;
 }
 
 const delay = (ms: number) =>
@@ -36,12 +35,12 @@ const delay = (ms: number) =>
 
 function toApiError(err: AxiosError): ApiError {
   if (err.response) {
+    const data = err.response.data as { message?: string; distanceMeters?: number } | undefined;
     return {
       status: err.response.status,
       code: 'http',
-      message:
-        (err.response.data as { message?: string } | undefined)?.message ??
-        err.message,
+      message: data?.message ?? err.message,
+      distanceMeters: data?.distanceMeters,
     };
   }
   if (err.code === 'ECONNABORTED') {
@@ -89,3 +88,74 @@ api.interceptors.response.use(
     return Promise.reject(toApiError(err));
   },
 );
+
+// ── API-boundary types ────────────────────────────────────────────────────────
+
+export interface ApiDrop {
+  id: string;
+  coordinate: Coordinate;
+  placeLabel?: string;
+  createdAt: number;
+}
+
+export interface ApiSecret {
+  id: string;
+  body?: string;
+  drop: ApiDrop;
+  createdAt: number;
+  revealCount?: number;
+  mood: Mood;
+  hearts: number;
+  stoodHere: number;
+  sealed: boolean;
+  saved: boolean;
+  hearted: boolean;
+  distanceMeters?: number;
+}
+
+export interface ApiDeviceInfo {
+  deviceId: string;
+  createdAt: number;
+  dropsQuotaRemaining: number;
+}
+
+// ── Endpoint functions ────────────────────────────────────────────────────────
+
+export const fetchHealth = () =>
+  api.get<{ ok: boolean }>('/health').then(r => r.data);
+
+export const fetchDeviceInfo = () =>
+  api.get<ApiDeviceInfo>('/devices/me').then(r => r.data);
+
+export const fetchNearbyDrops = (lat: number, lng: number, radiusMeters = 2000) =>
+  api.get<{ secrets: ApiSecret[] }>('/drops/nearby', { params: { lat, lng, radiusMeters } }).then(r => r.data);
+
+export const createDrop = (body: string, mood: Mood, coordinate: Coordinate, placeLabel?: string) =>
+  api.post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel }).then(r => r.data);
+
+export const revealDrop = (id: string, coordinate: Coordinate) =>
+  api.post<ApiSecret>(`/drops/${id}/reveal`, { coordinate }).then(r => r.data);
+
+export const saveDrop = (id: string) =>
+  api.post<{ saved: boolean }>(`/drops/${id}/save`).then(r => r.data);
+
+export const unsaveDrop = (id: string) =>
+  api.delete<{ saved: boolean }>(`/drops/${id}/save`).then(r => r.data);
+
+export const heartDrop = (id: string) =>
+  api.post<{ hearted: boolean; hearts: number }>(`/drops/${id}/heart`).then(r => r.data);
+
+export const unheartDrop = (id: string) =>
+  api.delete<{ hearted: boolean; hearts: number }>(`/drops/${id}/heart`).then(r => r.data);
+
+export const reportDrop = (id: string, reason: string) =>
+  api.post<{ reported: true }>(`/drops/${id}/report`, { reason }).then(r => r.data);
+
+export const fetchTrailFound = (limit = 20, offset = 0) =>
+  api.get<{ secrets: ApiSecret[]; total: number }>('/drops/trail/found', { params: { limit, offset } }).then(r => r.data);
+
+export const fetchTrailSaved = (limit = 20, offset = 0) =>
+  api.get<{ secrets: ApiSecret[]; total: number }>('/drops/trail/saved', { params: { limit, offset } }).then(r => r.data);
+
+export const fetchTrailDropped = (limit = 20, offset = 0) =>
+  api.get<{ secrets: ApiSecret[]; total: number }>('/drops/trail/dropped', { params: { limit, offset } }).then(r => r.data);

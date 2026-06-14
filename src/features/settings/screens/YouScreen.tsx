@@ -10,6 +10,8 @@ import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/compo
 import { ClockIcon, HumIcon, LayersIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { Passport } from '../components/Passport';
+import { getDeviceId } from '../../../services/storage';
+import { useDeviceInfo } from '../hooks';
 
 const SETTINGS = [
   { icon: <LayersIcon size={22} color={colors.accentDeep} />, label: 'Map style', value: 'Night ink' },
@@ -26,6 +28,8 @@ const RULES = [
 
 export function YouScreen() {
   const insets = useSafeAreaInsets();
+  const { data: deviceInfo } = useDeviceInfo();
+  const deviceId = getDeviceId().slice(0, 8).toUpperCase();
   return (
     <PaperScreen>
       <MapTexture blur />
@@ -38,7 +42,7 @@ export function YouScreen() {
           hello, stranger.
         </FunKicker>
 
-        <Passport />
+        <Passport deviceId={deviceId} quotaRemaining={deviceInfo?.dropsQuotaRemaining} />
 
         <View style={styles.setList}>
           {SETTINGS.map(s => (

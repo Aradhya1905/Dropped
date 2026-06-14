@@ -1,9 +1,9 @@
-﻿/**
+/**
  * 07 The secret — the unlocked confession on a spacious taped card, with the
  * "unlocked · here, now" pill, save and heart actions.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -18,6 +18,7 @@ import {
 import { BookmarkIcon, HeartIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
+import { useSave, useHeart, useReport } from '../hooks';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Secret'>;
 
@@ -25,6 +26,11 @@ export function SecretScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { secretId } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
+
+  const save = useSave(secretId);
+  const heart = useHeart(secretId);
+  const { report, reported } = useReport(secretId);
+
   return (
     <PaperScreen>
       <MapTexture dense blur />
@@ -42,7 +48,16 @@ export function SecretScreen({ navigation, route }: Props) {
           <CloseX onPress={() => navigation.goBack()} style={styles.close} />
         </View>
 
-        <View style={styles.card}>
+        <Pressable
+          onLongPress={() => {
+            if (reported) return;
+            Alert.alert('Report this secret?', 'It will be reviewed and may be removed.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Report', style: 'destructive', onPress: () => report('inappropriate') },
+            ]);
+          }}
+          style={styles.card}
+        >
           <Tape width={74} height={22} rotate={-2.5} style={styles.tape} />
           <View style={styles.cardHead}>
             <View>
@@ -52,7 +67,7 @@ export function SecretScreen({ navigation, route }: Props) {
               </View>
               <Text style={styles.placeName}>{secret?.drop.placeLabel ?? 'Here'}</Text>
             </View>
-            <EmotionTag label="ache" />
+            <EmotionTag label={secret?.mood ?? 'ache'} />
           </View>
           <View style={styles.cardRule} />
 
@@ -71,26 +86,43 @@ export function SecretScreen({ navigation, route }: Props) {
                 <Text style={styles.byline}>by someone who{'\n'}stood right here</Text>
               </View>
               <View style={styles.stood}>
-                <Text style={styles.stoodNum}>{secret?.revealCount ?? 0}</Text>
+                <Text style={styles.stoodNum}>{secret?.stoodHere ?? 0}</Text>
                 <Text style={styles.stoodLbl}>have stood here too</Text>
               </View>
             </View>
           </View>
-        </View>
+        </Pressable>
 
         <View style={styles.actions}>
           <Pressable
-            onPress={() => navigation.goBack()}
-            style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+            onPress={save.toggle}
+            disabled={save.isPending}
+            style={({ pressed }) => [
+              styles.saveBtn,
+              save.saved && styles.saveBtnActive,
+              pressed && styles.pressed,
+            ]}
           >
-            <BookmarkIcon size={18} color={colors.paperCard} strokeWidth={1.7} />
-            <Text style={styles.saveText}>Save to collection</Text>
+            <BookmarkIcon
+              size={18}
+              color={save.saved ? colors.ink : colors.paperCard}
+              strokeWidth={1.7}
+            />
+            <Text style={[styles.saveText, save.saved && styles.saveTextActive]}>
+              {save.saved ? 'Saved' : 'Save to collection'}
+            </Text>
           </Pressable>
           <Pressable
             accessibilityLabel="I feel this"
-            style={({ pressed }) => [styles.heartBtn, pressed && styles.pressed]}
+            onPress={heart.toggle}
+            disabled={heart.isPending}
+            style={({ pressed }) => [
+              styles.heartBtn,
+              heart.hearted && styles.heartBtnActive,
+              pressed && styles.pressed,
+            ]}
           >
-            <HeartIcon size={21} />
+            <HeartIcon size={21} color={heart.hearted ? colors.accentDeep : colors.ink} />
           </Pressable>
         </View>
       </View>
@@ -229,7 +261,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
+  saveBtnActive: { backgroundColor: colors.accentTint },
   saveText: { fontFamily: fonts.sansMedium, fontSize: 14.5, color: colors.paperCard },
+  saveTextActive: { color: colors.ink },
   heartBtn: {
     width: 54,
     height: 54,
@@ -240,5 +274,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heartBtnActive: { backgroundColor: colors.accentDeep },
   pressed: { opacity: 0.85 },
 });

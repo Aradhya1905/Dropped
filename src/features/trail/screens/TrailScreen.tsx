@@ -3,23 +3,48 @@
  * found/saved/dropped tabs, and the feed of secrets you've stood inside.
  */
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
+import { useTrailFound, useTrailSaved, useTrailDropped } from '../hooks';
+import type { Secret } from '../../../types';
 
-const TABS = [
-  { key: 'found', label: 'Found', count: 9 },
-  { key: 'saved', label: 'Saved', count: 4 },
-  { key: 'dropped', label: 'Dropped', count: 2 },
-] as const;
+const FASTENERS = ['tape', 'pin', 'tapeRight'] as const;
+const ROTATIONS = [-1, 0.8, -0.6];
+
+function _relTime(ms: number): string {
+  const diff = Date.now() - ms;
+  const days = Math.floor(diff / (24 * 3600 * 1000));
+  if (days < 1) return 'today';
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
 
 export function TrailScreen() {
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<(typeof TABS)[number]['key']>('found');
+  const [tab, setTab] = useState<'found' | 'saved' | 'dropped'>('found');
+
+  const found = useTrailFound();
+  const saved = useTrailSaved();
+  const dropped = useTrailDropped();
+
+  const tabs = [
+    { key: 'found' as const, label: 'Found', count: found.data?.total ?? 0 },
+    { key: 'saved' as const, label: 'Saved', count: saved.data?.total ?? 0 },
+    { key: 'dropped' as const, label: 'Dropped', count: dropped.data?.total ?? 0 },
+  ];
+
+  const activeQuery = tab === 'found' ? found : tab === 'saved' ? saved : dropped;
+  const activeSecrets: Secret[] = activeQuery.data?.secrets ?? [];
+  const isLoading = activeQuery.isLoading;
+
+  const foundCount = found.data?.total ?? 0;
 
   return (
     <PaperScreen>
@@ -28,7 +53,8 @@ export function TrailScreen() {
         <View style={styles.head}>
           <FunKicker>look how far you've wandered.</FunKicker>
           <Text style={styles.title}>
-            You've walked through <Text style={styles.titleEm}>4 secrets</Text>
+            You've walked through{' '}
+            <Text style={styles.titleEm}>{foundCount} secret{foundCount === 1 ? '' : 's'}</Text>
             {'\n'}this month.
           </Text>
         </View>
@@ -38,12 +64,12 @@ export function TrailScreen() {
             { value: '24,108', label: 'steps' },
             { value: '3', label: 'cities' },
             { value: '12', unit: 'd', label: 'streak' },
-            { value: '2', label: 'dropped' },
+            { value: String(dropped.data?.total ?? 0), label: 'dropped' },
           ]}
         />
 
         <View style={styles.tabs}>
-          {TABS.map(t => {
+          {tabs.map(t => {
             const on = t.key === tab;
             return (
               <Pressable
@@ -63,33 +89,24 @@ export function TrailScreen() {
           contentContainerStyle={styles.feedContent}
           showsVerticalScrollIndicator={false}
         >
-          <TrailCard
-            rotate={-1}
-            fastener="tape"
-            place="Caffè Eleven"
-            mood="ache"
-            quote={'"I told her I loved her here in 2019. She said no. I still walk past on purpose."'}
-            footLeft="Bedford Ave & N 7th"
-            footRight="unlocked · 4y ago"
-          />
-          <TrailCard
-            rotate={0.8}
-            fastener="pin"
-            place="Sterling Tower"
-            mood="joy"
-            quote={'"I quit my job from the corner desk on the 8th floor. Walked out and bought a cassoulet."'}
-            footLeft="8th floor, NE corner"
-            footRight="unlocked · 11mo ago"
-          />
-          <TrailCard
-            rotate={-0.6}
-            fastener="tapeRight"
-            place="South path, by the elm"
-            mood="ache"
-            quote={'"I scattered my mother here. She would have hated that I picked a Tuesday."'}
-            footLeft="Prospect Park"
-            footRight="unlocked · 2y ago"
-          />
+          {isLoading ? (
+            <ActivityIndicator color={colors.accent} style={styles.loader} />
+          ) : activeSecrets.length === 0 ? (
+            <Text style={styles.empty}>Nothing here yet.</Text>
+          ) : (
+            activeSecrets.map((s, i) => (
+              <TrailCard
+                key={s.id}
+                rotate={ROTATIONS[i % ROTATIONS.length]}
+                fastener={FASTENERS[i % FASTENERS.length]}
+                place={s.drop.placeLabel ?? 'Here'}
+                mood={s.mood}
+                quote={`"${s.body ?? ''}"`}
+                footLeft={s.drop.placeLabel ?? ''}
+                footRight={`unlocked · ${_relTime(s.createdAt)}`}
+              />
+            ))
+          )}
         </ScrollView>
       </View>
     </PaperScreen>
@@ -133,4 +150,12 @@ const styles = StyleSheet.create({
   tabCountOn: { color: colors.accentDeep },
   feed: { flex: 1, marginTop: 16 },
   feedContent: { paddingTop: 6, paddingHorizontal: 2, paddingBottom: 24, gap: 15 },
+  loader: { marginTop: 40 },
+  empty: {
+    fontFamily: fonts.handSemibold,
+    fontSize: 18,
+    color: colors.inkFaint,
+    textAlign: 'center',
+    marginTop: 40,
+  },
 });

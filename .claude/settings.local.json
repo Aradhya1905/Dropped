@@ -7,7 +7,8 @@
       "PowerShell(yarn add react-native-config)",
       "PowerShell(npx tsc --noEmit 2>&1)",
       "Bash(node -e \"const p = require\\('c:/My_Projects/Dropped/node_modules/zustand/package.json'\\); console.log\\('zustand', p.version\\)\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://droppeddev.duckdns.org/health)"
     ]
   },
   "plansDirectory": ".claude/plans"

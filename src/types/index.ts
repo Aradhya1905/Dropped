@@ -20,15 +20,24 @@ export interface Drop {
   createdAt: number;
 }
 
+export type Mood = 'joy' | 'ache' | 'trouble' | 'wonder';
+
 /** The anonymous confession itself, tied to one drop. */
 export interface Secret {
   id: string;
-  /** The text the author left. */
-  body: string;
+  /** The text the author left. Absent when sealed === true. */
+  body?: string;
   drop: Drop;
   createdAt: number;
   /** How many people have revealed it (server-owned). */
   revealCount?: number;
+  mood: Mood;
+  hearts: number;
+  stoodHere: number;
+  sealed: boolean;
+  saved: boolean;
+  hearted: boolean;
+  distanceMeters?: number;
 }
 
 /**

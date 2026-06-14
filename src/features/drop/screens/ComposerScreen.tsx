@@ -3,12 +3,12 @@
  * ruled paper, pick a mood, drop it forever.
  */
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
-import type { Secret } from '../../../types';
+import type { Mood } from '../../../types';
 import {
   AppButton,
   CloseX,
@@ -24,34 +24,31 @@ import { PinIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { MoodChips } from '../components/MoodChips';
 import { WriteCard } from '../components/WriteCard';
-import { useDropsStore } from '../../../store/dropsStore';
 import { useDeviceLocation } from '../../map/hooks';
+import { useCreateDrop } from '../hooks';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Composer'>;
 
 export function ComposerScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [mood, setMood] = useState('ache');
+  const [mood, setMood] = useState<Mood>('ache');
   const [body, setBody] = useState('');
   const { coord, shortAddress } = useDeviceLocation();
-  const addDrop = useDropsStore(s => s.addDrop);
+  const { create, isPending } = useCreateDrop();
 
-  const handleDrop = () => {
-    const now = Date.now();
-    const newSecret: Secret = {
-      id: `user-${now}`,
-      body: body.trim() || '(no words, just a feeling)',
-      drop: {
-        id: `drop-user-${now}`,
-        coordinate: coord ?? { lat: 0, lng: 0 },
-        placeLabel: shortAddress ?? 'Here',
-        createdAt: now,
-      },
-      createdAt: now,
-      revealCount: 0,
-    };
-    addDrop(newSecret);
-    navigation.replace('Dropped', { secretId: newSecret.id });
+  const handleDrop = async () => {
+    if (!coord || isPending) return;
+    try {
+      const secret = await create({
+        body: body.trim() || '(no words, just a feeling)',
+        mood,
+        coordinate: coord,
+        placeLabel: shortAddress ?? undefined,
+      });
+      navigation.replace('Dropped', { secretId: secret.id });
+    } catch {
+      Alert.alert('Could not drop', 'Check your connection and try again.');
+    }
   };
 
   return (
@@ -95,13 +92,13 @@ export function ComposerScreen({ navigation }: Props) {
             count={body.length}
           />
 
-          <MoodChips moods={['joy', 'ache', 'trouble', 'wonder']} selected={mood} onSelect={setMood} />
+          <MoodChips moods={['joy', 'ache', 'trouble', 'wonder']} selected={mood} onSelect={v => setMood(v as Mood)} />
 
           <AppButton
-            label="Drop here · forever"
+            label={isPending ? 'Dropping…' : 'Drop here · forever'}
             iconLeft={<SealPinIcon size={18} color={colors.paperCard} dotColor={colors.paperCard} />}
             onPress={handleDrop}
-            style={styles.dropBtn}
+            style={[styles.dropBtn, (!coord || isPending) && styles.dropBtnDim]}
           />
         </View>
       </Sheet>
@@ -171,4 +168,5 @@ const styles = StyleSheet.create({
     maxWidth: 284,
   },
   dropBtn: { marginTop: 18 },
+  dropBtnDim: { opacity: 0.5 },
 });

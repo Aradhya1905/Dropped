@@ -21,11 +21,10 @@ import { WaxSeal } from '../../../design-system/components';
 import { useMaplibreAdapter } from '../../../services/maps';
 import { LayersIcon, QuillIcon } from '../../../design-system/icons';
 import { colors, shadows } from '../../../design-system/tokens';
-import { useDeviceLocation } from '../hooks';
+import { useDeviceLocation, useNearbyDrops } from '../hooks';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
 import { RangeCard } from '../components/RangeCard';
-import { useDropsStore } from '../../../store/dropsStore';
 import { isWithin } from '../../../utils/geo';
 
 type Props = CompositeScreenProps<
@@ -40,7 +39,7 @@ export function MapScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { adapter, MaplibreView } = useMaplibreAdapter();
   const { coord, shortAddress, status, refresh } = useDeviceLocation();
-  const { drops, seed, seeded } = useDropsStore();
+  const { data: drops = [] } = useNearbyDrops(coord);
 
   // Onboarding usually grants + warms location first; guard in case it didn't.
   useEffect(() => {
@@ -49,19 +48,14 @@ export function MapScreen({ navigation }: Props) {
     }
   }, [status, refresh]);
 
-  // Recenter on first real fix; seed dummy drops once.
+  // Recenter map on first real fix.
   const centeredRef = useRef(false);
   useEffect(() => {
-    if (coord) {
-      if (!centeredRef.current) {
-        centeredRef.current = true;
-        adapter.flyTo(coord);
-      }
-      if (!seeded) {
-        seed(coord);
-      }
+    if (coord && !centeredRef.current) {
+      centeredRef.current = true;
+      adapter.flyTo(coord);
     }
-  }, [coord, adapter, seed, seeded]);
+  }, [coord, adapter]);
 
   // Nearest drop within 50 m drives the RangeCard.
   const nearestInRange = coord

@@ -1,1 +1,1 @@
-export {};
+export { useDeviceInfo } from './useDeviceInfo';

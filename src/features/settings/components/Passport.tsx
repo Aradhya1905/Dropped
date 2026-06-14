@@ -23,7 +23,7 @@ function Perforation() {
   );
 }
 
-export function Passport() {
+export function Passport({ deviceId, quotaRemaining }: { deviceId?: string; quotaRemaining?: number }) {
   return (
     <View style={styles.passport}>
       <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -73,8 +73,11 @@ export function Passport() {
         <BrandPinmarkIcon size={32} strokeWidth={1.5} />
       </View>
 
-      <Text style={styles.id}>device #4F·9A·22</Text>
+      <Text style={styles.id}>device #{deviceId ?? '········'}</Text>
       <Text style={styles.tag}>you are no one. that's the point.</Text>
+      {quotaRemaining != null && (
+        <Text style={styles.quota}>{quotaRemaining} drop{quotaRemaining === 1 ? '' : 's'} left today</Text>
+      )}
 
       <WaxSeal size={50} rotate={-8} pulse style={styles.seal}>
         <SealPinIcon size={22} />
@@ -130,6 +133,14 @@ const styles = StyleSheet.create({
     color: colors.accentDeep,
     marginTop: 4,
     transform: [{ rotate: '-1deg' }],
+  },
+  quota: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 9 * 0.18,
+    textTransform: 'uppercase',
+    color: colors.inkFaint,
+    marginTop: 8,
   },
   seal: { position: 'absolute', right: -12, bottom: -12 },
   stamp: {
