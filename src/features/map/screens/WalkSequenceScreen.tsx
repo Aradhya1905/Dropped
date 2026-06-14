@@ -29,6 +29,7 @@ import { PulseRing } from '../../../design-system/components';
 import { HeadingIcon, LockIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useMaplibreAdapter } from '../../../services/maps';
+import { useDeviceLocation } from '../hooks';
 import { FindCard } from '../components/FindCard';
 import { MapStatus } from '../components/MapStatus';
 import { RouteLine } from '../components/RouteLine';
@@ -163,6 +164,9 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   const [beat, setBeat] = useState<WalkBeat>(route.params?.beat ?? 'approach');
   const cfg = BEATS[beat];
   const { MaplibreView } = useMaplibreAdapter();
+  // Real street/area for the status header; falls back to the scripted copy
+  // until a fix lands. Distance stays scripted — no backend drop to target yet.
+  const { shortAddress } = useDeviceLocation();
 
   const advance = () => {
     LayoutAnimation.configureNext(LayoutAnimation.create(600, 'easeInEaseOut', 'opacity'));
@@ -174,7 +178,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
       <MapStatus
         icon={<HeadingIcon size={16} />}
         kicker="Walking · 88 steps"
-        place="Bedford Ave"
+        place={shortAddress ?? 'Bedford Ave'}
         state="out of range"
         cold
       />
@@ -182,14 +186,14 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
       <MapStatus
         icon={<PinIcon size={16} strokeWidth={1.6} />}
         kicker="You stepped in"
-        place="Bedford & N 7th"
+        place={shortAddress ?? 'Bedford & N 7th'}
         state="in range · 50 m"
       />
     ) : (
       <MapStatus
         icon={<PinIcon size={16} strokeWidth={1.6} />}
         kicker="You're standing on it"
-        place="Bedford & N 7th"
+        place={shortAddress ?? 'Bedford & N 7th'}
         state="you're here"
       />
     );

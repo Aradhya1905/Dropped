@@ -2,7 +2,7 @@
  * 04 Map — the living city map: sealed pins bobbing, your pulsing position,
  * one live (in-range) secret, the drop FAB, and the "within range" card.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -22,6 +22,7 @@ import {
 import { useMaplibreAdapter } from '../../../services/maps';
 import { LayersIcon, QuillIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
+import { useDeviceLocation } from '../hooks';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
 import { RangeCard } from '../components/RangeCard';
@@ -36,7 +37,25 @@ type Props = CompositeScreenProps<
 
 export function MapScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { MaplibreView } = useMaplibreAdapter();
+  const { adapter, MaplibreView } = useMaplibreAdapter();
+  const { coord, shortAddress, status, refresh } = useDeviceLocation();
+
+  // Onboarding usually grants + warms location first; guard in case it didn't.
+  useEffect(() => {
+    if (status === 'unknown') {
+      refresh();
+    }
+  }, [status, refresh]);
+
+  // Recenter on the first real fix (and again if the device moves far).
+  const centeredRef = useRef(false);
+  useEffect(() => {
+    if (coord && !centeredRef.current) {
+      centeredRef.current = true;
+      adapter.flyTo(coord);
+    }
+  }, [coord, adapter]);
+
   // a sealed pin far away → its "walk closer" sheet (05)
   const openPin = () => navigation.navigate('SecretDetail');
 
@@ -86,7 +105,7 @@ export function MapScreen({ navigation }: Props) {
 
       <LocChip
         kicker="You're in"
-        place="Bedford & N 7th"
+        place={shortAddress ?? 'Locating…'}
         count={9}
         style={[styles.locChip, { top: insets.top + 10 }]}
       />

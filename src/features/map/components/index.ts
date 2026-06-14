@@ -5,3 +5,4 @@ export { RouteMap } from './RouteMap';
 export { RouteLine } from './RouteLine';
 export { MapStatus } from './MapStatus';
 export { FindCard } from './FindCard';
+export { LocationPermissionSheet } from './LocationPermissionSheet';
