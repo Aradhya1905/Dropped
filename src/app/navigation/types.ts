@@ -15,7 +15,7 @@ export type WalkBeat = 'approach' | 'range' | 'arrived';
 
 export type MapStackParamList = {
   MapHome: undefined;
-  Walk: { beat?: WalkBeat } | undefined;
+  Walk: { secretId: string; beat?: WalkBeat };
 };
 
 export type MainTabParamList = {
@@ -29,9 +29,9 @@ export type RootStackParamList = {
   HowItWorks: undefined;
   Location: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
-  SecretDetail: undefined;
-  Opening: undefined;
-  Secret: undefined;
+  SecretDetail: { secretId: string };
+  Opening: { secretId: string };
+  Secret: { secretId: string };
   Composer: undefined;
-  Dropped: undefined;
+  Dropped: { secretId: string };
 };

@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
+import type { Secret } from '../../../types';
 import {
   AppButton,
   CloseX,
@@ -23,12 +24,35 @@ import { PinIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { MoodChips } from '../components/MoodChips';
 import { WriteCard } from '../components/WriteCard';
+import { useDropsStore } from '../../../store/dropsStore';
+import { useDeviceLocation } from '../../map/hooks';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Composer'>;
 
 export function ComposerScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [mood, setMood] = useState('ache');
+  const [body, setBody] = useState('');
+  const { coord, shortAddress } = useDeviceLocation();
+  const addDrop = useDropsStore(s => s.addDrop);
+
+  const handleDrop = () => {
+    const now = Date.now();
+    const newSecret: Secret = {
+      id: `user-${now}`,
+      body: body.trim() || '(no words, just a feeling)',
+      drop: {
+        id: `drop-user-${now}`,
+        coordinate: coord ?? { lat: 0, lng: 0 },
+        placeLabel: shortAddress ?? 'Here',
+        createdAt: now,
+      },
+      createdAt: now,
+      revealCount: 0,
+    };
+    addDrop(newSecret);
+    navigation.replace('Dropped', { secretId: newSecret.id });
+  };
 
   return (
     <PaperScreen>
@@ -39,7 +63,9 @@ export function ComposerScreen({ navigation }: Props) {
         <PinIcon size={13} strokeWidth={1.6} dotColor={colors.accent} />
         <Text style={styles.spotPillText}>Dropping at this spot</Text>
       </View>
-      <Text style={[styles.placeLbl, { top: insets.top + 62 }]}>THE HEIGHTS</Text>
+      <Text style={[styles.placeLbl, { top: insets.top + 62 }]}>
+        {shortAddress?.toUpperCase() ?? 'LOCATING…'}
+      </Text>
       <View style={[styles.marker, { top: insets.top + 58 }]}>
         <PulseRing
           size={24}
@@ -63,9 +89,10 @@ export function ComposerScreen({ navigation }: Props) {
           </Text>
 
           <WriteCard
-            text="We met at this corner on a Tuesday in March. She had a baguette under her arm. I never said a word."
+            value={body}
+            onChangeText={setBody}
             sign="— anonymous, here, now"
-            count={181}
+            count={body.length}
           />
 
           <MoodChips moods={['joy', 'ache', 'trouble', 'wonder']} selected={mood} onSelect={setMood} />
@@ -73,7 +100,7 @@ export function ComposerScreen({ navigation }: Props) {
           <AppButton
             label="Drop here · forever"
             iconLeft={<SealPinIcon size={18} color={colors.paperCard} dotColor={colors.paperCard} />}
-            onPress={() => navigation.replace('Dropped')}
+            onPress={handleDrop}
             style={styles.dropBtn}
           />
         </View>

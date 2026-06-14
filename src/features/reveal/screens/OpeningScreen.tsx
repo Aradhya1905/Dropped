@@ -17,16 +17,20 @@ import {
 import { colors, fonts } from '../../../design-system/tokens';
 import { SealBurst } from '../components/SealBurst';
 
+import { useDropsStore } from '../../../store/dropsStore';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'Opening'>;
 
-export function OpeningScreen({ navigation }: Props) {
+export function OpeningScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { secretId } = route.params;
+  const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   return (
     <PaperScreen>
       <MapTexture dense blur />
       <Pressable
         style={[styles.view, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 30 }]}
-        onPress={() => navigation.replace('Secret')}
+        onPress={() => navigation.replace('Secret', { secretId })}
       >
         <FunKicker centered style={styles.kicker}>
           you made it all the way here —
@@ -35,7 +39,7 @@ export function OpeningScreen({ navigation }: Props) {
         <SealBurst />
 
         <Text style={styles.title}>It cracks open.</Text>
-        <Text style={styles.meta}>Caffè Eleven · Bedford Ave & N 7th</Text>
+        <Text style={styles.meta}>{secret?.drop.placeLabel ?? ''}</Text>
         <Text style={styles.hint}>
           someone left this here years ago — just for whoever got close.
         </Text>

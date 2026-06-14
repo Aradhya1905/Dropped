@@ -49,8 +49,8 @@ export interface MaplibreAdapterResult {
   adapter: MapAdapter;
   /** Controlled state — markers to render as RN views above the map. */
   markers: MapMarker[];
-  /** Render this component as the map background. */
-  MaplibreView: React.ComponentType<{ style?: object }>;
+  /** Render this component as the map background. Children render inside <Map>. */
+  MaplibreView: React.ComponentType<{ style?: object; children?: React.ReactNode }>;
 }
 
 export function useMaplibreAdapter(
@@ -91,7 +91,7 @@ export function useMaplibreAdapter(
   const style = droppedMapStyle(PROTOMAPS_API_KEY);
 
   const MaplibreView = useCallback(
-    ({ style: viewStyle }: { style?: object }) => (
+    ({ style: viewStyle, children }: { style?: object; children?: React.ReactNode }) => (
       <Map
         ref={mapRef}
         style={[styles.map, viewStyle]}
@@ -109,6 +109,7 @@ export function useMaplibreAdapter(
             zoom: DEFAULT_ZOOM,
           }}
         />
+        {children}
       </Map>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps

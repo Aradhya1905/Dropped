@@ -5,7 +5,9 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "PowerShell(yarn add react-native-config)",
-      "PowerShell(npx tsc --noEmit 2>&1)"
+      "PowerShell(npx tsc --noEmit 2>&1)",
+      "Bash(node -e \"const p = require\\('c:/My_Projects/Dropped/node_modules/zustand/package.json'\\); console.log\\('zustand', p.version\\)\")",
+      "Bash(python -c ' *)"
     ]
   },
   "plansDirectory": ".claude/plans"

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 07 The secret — the unlocked confession on a spacious taped card, with the
  * "unlocked · here, now" pill, save and heart actions.
  */
@@ -17,11 +17,14 @@ import {
 } from '../../../design-system/components';
 import { BookmarkIcon, HeartIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
+import { useDropsStore } from '../../../store/dropsStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Secret'>;
 
-export function SecretScreen({ navigation }: Props) {
+export function SecretScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { secretId } = route.params;
+  const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   return (
     <PaperScreen>
       <MapTexture dense blur />
@@ -45,18 +48,18 @@ export function SecretScreen({ navigation }: Props) {
             <View>
               <View style={styles.placeMeta}>
                 <PinIcon size={11} strokeWidth={1.5} />
-                <Text style={styles.placeMetaText}>Bedford Ave & N 7th</Text>
+                <Text style={styles.placeMetaText}>{secret?.drop.placeLabel ?? ''}</Text>
               </View>
-              <Text style={styles.placeName}>Caffè Eleven</Text>
+              <Text style={styles.placeName}>{secret?.drop.placeLabel ?? 'Here'}</Text>
             </View>
             <EmotionTag label="ache" />
           </View>
           <View style={styles.cardRule} />
 
           <View style={styles.quote}>
-            <Text style={styles.qmark}>“</Text>
+            <Text style={styles.qmark}>"</Text>
             <Text style={styles.quoteText}>
-              I told her I loved her here in 2019. She said no. I still walk past on purpose.
+              {secret?.body ?? ''}
             </Text>
           </View>
 
@@ -64,11 +67,11 @@ export function SecretScreen({ navigation }: Props) {
             <View style={styles.dash} />
             <View style={styles.footGrid}>
               <View>
-                <Text style={styles.dropped}>— dropped 4 years ago</Text>
+                <Text style={styles.dropped}>— {secret ? _yearsAgo(secret.drop.createdAt) : ''}</Text>
                 <Text style={styles.byline}>by someone who{'\n'}stood right here</Text>
               </View>
               <View style={styles.stood}>
-                <Text style={styles.stoodNum}>288</Text>
+                <Text style={styles.stoodNum}>{secret?.revealCount ?? 0}</Text>
                 <Text style={styles.stoodLbl}>have stood here too</Text>
               </View>
             </View>
@@ -93,6 +96,12 @@ export function SecretScreen({ navigation }: Props) {
       </View>
     </PaperScreen>
   );
+}
+
+function _yearsAgo(ms: number): string {
+  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
+  if (years < 1) return 'just now';
+  return `dropped ${years} year${years === 1 ? '' : 's'} ago`;
 }
 
 const styles = StyleSheet.create({

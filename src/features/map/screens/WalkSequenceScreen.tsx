@@ -1,7 +1,9 @@
 /**
  * 04a/b/c — walking a secret into range, in three beats: out of range,
  * crossing the 50 m line, then standing right on top of it.
- * Tap the map to take the next steps; on arrival, break the seal.
+ *
+ * Beats are driven by real GPS distance (updates automatically as you walk).
+ * In __DEV__ mode, tapping the screen still advances the beat manually.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -28,11 +30,12 @@ import type {
 import { PulseRing } from '../../../design-system/components';
 import { HeadingIcon, LockIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
-import { useMaplibreAdapter } from '../../../services/maps';
 import { useDeviceLocation } from '../hooks';
 import { FindCard } from '../components/FindCard';
 import { MapStatus } from '../components/MapStatus';
 import { RouteLine } from '../components/RouteLine';
+import { useDropsStore } from '../../../store/dropsStore';
+import { haversineMeters } from '../../../utils/geo';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MapStackParamList, 'Walk'>,
@@ -65,6 +68,10 @@ const BEATS: Record<WalkBeat, { stepsOn: number; walker: [number, number] }> = {
 
 const ZONE_CENTER: [number, number] = [173, 288];
 
+// Distance thresholds in metres
+const RANGE_THRESHOLD = 150;
+const ARRIVED_THRESHOLD = 50;
+
 /** Zero-size anchor at a design-space point; children center on it. */
 function Anchor({
   at,
@@ -89,7 +96,6 @@ function SecretPin({ beat }: { beat: WalkBeat }) {
     if (beat !== 'arrived') {
       return;
     }
-    // sealShake: rest, then a quick -7° / +6° rattle every 2.8s
     const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(2296),
@@ -131,7 +137,7 @@ function SecretPin({ beat }: { beat: WalkBeat }) {
   );
 }
 
-/** Expanding ripple where you crossed into the zone (`.cross-ripple`). */
+/** Expanding ripple where you crossed into the zone. */
 function CrossRipple() {
   const t = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -161,24 +167,48 @@ function CrossRipple() {
 
 export function WalkSequenceScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const [beat, setBeat] = useState<WalkBeat>(route.params?.beat ?? 'approach');
-  const cfg = BEATS[beat];
-  const { MaplibreView } = useMaplibreAdapter();
-  // Real street/area for the status header; falls back to the scripted copy
-  // until a fix lands. Distance stays scripted — no backend drop to target yet.
-  const { shortAddress } = useDeviceLocation();
+  const { secretId } = route.params;
+  const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
+  const { coord, shortAddress } = useDeviceLocation();
 
-  const advance = () => {
+  // GPS-derived distance + beat
+  const distM = coord && secret
+    ? haversineMeters(coord, secret.drop.coordinate)
+    : null;
+
+  const gpsBeat: WalkBeat =
+    distM == null ? 'approach' :
+    distM <= ARRIVED_THRESHOLD ? 'arrived' :
+    distM <= RANGE_THRESHOLD ? 'range' :
+    'approach';
+
+  // In DEV, allow manual tap-advance; in prod, follow GPS only.
+  const [devBeat, setDevBeat] = useState<WalkBeat>(route.params?.beat ?? 'approach');
+  const beat = __DEV__ ? devBeat : gpsBeat;
+
+  // Sync dev beat to GPS in DEV mode when GPS is ahead
+  useEffect(() => {
+    if (!__DEV__) return;
+    if (gpsBeat === 'arrived' && devBeat !== 'arrived') setDevBeat('arrived');
+    else if (gpsBeat === 'range' && devBeat === 'approach') setDevBeat('range');
+  }, [gpsBeat, devBeat]);
+
+  const advanceDev = () => {
+    if (!__DEV__ || beat === 'arrived') return;
     LayoutAnimation.configureNext(LayoutAnimation.create(600, 'easeInEaseOut', 'opacity'));
-    setBeat(b => (b === 'approach' ? 'range' : 'arrived'));
+    setDevBeat(b => (b === 'approach' ? 'range' : 'arrived'));
   };
+
+  const cfg = BEATS[beat];
+
+  const distLabel = distM != null ? `${Math.round(distM)} m` : '— m';
 
   const status =
     beat === 'approach' ? (
       <MapStatus
         icon={<HeadingIcon size={16} />}
-        kicker="Walking · 88 steps"
-        place={shortAddress ?? 'Bedford Ave'}
+        kicker={`Walking · ${distLabel} away`}
+        place={shortAddress ?? 'Locating…'}
         state="out of range"
         cold
       />
@@ -186,129 +216,138 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
       <MapStatus
         icon={<PinIcon size={16} strokeWidth={1.6} />}
         kicker="You stepped in"
-        place={shortAddress ?? 'Bedford & N 7th'}
-        state="in range · 50 m"
+        place={shortAddress ?? ''}
+        state={`in range · ${distLabel}`}
       />
     ) : (
       <MapStatus
         icon={<PinIcon size={16} strokeWidth={1.6} />}
         kicker="You're standing on it"
-        place={shortAddress ?? 'Bedford & N 7th'}
+        place={shortAddress ?? ''}
         state="you're here"
       />
     );
 
-  return (
-    <View style={styles.root}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={beat === 'arrived' ? undefined : advance}>
-        <MaplibreView />
-        <RouteLine />
+  const mapContent = (
+    <View style={StyleSheet.absoluteFill}>
+      <RouteLine />
 
-        {/* the 50 m unlock zone */}
-        <Anchor at={ZONE_CENTER} zIndex={3}>
-          <View
-            style={[
-              styles.uzone,
-              beat === 'approach' && styles.uzoneFaint,
-              beat === 'range' && styles.uzoneWake,
-              beat === 'arrived' && styles.uzoneHere,
-            ]}
-          >
-            <Svg width={212} height={212} style={StyleSheet.absoluteFill}>
-              <Defs>
-                <RadialGradient id="uzoneGrad" cx="50%" cy="50%" r="50%">
-                  <Stop offset="0" stopColor={colors.accent} stopOpacity={0.14} />
-                  <Stop
-                    offset="0.7"
-                    stopColor={colors.accent}
-                    stopOpacity={beat === 'arrived' ? 0.08 : 0.04}
-                  />
-                  <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
-                </RadialGradient>
-              </Defs>
-              <Circle cx={106} cy={106} r={105} fill="url(#uzoneGrad)" />
-            </Svg>
-          </View>
-        </Anchor>
-        <Anchor at={ZONE_CENTER} zIndex={4}>
-          {[0, 1150, 2300].map(delay => (
-            <PulseRing
-              key={delay}
-              size={56}
-              fromScale={0.5}
-              toScale={3}
-              peakOpacity={0.6}
-              durationMs={beat === 'approach' ? 5000 : 3400}
-              delayMs={delay}
-              borderWidth={1.5}
-              borderColor={colors.accent}
-            />
-          ))}
-        </Anchor>
-        <Anchor at={[ZONE_CENTER[0], ZONE_CENTER[1] - 122]} zIndex={6}>
-          <View style={styles.uzLbl}>
-            <Text style={styles.uzLblText}>50 m unlock zone</Text>
-          </View>
-        </Anchor>
-        <Anchor at={ZONE_CENTER} zIndex={6}>
-          <SecretPin beat={beat} />
-        </Anchor>
-        {beat === 'arrived' ? (
-          <Anchor at={[173, 204]} zIndex={9}>
-            <Text style={styles.arrived}>you made it!</Text>
-          </Anchor>
-        ) : null}
-
-        {/* footsteps along the route */}
-        {FOOTSTEPS.map(([x, y], i) => (
-          <View
-            key={i}
-            pointerEvents="none"
-            style={[styles.fstep, { left: pctX(x), top: pctY(y) }, i < cfg.stepsOn && styles.fstepOn]}
-          />
-        ))}
-
-        {/* you, walking */}
-        {beat === 'range' ? (
-          <Anchor at={cfg.walker} zIndex={7}>
-            <CrossRipple />
-          </Anchor>
-        ) : null}
-        <Anchor at={cfg.walker} zIndex={8}>
+      {/* the 50 m unlock zone */}
+      <Anchor at={ZONE_CENTER} zIndex={3}>
+        <View
+          style={[
+            styles.uzone,
+            beat === 'approach' && styles.uzoneFaint,
+            beat === 'range' && styles.uzoneWake,
+            beat === 'arrived' && styles.uzoneHere,
+          ]}
+        >
+          <Svg width={212} height={212} style={StyleSheet.absoluteFill}>
+            <Defs>
+              <RadialGradient id="uzoneGrad" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={colors.accent} stopOpacity={0.14} />
+                <Stop
+                  offset="0.7"
+                  stopColor={colors.accent}
+                  stopOpacity={beat === 'arrived' ? 0.08 : 0.04}
+                />
+                <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Circle cx={106} cy={106} r={105} fill="url(#uzoneGrad)" />
+          </Svg>
+        </View>
+      </Anchor>
+      <Anchor at={ZONE_CENTER} zIndex={4}>
+        {[0, 1150, 2300].map(delay => (
           <PulseRing
-            size={44}
-            fromScale={0.6}
-            toScale={1.6}
-            peakOpacity={0.5}
-            durationMs={2600}
-            borderWidth={2}
+            key={delay}
+            size={56}
+            fromScale={0.5}
+            toScale={3}
+            peakOpacity={0.6}
+            durationMs={beat === 'approach' ? 5000 : 3400}
+            delayMs={delay}
+            borderWidth={1.5}
             borderColor={colors.accent}
           />
-          <View style={styles.walker}>
-            <View style={styles.walkerDot} />
-          </View>
+        ))}
+      </Anchor>
+      <Anchor at={[ZONE_CENTER[0], ZONE_CENTER[1] - 122]} zIndex={6}>
+        <View style={styles.uzLbl}>
+          <Text style={styles.uzLblText}>50 m unlock zone</Text>
+        </View>
+      </Anchor>
+      <Anchor at={ZONE_CENTER} zIndex={6}>
+        <SecretPin beat={beat} />
+      </Anchor>
+      {beat === 'arrived' ? (
+        <Anchor at={[173, 204]} zIndex={9}>
+          <Text style={styles.arrived}>you made it!</Text>
         </Anchor>
-        <Anchor at={cfg.walker} zIndex={9}>
-          <View style={styles.distPillWrap}>
-            <View style={styles.distPill}>
-              {beat === 'approach' ? (
-                <Text style={styles.distText}>
-                  <Text style={styles.distEm}>78 m</Text> to go
-                </Text>
-              ) : beat === 'range' ? (
-                <Text style={styles.distText}>
-                  you're <Text style={styles.distEm}>in range</Text>
-                </Text>
-              ) : (
-                <Text style={styles.distText}>
-                  <Text style={styles.distEm}>0 m</Text> · you're here
-                </Text>
-              )}
-            </View>
-            <View style={styles.distCaret} />
-          </View>
+      ) : null}
+
+      {/* footsteps along the route */}
+      {FOOTSTEPS.map(([x, y], i) => (
+        <View
+          key={i}
+          pointerEvents="none"
+          style={[styles.fstep, { left: pctX(x), top: pctY(y) }, i < cfg.stepsOn && styles.fstepOn]}
+        />
+      ))}
+
+      {/* you, walking */}
+      {beat === 'range' ? (
+        <Anchor at={cfg.walker} zIndex={7}>
+          <CrossRipple />
         </Anchor>
-      </Pressable>
+      ) : null}
+      <Anchor at={cfg.walker} zIndex={8}>
+        <PulseRing
+          size={44}
+          fromScale={0.6}
+          toScale={1.6}
+          peakOpacity={0.5}
+          durationMs={2600}
+          borderWidth={2}
+          borderColor={colors.accent}
+        />
+        <View style={styles.walker}>
+          <View style={styles.walkerDot} />
+        </View>
+      </Anchor>
+      <Anchor at={cfg.walker} zIndex={9}>
+        <View style={styles.distPillWrap}>
+          <View style={styles.distPill}>
+            {beat === 'approach' ? (
+              <Text style={styles.distText}>
+                <Text style={styles.distEm}>{distLabel}</Text> to go
+              </Text>
+            ) : beat === 'range' ? (
+              <Text style={styles.distText}>
+                you're <Text style={styles.distEm}>in range</Text>
+              </Text>
+            ) : (
+              <Text style={styles.distText}>
+                <Text style={styles.distEm}>0 m</Text> · you're here
+              </Text>
+            )}
+          </View>
+          <View style={styles.distCaret} />
+        </View>
+      </Anchor>
+    </View>
+  );
+
+  return (
+    <View style={styles.root}>
+      {__DEV__ ? (
+        <Pressable style={StyleSheet.absoluteFill} onPress={beat === 'arrived' ? undefined : advanceDev}>
+          {mapContent}
+        </Pressable>
+      ) : (
+        mapContent
+      )}
 
       <View style={[styles.statusWrap, { top: insets.top + 10 }]}>{status}</View>
 
@@ -317,27 +356,33 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
           locked
           kicker="something's buried nearby…"
           title="Keep walking"
-          meta="78 m away · out of range"
+          meta={`${distLabel} away · out of range`}
           style={styles.findCard}
         />
       ) : beat === 'range' ? (
         <FindCard
           kicker="you crossed the line —"
           title="A secret is within 50 m"
-          meta="walk to the pin · dropped 4 years ago"
+          meta={`walk to the pin · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
           style={styles.findCard}
         />
       ) : (
         <FindCard
           kicker="you made it —"
           title="A secret was dropped here"
-          meta="right where you're standing · 4 years ago"
-          onBreakSeal={() => navigation.navigate('Opening')}
+          meta={`right where you're standing · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
+          onBreakSeal={() => navigation.navigate('Opening', { secretId })}
           style={styles.findCard}
         />
       )}
     </View>
   );
+}
+
+function _yearsAgo(ms: number): string {
+  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
+  if (years < 1) return 'just now';
+  return `${years} year${years === 1 ? '' : 's'} ago`;
 }
 
 const styles = StyleSheet.create({

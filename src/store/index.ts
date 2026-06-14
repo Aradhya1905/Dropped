@@ -1,1 +1,1 @@
-export {};
+export { useDropsStore } from './dropsStore';

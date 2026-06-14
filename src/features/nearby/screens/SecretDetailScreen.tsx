@@ -22,11 +22,33 @@ import {
 import { PinIcon, WalkIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { Compass } from '../components/Compass';
+import { useDropsStore } from '../../../store/dropsStore';
+import { useDeviceLocation } from '../../map/hooks';
+import { haversineMeters } from '../../../utils/geo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SecretDetail'>;
 
-export function SecretDetailScreen({ navigation }: Props) {
+function formatDist(m: number): string {
+  if (m >= 1000) return (m / 1000).toFixed(1) + ' km';
+  return Math.round(m) + '';
+}
+
+function formatDistUnit(m: number): string {
+  return m >= 1000 ? '' : 'm';
+}
+
+export function SecretDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { secretId } = route.params;
+  const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
+  const { coord } = useDeviceLocation();
+
+  const distM = coord && secret
+    ? haversineMeters(coord, secret.drop.coordinate)
+    : null;
+
+  const walkMins = distM != null ? Math.max(1, Math.round(distM / 80)) : null;
+
   return (
     <PaperScreen>
       <MapTexture dense blur />
@@ -43,27 +65,32 @@ export function SecretDetailScreen({ navigation }: Props) {
 
           <View style={styles.dist}>
             <Text style={styles.distBig}>
-              335<Text style={styles.distUnit}>m</Text>
+              {distM != null ? formatDist(distM) : '—'}
+              <Text style={styles.distUnit}>{distM != null ? formatDistUnit(distM) : ''}</Text>
             </Text>
           </View>
-          <Text style={styles.walkMeta}>4 min walk · heading east</Text>
+          <Text style={styles.walkMeta}>
+            {walkMins != null ? `${walkMins} min walk` : 'Locating…'}
+          </Text>
 
           <View style={styles.addrTag}>
             <PinIcon size={20} dotColor={colors.accent} />
             <View style={styles.addrWho}>
-              <Text style={styles.addrName}>Apt 3R</Text>
-              <Text style={styles.addrStreet}>247 Greene Ave</Text>
+              <Text style={styles.addrName}>{secret?.drop.placeLabel ?? 'Unknown place'}</Text>
+              <Text style={styles.addrStreet}>
+                {secret ? new Date(secret.drop.createdAt).toLocaleDateString() : ''}
+              </Text>
             </View>
             <View style={styles.addrFound}>
-              <Text style={styles.addrFoundNum}>84</Text>
+              <Text style={styles.addrFoundNum}>{secret?.revealCount ?? 0}</Text>
               <Text style={styles.addrFoundLbl}>found</Text>
             </View>
           </View>
 
           <View style={styles.previewNote}>
             <Text style={styles.previewHand}>
-              I've passed this door 2,000 times.{' '}
-              <Text style={styles.previewBlur}>I knocked once, in 2017. He never</Text>
+              {'Something was left here. '}
+              <Text style={styles.previewBlur}>Walk close enough and it will open.</Text>
             </Text>
             <View style={styles.sealRow}>
               <Svg width={11} height={11} viewBox="0 0 16 16" fill="none">
@@ -80,7 +107,7 @@ export function SecretDetailScreen({ navigation }: Props) {
               onPress={() =>
                 navigation.navigate('Main', {
                   screen: 'MapTab',
-                  params: { screen: 'Walk', params: { beat: 'approach' } },
+                  params: { screen: 'Walk', params: { secretId, beat: 'approach' } },
                 })
               }
             />
@@ -157,7 +184,6 @@ const styles = StyleSheet.create({
     lineHeight: 19 * 1.2,
     color: colors.ink,
   },
-  // blurred continuation of the sealed text (see SecretNote for the trick)
   previewBlur: {
     color: 'transparent',
     opacity: 0.5,

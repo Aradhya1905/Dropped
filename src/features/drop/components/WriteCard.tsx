@@ -1,34 +1,15 @@
 /**
  * The lined writing card in the composer (`.write-card`): ruled paper, washi
- * tape, the confession being typed with a blinking caret, signature line and
- * character count.
+ * tape, editable confession body, signature line and character count.
  */
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 
 import { Tape } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
 
 const LINE_H = 32;
-
-function Caret() {
-  const on = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    // caretBlink: hard on/off steps, 1.05s period
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(525),
-        Animated.timing(on, { toValue: 0, duration: 0, useNativeDriver: true }),
-        Animated.delay(525),
-        Animated.timing(on, { toValue: 1, duration: 0, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [on]);
-  return <Animated.View style={[styles.caret, { opacity: on }]} />;
-}
 
 /** Ruled-paper lines, one every 32px (the text's line height). */
 function RuledLines() {
@@ -42,18 +23,41 @@ function RuledLines() {
   );
 }
 
-export function WriteCard({ text, sign, count }: { text: string; sign: string; count: number }) {
+export function WriteCard({
+  value,
+  onChangeText,
+  sign,
+  count,
+}: {
+  value: string;
+  onChangeText: (t: string) => void;
+  sign: string;
+  count: number;
+}) {
   return (
     <View style={styles.card}>
       <RuledLines />
       <Tape width={62} height={19} rotate={-2.5} style={styles.tape} />
-      <Text style={styles.text}>
-        {text}
-        <Caret />
-      </Text>
+      <TextInput
+        style={styles.text}
+        value={value}
+        onChangeText={onChangeText}
+        multiline
+        placeholder="What happened here?"
+        placeholderTextColor={colors.inkFaint}
+        scrollEnabled={false}
+      />
       <View style={styles.foot}>
-        <Text style={styles.sign}>{sign}</Text>
-        <Text style={styles.count}>{count}</Text>
+        <TextInput
+          style={styles.sign}
+          value={sign}
+          editable={false}
+        />
+        <TextInput
+          style={styles.count}
+          value={String(count)}
+          editable={false}
+        />
       </View>
     </View>
   );
@@ -75,13 +79,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tape: { position: 'absolute', top: -9, left: '50%', marginLeft: -31 },
-  text: { fontFamily: fonts.serif, fontSize: 19, lineHeight: LINE_H, color: colors.ink },
-  caret: {
-    width: 2,
-    height: 21,
-    marginLeft: 1,
-    marginBottom: -3,
-    backgroundColor: colors.accentDeep,
+  text: {
+    fontFamily: fonts.serif,
+    fontSize: 19,
+    lineHeight: LINE_H,
+    color: colors.ink,
+    padding: 0,
+    textAlignVertical: 'top',
   },
   foot: {
     marginTop: 'auto',
@@ -90,6 +94,17 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
-  sign: { fontFamily: fonts.handMedium, fontSize: 18, color: colors.inkFaint },
-  count: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 11 * 0.04, color: colors.inkFaint },
+  sign: {
+    fontFamily: fonts.handMedium,
+    fontSize: 18,
+    color: colors.inkFaint,
+    padding: 0,
+  },
+  count: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 11 * 0.04,
+    color: colors.inkFaint,
+    padding: 0,
+  },
 });

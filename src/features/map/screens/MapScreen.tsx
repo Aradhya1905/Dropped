@@ -1,35 +1,31 @@
 /**
- * 04 Map — the living city map: sealed pins bobbing, your pulsing position,
- * one live (in-range) secret, the drop FAB, and the "within range" card.
+ * 04 Map — the living city map: sealed pins at real GPS coords bobbing,
+ * your geo-anchored position dot (via MapLibre UserLocation), the drop FAB,
+ * and the "within range" card when you're within 50 m of a drop.
  */
 import React, { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Marker, UserLocation } from '@maplibre/maplibre-react-native';
 
 import type {
   MainTabParamList,
   MapStackParamList,
   RootStackParamList,
 } from '../../../app/navigation/types';
-import {
-  FloatBob,
-  PulseRing,
-  WaxSeal,
-} from '../../../design-system/components';
+import { WaxSeal } from '../../../design-system/components';
 import { useMaplibreAdapter } from '../../../services/maps';
-import {
-  LayersIcon,
-  QuillIcon,
-  SealPinIcon,
-} from '../../../design-system/icons';
-import { colors, fonts, shadows } from '../../../design-system/tokens';
+import { LayersIcon, QuillIcon } from '../../../design-system/icons';
+import { colors, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation } from '../hooks';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
 import { RangeCard } from '../components/RangeCard';
+import { useDropsStore } from '../../../store/dropsStore';
+import { isWithin } from '../../../utils/geo';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MapStackParamList, 'MapHome'>,
@@ -43,6 +39,7 @@ export function MapScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { adapter, MaplibreView } = useMaplibreAdapter();
   const { coord, shortAddress, status, refresh } = useDeviceLocation();
+  const { drops, seed, seeded } = useDropsStore();
 
   // Onboarding usually grants + warms location first; guard in case it didn't.
   useEffect(() => {
@@ -51,95 +48,48 @@ export function MapScreen({ navigation }: Props) {
     }
   }, [status, refresh]);
 
-  // Recenter on the first real fix (and again if the device moves far).
+  // Recenter on first real fix; seed dummy drops once.
   const centeredRef = useRef(false);
   useEffect(() => {
-    if (coord && !centeredRef.current) {
-      centeredRef.current = true;
-      adapter.flyTo(coord);
+    if (coord) {
+      if (!centeredRef.current) {
+        centeredRef.current = true;
+        adapter.flyTo(coord);
+      }
+      if (!seeded) {
+        seed(coord);
+      }
     }
-  }, [coord, adapter]);
+  }, [coord, adapter, seed, seeded]);
 
-  // a sealed pin far away → its "walk closer" sheet (05)
-  const openPin = () => navigation.navigate('SecretDetail');
+  // Nearest drop within 50 m drives the RangeCard.
+  const nearestInRange = coord
+    ? drops.find(s => isWithin(coord, s.drop.coordinate))
+    : null;
 
   return (
     <View style={styles.root}>
-      <MaplibreView />
-      <View style={styles.park} />
-      <Text style={styles.parkLbl}>PARK</Text>
-
-      {/* sealed pins scattered on the map — tap one to walk it into range */}
-      <MapPin
-        style={{ top: insets.top + 134, left: 34 }}
-        deltaY={-9}
-        duration={9000}
-        onPress={openPin}
-      />
-      <MapPin
-        style={{ top: insets.top + 96, right: 48 }}
-        deltaY={9}
-        duration={11000}
-        onPress={openPin}
-      />
-      <MapPin
-        style={{ top: insets.top + 246, right: 30 }}
-        deltaY={-9}
-        duration={12000}
-        onPress={openPin}
-      />
-      <MapPin
-        style={{ top: insets.top + 416, left: 24 }}
-        deltaY={9}
-        duration={10000}
-        onPress={openPin}
-      />
-
-      {/* you + the live secret within reach */}
-      <View
-        style={[styles.rangeStage, { marginTop: insets.top }]}
-        pointerEvents="none"
-      >
-        {[0, 1200, 2400].map(delay => (
-          <PulseRing
-            key={delay}
-            size={60}
-            fromScale={0.5}
-            toScale={3}
-            peakOpacity={0.6}
-            durationMs={3600}
-            delayMs={delay}
-            borderWidth={1.5}
-            borderColor={colors.accent}
-          />
+      <MaplibreView>
+        <UserLocation animated minDisplacement={2} />
+        {drops.map((secret, i) => (
+          <Marker
+            key={secret.id}
+            id={secret.id}
+            lngLat={[secret.drop.coordinate.lng, secret.drop.coordinate.lat]}
+          >
+            <MapPin
+              deltaY={i % 2 === 0 ? -9 : 9}
+              duration={9000 + i * 1000}
+              onPress={() => navigation.navigate('SecretDetail', { secretId: secret.id })}
+            />
+          </Marker>
         ))}
-        <View style={styles.youDot} />
-        <FloatBob
-          rotate={0}
-          deltaRotate={0}
-          deltaY={7}
-          duration={7000}
-          style={styles.livePinWrap}
-        >
-          <PulseRing
-            size={54}
-            fromScale={0.9}
-            toScale={1.8}
-            peakOpacity={0.5}
-            durationMs={3600}
-            borderWidth={1.5}
-            borderColor={colors.accent}
-          />
-          <WaxSeal size={40}>
-            <SealPinIcon size={17} />
-          </WaxSeal>
-        </FloatBob>
-      </View>
+      </MaplibreView>
 
       <LocChip
         kicker="You're in"
         place={shortAddress ?? 'Locating…'}
-        count={9}
+        count={drops.length}
         style={[styles.locChip, { top: insets.top + 10 }]}
       />
       <Pressable
@@ -162,69 +112,27 @@ export function MapScreen({ navigation }: Props) {
         <QuillIcon size={25} />
       </WaxSeal>
 
-      <RangeCard
-        kicker="you're within range —"
-        title="A secret was dropped here"
-        meta="Tap to break the seal · 4 years ago"
-        onPress={() => navigation.navigate('Opening')}
-        style={styles.rangeCard}
-      />
+      {nearestInRange ? (
+        <RangeCard
+          kicker="you're within range —"
+          title={nearestInRange.drop.placeLabel ?? 'A secret was dropped here'}
+          meta={`Tap to break the seal · ${_yearsAgo(nearestInRange.drop.createdAt)}`}
+          onPress={() => navigation.navigate('Opening', { secretId: nearestInRange.id })}
+          style={[styles.rangeCard, { bottom: insets.bottom + 12 }]}
+        />
+      ) : null}
     </View>
   );
 }
 
+function _yearsAgo(ms: number): string {
+  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
+  if (years < 1) return 'just now';
+  return `${years} year${years === 1 ? '' : 's'} ago`;
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
-  park: {
-    position: 'absolute',
-    left: -40,
-    bottom: 90,
-    width: 230,
-    height: 230,
-    backgroundColor: 'rgba(118,149,124,0.16)',
-    borderTopLeftRadius: 106,
-    borderTopRightRadius: 124,
-    borderBottomRightRadius: 115,
-    borderBottomLeftRadius: 115,
-    zIndex: 1,
-  },
-  parkLbl: {
-    position: 'absolute',
-    left: 54,
-    bottom: 188,
-    zIndex: 2,
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    letterSpacing: 9 * 0.3,
-    color: 'rgba(86,110,91,0.65)',
-  },
-  rangeStage: {
-    position: 'absolute',
-    top: 276,
-    left: 0,
-    right: 0,
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 13,
-  },
-  youDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.accent,
-    boxShadow:
-      '0 0 0 4px rgba(118,149,124,0.25), 0 2px 6px rgba(86,110,91,0.5)',
-  },
-  livePinWrap: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    marginLeft: 26,
-    marginTop: -54,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   locChip: { position: 'absolute', left: 16, zIndex: 20 },
   layersFab: {
     position: 'absolute',
@@ -246,7 +154,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
-    bottom: 12,
     zIndex: 20,
   },
 });

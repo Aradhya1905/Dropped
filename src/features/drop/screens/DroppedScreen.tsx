@@ -21,11 +21,14 @@ import {
 } from '../../../design-system/components';
 import { SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
+import { useDropsStore } from '../../../store/dropsStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dropped'>;
 
-export function DroppedScreen({ navigation }: Props) {
+export function DroppedScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { secretId } = route.params;
+  const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   return (
     <PaperScreen>
       <MapTexture dense blur />
@@ -55,10 +58,9 @@ export function DroppedScreen({ navigation }: Props) {
           <FloatBob rotate={-3} deltaRotate={-0.6} deltaY={-7} duration={9000}>
             <View style={styles.card}>
               <Tape width={56} height={18} rotate={-3} style={styles.cardTape} />
-              <Text style={styles.place}>Bedford & N 7th</Text>
+              <Text style={styles.place}>{secret?.drop.placeLabel ?? 'Here'}</Text>
               <Text style={styles.quote}>
-                "We met at this corner on a Tuesday in March. She had a baguette under her arm. I
-                never said a word."
+                "{secret?.body ?? ''}"
               </Text>
               <View style={styles.dash} />
               <View style={styles.foot}>
