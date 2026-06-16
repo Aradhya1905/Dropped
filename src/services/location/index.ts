@@ -26,6 +26,19 @@ const GEO_OPTIONS = {
   accuracy: { android: 'high', ios: 'best' },
 } as const;
 
+/**
+ * Reject fixes coarser than this (meters). A cold GPS often emits an early
+ * network/cell fix with 1000m+ error before the satellites warm up; accepting
+ * it shows the user the wrong spot. We hold out for a GPS-grade fix instead.
+ */
+const ACCURACY_FLOOR_M = 100;
+
+/**
+ * ...but never leave the user with nothing. If no fix beats the floor within
+ * this window, accept the best one we've seen so the map can still center.
+ */
+const ACCURACY_GRACE_MS = 12_000;
+
 /** RN position → our Coordinate, at the SDK boundary. */
 const toCoordinate = (p: GeoPosition): Coordinate => ({
   lat: p.coords.latitude,
@@ -64,7 +77,11 @@ export async function requestPermission(): Promise<PermissionStatus> {
   }
 }
 
-/** One-shot current position. Rejects with the SDK's GeoError on failure. */
+/**
+ * One-shot current position. Forces a fresh fix (`maximumAge: 0`, supported on
+ * the one-shot API) so we never echo a stale cached location. Rejects with the
+ * SDK's GeoError on failure.
+ */
 export function getCurrent(): Promise<Coordinate> {
   return new Promise((resolve, reject) => {
     Geolocation.getCurrentPosition(
@@ -83,8 +100,25 @@ export function watch(
   onCoordinate: (c: Coordinate) => void,
   onError?: (e: unknown) => void,
 ): () => void {
+  const startedAt = Date.now();
+  let best: GeoPosition | null = null;
+
   const id = Geolocation.watchPosition(
-    p => onCoordinate(toCoordinate(p)),
+    p => {
+      // Track the most accurate fix seen so far.
+      if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
+
+      const accurate = p.coords.accuracy <= ACCURACY_FLOOR_M;
+      const graceExpired = Date.now() - startedAt >= ACCURACY_GRACE_MS;
+
+      if (accurate) {
+        onCoordinate(toCoordinate(p));
+      } else if (graceExpired && best) {
+        // No GPS-grade fix arrived in time; surface the best we got.
+        onCoordinate(toCoordinate(best));
+      }
+      // else: coarse early fix, still within grace — wait for a better one.
+    },
     err => onError?.(err),
     { ...GEO_OPTIONS, distanceFilter: 5 },
   );
