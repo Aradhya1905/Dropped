@@ -5,10 +5,14 @@
 import React from 'react';
 import { StatusBar } from 'react-native';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { enableFreeze } from 'react-native-screens';
 
 import { colors } from '../design-system/tokens';
 import { RootNavigator } from './navigation';
 import { AppProviders } from './providers';
+
+// Inactive tab screens stop re-rendering while blurred → cheaper switches.
+enableFreeze(true);
 
 const theme = {
   ...DefaultTheme,
@@ -25,7 +29,11 @@ const theme = {
 export default function App(): React.JSX.Element {
   return (
     <AppProviders>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+      />
       <NavigationContainer theme={theme}>
         <RootNavigator />
       </NavigationContainer>

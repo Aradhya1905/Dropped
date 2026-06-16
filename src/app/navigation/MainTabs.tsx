@@ -42,7 +42,16 @@ function renderTabBar({ state, navigation }: BottomTabBarProps) {
 
 export function MainTabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }} tabBar={renderTabBar}>
+    <Tab.Navigator
+      tabBar={renderTabBar}
+      detachInactiveScreens={false}
+      screenOptions={{
+        headerShown: false,
+        lazy: false,
+        animation: 'none',
+        freezeOnBlur: true,
+      }}
+    >
       <Tab.Screen name="MapTab" component={MapStack} />
       <Tab.Screen name="TrailTab" component={TrailScreen} />
       <Tab.Screen name="YouTab" component={YouScreen} />
