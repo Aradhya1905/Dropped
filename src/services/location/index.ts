@@ -70,7 +70,7 @@ export function getCurrent(): Promise<Coordinate> {
     Geolocation.getCurrentPosition(
       p => resolve(toCoordinate(p)),
       err => reject(err),
-      { ...GEO_OPTIONS, timeout: 15000, maximumAge: 10000 },
+      { ...GEO_OPTIONS, timeout: 15000, maximumAge: 0 },
     );
   });
 }

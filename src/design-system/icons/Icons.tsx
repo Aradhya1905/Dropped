@@ -291,3 +291,22 @@ export function AnonLockIcon({
     </Svg>
   );
 }
+
+/** Crosshair / locate-me icon for the recenter FAB. */
+export function LocateIcon({ size = 21, color = colors.ink, strokeWidth = 1.6 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2v3M12 19v3M2 12h3M19 12h3"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}

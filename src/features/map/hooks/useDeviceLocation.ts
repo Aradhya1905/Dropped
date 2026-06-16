@@ -46,8 +46,12 @@ export function useDeviceLocation(): UseDeviceLocationResult {
   // Active watch teardown; cleared on stop / unmount.
   const stopWatchRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
+  // Lets refresh() call the geocode refetch without a dependency cycle.
+  const refetchGeocodeRef = useRef<(() => void) | null>(null);
 
-  const { address } = useReverseGeocode(coord, { debounceMs: 800 });
+  const { address, refetch: refetchGeocode } = useReverseGeocode(coord, { debounceMs: 800 });
+  // Keep ref in sync every render so refresh() always calls the latest version.
+  refetchGeocodeRef.current = refetchGeocode;
 
   const startWatch = useCallback(() => {
     stopWatchRef.current?.(); // never stack two watches
@@ -55,6 +59,7 @@ export function useDeviceLocation(): UseDeviceLocationResult {
     stopWatchRef.current = watch(
       next => {
         if (!mountedRef.current) return;
+        console.log('[Location] watch fix:', next.lat, next.lng);
         setCoord(next);
         setFixing(false);
       },
@@ -76,7 +81,12 @@ export function useDeviceLocation(): UseDeviceLocationResult {
     setFixing(true);
     try {
       const next = await getCurrent();
-      if (mountedRef.current) setCoord(next);
+      console.log('[Location] refresh fix:', next.lat, next.lng);
+      if (mountedRef.current) {
+        setCoord(next);
+        // Force a fresh Nominatim lookup even if rounded coord didn't change.
+        refetchGeocodeRef.current?.();
+      }
     } catch {
       // swallow — a failed fix just leaves the last-known coord in place
     } finally {

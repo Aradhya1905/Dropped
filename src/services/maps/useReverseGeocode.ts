@@ -77,6 +77,7 @@ export function useReverseGeocode(
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const fetchAddress = async () => {
+      console.log('[Geocode] fetching address for:', current.lat, current.lng);
       setLoading(true);
       setError(null);
       try {
@@ -86,10 +87,12 @@ export function useReverseGeocode(
           timeoutMs,
         });
         if (!controller.signal.aborted) {
+          console.log('[Geocode] resolved:', result.shortAddress, '|', result.formatted);
           setAddress(result);
         }
       } catch (err) {
         if (controller.signal.aborted) return; // superseded; ignore
+        console.log('[Geocode] error:', err instanceof Error ? err.message : err);
         setError(
           err instanceof ReverseGeocodeError
             ? err

@@ -19,7 +19,7 @@ import type {
 } from '../../../app/navigation/types';
 import { WaxSeal } from '../../../design-system/components';
 import { useMaplibreAdapter } from '../../../services/maps';
-import { LayersIcon, QuillIcon } from '../../../design-system/icons';
+import { LayersIcon, LocateIcon, QuillIcon } from '../../../design-system/icons';
 import { colors, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation, useNearbyDrops } from '../hooks';
 import { LocChip } from '../components/LocChip';
@@ -112,6 +112,17 @@ export function MapScreen({ navigation }: Props) {
         <LayersIcon size={21} />
       </Pressable>
 
+      <Pressable
+        accessibilityLabel="Recenter map on your location"
+        onPress={() => {
+          refresh();
+          adapter.flyTo(coord);
+        }}
+        style={({ pressed }) => [styles.recenterFab, pressed && styles.pressed]}
+      >
+        <LocateIcon size={21} />
+      </Pressable>
+
       <WaxSeal
         size={58}
         shadow="sealLarge"
@@ -166,6 +177,21 @@ const styles = StyleSheet.create({
     boxShadow: shadows.chip,
   },
   pressed: { opacity: 0.8 },
+  recenterFab: {
+    position: 'absolute',
+    right: 18,
+    bottom: 168,
+    zIndex: 21,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: colors.paperCard,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: shadows.chip,
+  },
   dropFab: { position: 'absolute', right: 18, bottom: 100, zIndex: 21 },
   rangeCard: {
     position: 'absolute',
