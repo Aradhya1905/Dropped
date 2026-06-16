@@ -21,6 +21,7 @@ import {
 } from '../../../design-system/components';
 import { ArrowRightIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
+import { setOnboardingComplete } from '../../../services/storage';
 import { SecretNote } from '../components/SecretNote';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
@@ -96,7 +97,10 @@ export function WelcomeScreen({ navigation }: Props) {
               <WaxSeal
                 size={56}
                 pulse
-                onPress={() => navigation.navigate('Composer')}
+                onPress={() => {
+                  setOnboardingComplete(true);
+                  navigation.navigate('Composer');
+                }}
                 style={styles.stamp}
               >
                 <SealPinIcon size={24} color="rgba(255,255,255,0.9)" dotColor="rgba(255,255,255,0.95)" />

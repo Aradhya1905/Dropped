@@ -3006,6 +3006,7 @@ __metadata:
     prettier: "npm:2.8.8"
     react: "npm:19.2.3"
     react-native: "npm:0.85.3"
+    react-native-compass-heading: "npm:^2.0.2"
     react-native-config: "npm:^1.6.1"
     react-native-geolocation-service: "npm:^5.3.1"
     react-native-gesture-handler: "npm:^3.0.0"
@@ -7820,6 +7821,16 @@ __metadata:
   dependencies:
     prop-types: "npm:^15.8.1"
   checksum: 10c0/658f15aa3744c3d6a22a44ab4609afc4335ff06d0a200a1fba513e470ebb4bd561ab709204b3777ee53cad526f695e2b4290e057a50fcd461aca337e407fe2b1
+  languageName: node
+  linkType: hard
+
+"react-native-compass-heading@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "react-native-compass-heading@npm:2.0.2"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/b5eae01011573383756e3b5e1b39f43f67396abe5563a113e9888f100e626b8681de99717901d784666da4216e8dced07992691e3284bf9bd76983bdfdc570f2
   languageName: node
   linkType: hard
 

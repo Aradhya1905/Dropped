@@ -22,6 +22,23 @@ export function haversineMeters(a: Coordinate, b: Coordinate): number {
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
+/**
+ * Initial bearing from `from` → `to`, in degrees (0–360, 0 = north, clockwise).
+ * Used to point the compass needle at a drop.
+ */
+export function bearingTo(from: Coordinate, to: Coordinate): number {
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  const dLng = toRad(to.lng - from.lng);
+
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
 /** True when `a` is within `meters` of `b` (default = the 50 m reveal radius). */
 export function isWithin(
   a: Coordinate,

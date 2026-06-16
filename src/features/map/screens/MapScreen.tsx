@@ -3,7 +3,7 @@
  * your geo-anchored position dot (via MapLibre UserLocation), the drop FAB,
  * and the "within range" card when you're within 50 m of a drop.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -24,7 +24,9 @@ import { colors, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation, useNearbyDrops } from '../hooks';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
+import { MapLoader } from '../components/MapLoader';
 import { RangeCard } from '../components/RangeCard';
+import { LayerSheet } from '../components/LayerSheet';
 import { isWithin } from '../../../utils/geo';
 
 type Props = CompositeScreenProps<
@@ -37,9 +39,12 @@ type Props = CompositeScreenProps<
 
 export function MapScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { adapter, MaplibreView } = useMaplibreAdapter();
   const { coord, shortAddress, status, refresh } = useDeviceLocation();
+  // Open the map already centered on the user so the default center never
+  // flashes (the map only mounts once we have a fix — see the guard below).
+  const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } = useMaplibreAdapter(coord ?? undefined);
   const { data: drops = [] } = useNearbyDrops(coord);
+  const [layerSheetOpen, setLayerSheetOpen] = useState(false);
 
   // Onboarding usually grants + warms location first; guard in case it didn't.
   useEffect(() => {
@@ -57,19 +62,22 @@ export function MapScreen({ navigation }: Props) {
     }
   }, [coord, adapter]);
 
+  // Until the first GPS fix, cover everything with the loader. The native
+  // MapLibre surface punches through RN sibling z-order on Android, so we must
+  // not mount the map underneath — render the loader alone instead.
+  if (coord == null) {
+    return <MapLoader />;
+  }
+
   // Nearest drop within 50 m drives the RangeCard.
-  const nearestInRange = coord
-    ? drops.find(s => isWithin(coord, s.drop.coordinate))
-    : null;
+  const nearestInRange = drops.find(s => isWithin(coord, s.drop.coordinate));
 
   return (
     <View style={styles.root}>
       <MaplibreView>
-        {coord ? (
-          <Marker id="user-location" lngLat={[coord.lng, coord.lat]}>
-            <UserDot />
-          </Marker>
-        ) : null}
+        <Marker id="user-location" lngLat={[coord.lng, coord.lat]}>
+          <UserDot />
+        </Marker>
         {drops.map((secret, i) => (
           <Marker
             key={secret.id}
@@ -89,10 +97,12 @@ export function MapScreen({ navigation }: Props) {
         kicker="You're in"
         place={shortAddress ?? 'Locating…'}
         count={drops.length}
+        onPress={refresh}
         style={[styles.locChip, { top: insets.top + 10 }]}
       />
       <Pressable
         accessibilityLabel="Map layers"
+        onPress={() => setLayerSheetOpen(true)}
         style={({ pressed }) => [
           styles.layersFab,
           { top: insets.top + 8 },
@@ -120,6 +130,14 @@ export function MapScreen({ navigation }: Props) {
           style={[styles.rangeCard, { bottom: insets.bottom + 12 }]}
         />
       ) : null}
+
+      <LayerSheet
+        visible={layerSheetOpen}
+        activeKey={activeStyleKey}
+        options={styleOptions}
+        onSelect={setMapStyle}
+        onClose={() => setLayerSheetOpen(false)}
+      />
     </View>
   );
 }

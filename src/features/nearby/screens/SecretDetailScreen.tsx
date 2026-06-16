@@ -24,9 +24,15 @@ import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { Compass } from '../components/Compass';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useDeviceLocation } from '../../map/hooks';
-import { haversineMeters } from '../../../utils/geo';
+import { haversineMeters, bearingTo } from '../../../utils/geo';
+import { useCompassHeading } from '../../../services/location/useCompassHeading';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SecretDetail'>;
+
+const CARDINALS = ['North', 'NE', 'East', 'SE', 'South', 'SW', 'West', 'NW'];
+function toCardinal(deg: number): string {
+  return CARDINALS[Math.round(deg / 45) % 8];
+}
 
 function formatDist(m: number): string {
   if (m >= 1000) return (m / 1000).toFixed(1) + ' km';
@@ -43,9 +49,24 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   const { coord } = useDeviceLocation();
 
+  const deviceHeading = useCompassHeading();
+
   const distM = coord && secret
     ? haversineMeters(coord, secret.drop.coordinate)
     : null;
+
+  const dropBearing = coord && secret
+    ? bearingTo(coord, secret.drop.coordinate)
+    : null;
+
+  // Needle rotation: bearing to drop relative to device heading (so needle
+  // points at the drop no matter which way the phone faces).
+  const needleRotation =
+    dropBearing != null && deviceHeading != null
+      ? ((dropBearing - deviceHeading + 360) % 360)
+      : dropBearing;
+
+  const cardinal = deviceHeading != null ? toCardinal(deviceHeading) : null;
 
   const walkMins = distM != null ? Math.max(1, Math.round(distM / 80)) : null;
 
@@ -61,7 +82,7 @@ export function SecretDetailScreen({ navigation, route }: Props) {
             <CloseX onPress={() => navigation.goBack()} />
           </View>
 
-          <Compass />
+          <Compass rotation={needleRotation} />
 
           <View style={styles.dist}>
             <Text style={styles.distBig}>
@@ -70,7 +91,9 @@ export function SecretDetailScreen({ navigation, route }: Props) {
             </Text>
           </View>
           <Text style={styles.walkMeta}>
-            {walkMins != null ? `${walkMins} min walk` : 'Locating…'}
+            {walkMins != null
+              ? `${walkMins} min walk${cardinal != null ? ` · heading ${cardinal}` : ''}`
+              : 'Locating…'}
           </Text>
 
           <View style={styles.addrTag}>

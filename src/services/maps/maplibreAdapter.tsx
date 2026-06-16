@@ -24,6 +24,14 @@ import type { Coordinate } from '../../types';
 import { droppedMapStyle } from './droppedStyle';
 import type { MapAdapter, MapMarker } from './types';
 
+export type MapStyleKey = 'dropped' | 'dark' | 'grayscale';
+
+export interface MapStyleOption {
+  key: MapStyleKey;
+  label: string;
+  source: object | string;
+}
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -33,6 +41,12 @@ import type { MapAdapter, MapMarker } from './types';
  * Sign up free at https://protomaps.com.
  */
 const PROTOMAPS_API_KEY = Config.PROTOMAPS_API_KEY;
+
+const STYLE_OPTIONS: MapStyleOption[] = [
+  { key: 'dropped', label: 'Dropped', source: droppedMapStyle(PROTOMAPS_API_KEY) },
+  { key: 'dark', label: 'Dark', source: `https://api.protomaps.com/styles/v5/dark/en.json?key=${PROTOMAPS_API_KEY}` },
+  { key: 'grayscale', label: 'Grayscale', source: `https://api.protomaps.com/styles/v5/grayscale/en.json?key=${PROTOMAPS_API_KEY}` },
+];
 
 /** Default center shown before location permission is granted (New York, matching design). */
 const DEFAULT_CENTER: Coordinate = { lat: 40.7128, lng: -74.006 };
@@ -45,12 +59,12 @@ const DEFAULT_ZOOM = 15;
 // ---------------------------------------------------------------------------
 
 export interface MaplibreAdapterResult {
-  /** Bind to the map surface via `adapter` prop or passed to features. */
   adapter: MapAdapter;
-  /** Controlled state — markers to render as RN views above the map. */
   markers: MapMarker[];
-  /** Render this component as the map background. Children render inside <Map>. */
   MaplibreView: React.ComponentType<{ style?: object; children?: React.ReactNode }>;
+  activeStyleKey: MapStyleKey;
+  setMapStyle: (key: MapStyleKey) => void;
+  styleOptions: MapStyleOption[];
 }
 
 export function useMaplibreAdapter(
@@ -62,7 +76,12 @@ export function useMaplibreAdapter(
   // Center is tracked synchronously (updated on every region change) so
   // getCenter() can return without awaiting a native bridge call.
   const centerRef = useRef<Coordinate>(initialCenter);
+  // Latest requested initial center, read by the (memoized) MaplibreView when
+  // the native <Map> actually mounts — avoids freezing a stale center.
+  const initialCenterRef = useRef<Coordinate>(initialCenter);
+  initialCenterRef.current = initialCenter;
   const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const [activeStyle, setActiveStyle] = useState<object | string>(() => STYLE_OPTIONS[0].source);
 
   const flyTo = useCallback((coordinate: Coordinate, zoom?: number) => {
     cameraRef.current?.flyTo({
@@ -80,6 +99,11 @@ export function useMaplibreAdapter(
     return centerRef.current;
   }, []);
 
+  const setMapStyle = useCallback((key: MapStyleKey) => {
+    const opt = STYLE_OPTIONS.find(s => s.key === key);
+    if (opt) setActiveStyle(opt.source);
+  }, []);
+
   const onRegionDidChange = useCallback(
     (e: NativeSyntheticEvent<ViewStateChangeEvent>) => {
       const [lng, lat] = e.nativeEvent.center;
@@ -88,14 +112,12 @@ export function useMaplibreAdapter(
     [],
   );
 
-  const style = droppedMapStyle(PROTOMAPS_API_KEY);
-
   const MaplibreView = useCallback(
     ({ style: viewStyle, children }: { style?: object; children?: React.ReactNode }) => (
       <Map
         ref={mapRef}
         style={[styles.map, viewStyle]}
-        mapStyle={style as never}
+        mapStyle={activeStyle as never}
         onRegionDidChange={onRegionDidChange}
         logo={false}
         attribution={false}
@@ -105,7 +127,7 @@ export function useMaplibreAdapter(
         <Camera
           ref={cameraRef}
           initialViewState={{
-            center: [initialCenter.lng, initialCenter.lat],
+            center: [initialCenterRef.current.lng, initialCenterRef.current.lat],
             zoom: DEFAULT_ZOOM,
           }}
         />
@@ -113,12 +135,15 @@ export function useMaplibreAdapter(
       </Map>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [activeStyle, onRegionDidChange],
   );
 
   const adapter: MapAdapter = { flyTo, setMarkers: setMarkersImpl, getCenter };
 
-  return { adapter, markers, MaplibreView };
+  const activeStyleKey: MapStyleKey =
+    STYLE_OPTIONS.find(s => s.source === activeStyle)?.key ?? 'dropped';
+
+  return { adapter, markers, MaplibreView, activeStyleKey, setMapStyle, styleOptions: STYLE_OPTIONS };
 }
 
 // ---------------------------------------------------------------------------

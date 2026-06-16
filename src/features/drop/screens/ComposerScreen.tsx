@@ -2,7 +2,7 @@
  * 08 Composer — "What happened here?" Pin your spot, write the confession on
  * ruled paper, pick a mood, drop it forever.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -31,16 +31,24 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Composer'>;
 
 export function ComposerScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [mood, setMood] = useState<Mood>('ache');
+  const [mood, setMood] = useState<Mood>('joy');
   const [body, setBody] = useState('');
-  const { coord, shortAddress } = useDeviceLocation();
+  const { coord, shortAddress, status, refresh } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
 
+  // This screen has its own location hook instance; warm it so we get a fix
+  // (and the Drop button enables) even if the user jumped straight here.
+  useEffect(() => {
+    if (status === 'unknown') refresh();
+  }, [status, refresh]);
+
+  const canDrop = !!coord && body.trim().length > 0 && !isPending;
+
   const handleDrop = async () => {
-    if (!coord || isPending) return;
+    if (!canDrop) return;
     try {
       const secret = await create({
-        body: body.trim() || '(no words, just a feeling)',
+        body: body.trim(),
         mood,
         coordinate: coord,
         placeLabel: shortAddress ?? undefined,
@@ -55,7 +63,10 @@ export function ComposerScreen({ navigation }: Props) {
     <PaperScreen>
       <MapTexture dense />
 
-      <CloseX onPress={() => navigation.goBack()} style={[styles.close, { top: insets.top + 6 }]} />
+      <CloseX
+        onPress={() => navigation.goBack()}
+        style={[styles.close, { top: insets.top + 54 }]}
+      />
       <View style={[styles.spotPill, { top: insets.top + 10 }]}>
         <PinIcon size={13} strokeWidth={1.6} dotColor={colors.accent} />
         <Text style={styles.spotPillText}>Dropping at this spot</Text>
@@ -82,7 +93,8 @@ export function ComposerScreen({ navigation }: Props) {
           <FunKicker>go on — out with it.</FunKicker>
           <Text style={styles.title}>What happened here?</Text>
           <Text style={styles.sub}>
-            Anonymous. Nobody reads this unless they walk within 50m of where you're standing.
+            Anonymous. Nobody reads this unless they walk within 50m of where
+            you're standing.
           </Text>
 
           <WriteCard
@@ -92,13 +104,23 @@ export function ComposerScreen({ navigation }: Props) {
             count={body.length}
           />
 
-          <MoodChips moods={['joy', 'ache', 'trouble', 'wonder']} selected={mood} onSelect={v => setMood(v as Mood)} />
+          <MoodChips
+            moods={['joy', 'ache', 'trouble', 'wonder']}
+            selected={mood}
+            onSelect={v => setMood(v as Mood)}
+          />
 
           <AppButton
             label={isPending ? 'Dropping…' : 'Drop here · forever'}
-            iconLeft={<SealPinIcon size={18} color={colors.paperCard} dotColor={colors.paperCard} />}
+            iconLeft={
+              <SealPinIcon
+                size={18}
+                color={colors.paperCard}
+                dotColor={colors.paperCard}
+              />
+            }
             onPress={handleDrop}
-            style={[styles.dropBtn, (!coord || isPending) && styles.dropBtnDim]}
+            style={[styles.dropBtn, !canDrop && styles.dropBtnDim]}
           />
         </View>
       </Sheet>
@@ -107,7 +129,7 @@ export function ComposerScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  close: { position: 'absolute', left: 18, zIndex: 25 },
+  close: { position: 'absolute', right: 18, zIndex: 25 },
   spotPill: {
     position: 'absolute',
     alignSelf: 'center',
@@ -133,7 +155,7 @@ const styles = StyleSheet.create({
   },
   placeLbl: {
     position: 'absolute',
-    right: 30,
+    left: 30,
     zIndex: 12,
     fontFamily: fonts.mono,
     fontSize: 9,

@@ -2,7 +2,7 @@
  * "You're in …" chip with the nearby-secrets count (`.loc-chip`).
  */
 import React from 'react';
-import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { PinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
@@ -12,14 +12,23 @@ export function LocChip({
   place,
   count,
   style,
+  onPress,
 }: {
   kicker: string;
   place: string;
   count: number;
   style?: StyleProp<ViewStyle>;
+  /** Tap the chip to re-fix location (no icon — the whole chip is the target). */
+  onPress?: () => void;
 }) {
   return (
-    <View style={[styles.chip, style]}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? 'Refresh your location' : undefined}
+      style={({ pressed }) => [styles.chip, style, pressed && onPress ? styles.pressed : null]}
+    >
       <View style={styles.dot} />
       <View>
         <Text style={styles.kicker}>{kicker}</Text>
@@ -29,7 +38,7 @@ export function LocChip({
         <PinIcon size={13} strokeWidth={1.5} />
         <Text style={styles.countText}>{count}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -48,6 +57,7 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     boxShadow: shadows.chip,
   },
+  pressed: { opacity: 0.8 },
   dot: {
     width: 8,
     height: 8,

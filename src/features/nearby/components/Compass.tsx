@@ -1,6 +1,7 @@
 /**
- * Hand-drawn compass (`.compass`): dotted dials, cardinal labels, and a sage
- * needle that sways gently east.
+ * Hand-drawn compass: dotted dials, cardinal labels, and a sage needle.
+ * Pass `rotation` (degrees, 0 = north) to point needle at a real bearing.
+ * Omit `rotation` for the ambient sway fallback (no heading data yet).
  */
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
@@ -10,28 +11,60 @@ import { colors, fonts } from '../../../design-system/tokens';
 
 const SIZE = 178;
 
-export function Compass() {
-  const t = useRef(new Animated.Value(0)).current;
+interface CompassProps {
+  /** Bearing from user → drop in degrees (0–360). Needle points here. */
+  rotation?: number | null;
+}
+
+export function Compass({ rotation }: CompassProps) {
+  const animated = useRef(new Animated.Value(0)).current;
+  const lastRotation = useRef(rotation ?? 0);
+
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(t, {
-          toValue: 1,
-          duration: 2500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(t, {
-          toValue: 0,
-          duration: 2500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [t]);
+    if (rotation == null) {
+      // Fallback: gentle ambient sway
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animated, {
+            toValue: 1,
+            duration: 2500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(animated, {
+            toValue: 0,
+            duration: 2500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+
+    // Animate to new bearing, taking the shortest arc
+    let delta = rotation - lastRotation.current;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    lastRotation.current = rotation;
+
+    Animated.timing(animated, {
+      toValue: rotation,
+      duration: 300,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [rotation, animated]);
+
+  const needleRotate =
+    rotation == null
+      ? animated.interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '4deg'] })
+      : animated.interpolate({
+          inputRange: [0, 360],
+          outputRange: ['0deg', '360deg'],
+          extrapolate: 'extend',
+        });
 
   return (
     <View style={styles.stage}>
@@ -54,11 +87,7 @@ export function Compass() {
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
-          {
-            transform: [
-              { rotate: t.interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '4deg'] }) },
-            ],
-          },
+          { transform: [{ rotate: needleRotate }] },
         ]}
       >
         <Svg width={SIZE} height={SIZE} viewBox="0 0 178 178">

@@ -13,14 +13,20 @@ import {
   WelcomeScreen,
 } from '../../features/onboarding/screens';
 import { OpeningScreen, SecretScreen } from '../../features/reveal/screens';
+import { getOnboardingComplete } from '../../services/storage';
 import { MainTabs } from './MainTabs';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const hasOnboarded = getOnboardingComplete();
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName={hasOnboarded ? 'Main' : 'Welcome'}
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} />
       <Stack.Screen name="Location" component={LocationScreen} />

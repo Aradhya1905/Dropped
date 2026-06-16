@@ -21,6 +21,7 @@ import {
 import { AnonLockIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { getCurrent, requestPermission } from '../../../services/location';
+import { setOnboardingComplete } from '../../../services/storage';
 import { LocationPermissionSheet } from '../../map/components';
 import { RadiusStage } from '../components/RadiusStage';
 
@@ -28,7 +29,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Location'>;
 
 export function LocationScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const enterApp = () => navigation.replace('Main');
+  const enterApp = () => {
+    setOnboardingComplete(true);
+    navigation.replace('Main');
+  };
 
   const [busy, setBusy] = useState(false);
   // Sheet only surfaces when the OS will no longer prompt (Settings needed).
