@@ -8,15 +8,37 @@
  * load it from an env variable (react-native-config: `Config.PROTOMAPS_API_KEY`).
  * For dev, pass a hardcoded key or leave as empty string to get a watermarked
  * demo response.
+ *
+ * Label fonts: MapLibre renders labels from SDF glyph .pbf files served at the
+ * `glyphs` URL — the `text-font` stack name must exist there. By default we use
+ * Protomaps' CDN, which only ships Noto Sans. To use the app's brand font (Geist),
+ * generate Geist glyph .pbf files (e.g. via maps.protomaps.com/fonts), host them
+ * statically (GitHub Pages), and pass that `{fontstack}/{range}.pbf` template as
+ * `glyphsUrl` (wired to `Config.MAP_GLYPHS_URL`). When set, labels switch to Geist.
+ * NOTE: Geist covers Latin only — see the romanized `name:en` coalesce below so
+ * local-script place names (e.g. Kannada) don't render as missing-glyph boxes.
  */
-export function droppedMapStyle(apiKey?: string): object {
+const NOTO_GLYPHS =
+  'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf';
+
+export function droppedMapStyle(apiKey?: string, glyphsUrl?: string): object {
   const tilesUrl = apiKey
     ? `https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=${apiKey}`
     : 'https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt';
 
+  // When a custom (Geist) glyph host is configured, use the brand fonts; else
+  // fall back to Noto Sans on the Protomaps CDN (the only stacks it serves).
+  // The fontstack names must match the generated glyph folder names exactly.
+  const useGeist = !!glyphsUrl;
+  const placeFont = useGeist ? ['Geist Mono Regular'] : ['Noto Sans Regular'];
+  const roadFont = useGeist ? ['Geist Regular'] : ['Noto Sans Regular'];
+  // Prefer the Latin/romanized name (so Geist's Latin-only glyphs suffice),
+  // falling back to the local name when no translation exists.
+  const labelName = ['coalesce', ['get', 'name:en'], ['get', 'name']];
+
   return {
     version: 8,
-    glyphs: 'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf',
+    glyphs: useGeist ? glyphsUrl : NOTO_GLYPHS,
     sprite: 'https://protomaps.github.io/basemaps-assets/sprites/v4/light',
     sources: {
       protomaps: {
@@ -174,8 +196,8 @@ export function droppedMapStyle(apiKey?: string): object {
         'source-layer': 'places',
         filter: ['in', 'kind', 'neighbourhood', 'locality', 'macrohood'],
         layout: {
-          'text-field': ['get', 'name'],
-          'text-font': ['Noto Sans Regular'],
+          'text-field': labelName,
+          'text-font': placeFont,
           'text-size': ['interpolate', ['linear'], ['zoom'], 12, 9, 16, 12],
           'text-transform': 'uppercase',
           'text-letter-spacing': 0.15,
@@ -196,8 +218,8 @@ export function droppedMapStyle(apiKey?: string): object {
         'source-layer': 'roads',
         filter: ['in', 'kind', 'highway', 'major_road', 'minor_road'],
         layout: {
-          'text-field': ['get', 'name'],
-          'text-font': ['Noto Sans Regular'],
+          'text-field': labelName,
+          'text-font': roadFont,
           'text-size': 9,
           'symbol-placement': 'line',
           'text-max-angle': 30,

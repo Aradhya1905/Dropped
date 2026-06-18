@@ -42,8 +42,15 @@ export interface MapStyleOption {
  */
 const PROTOMAPS_API_KEY = Config.PROTOMAPS_API_KEY;
 
+/**
+ * Optional `{fontstack}/{range}.pbf` glyph template for the brand (Geist) font.
+ * When set, the Dropped style renders labels in Geist; otherwise it falls back
+ * to Noto Sans on the Protomaps CDN. See `droppedMapStyle` for hosting notes.
+ */
+const MAP_GLYPHS_URL = Config.MAP_GLYPHS_URL;
+
 const STYLE_OPTIONS: MapStyleOption[] = [
-  { key: 'dropped', label: 'Dropped', source: droppedMapStyle(PROTOMAPS_API_KEY) },
+  { key: 'dropped', label: 'Dropped', source: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL) },
   { key: 'dark', label: 'Dark', source: `https://api.protomaps.com/styles/v5/dark/en.json?key=${PROTOMAPS_API_KEY}` },
   { key: 'grayscale', label: 'Grayscale', source: `https://api.protomaps.com/styles/v5/grayscale/en.json?key=${PROTOMAPS_API_KEY}` },
 ];
