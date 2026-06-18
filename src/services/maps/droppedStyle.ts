@@ -36,22 +36,40 @@ export function droppedMapStyle(apiKey?: string): object {
       },
 
       // --- Water ---
+      // Protomaps v4 schema: the feature-type attribute is `kind` (not the old
+      // `pmap:kind`). Fills are pre-blended over paper (#F1EBDE) to opaque so
+      // overlapping translucent polygons can't show triangulation seams.
       {
         id: 'water',
         type: 'fill',
         source: 'protomaps',
         'source-layer': 'water',
-        paint: { 'fill-color': 'rgba(118,149,124,0.35)' }, // accent, semi-transparent
+        // The water source-layer also carries stream/river LINE features; filling
+        // those LineStrings produces degenerate triangle slivers across the map
+        // (the "irregular lines"). Restrict the fill to polygon water bodies only.
+        filter: ['==', '$type', 'Polygon'],
+        paint: { 'fill-color': '#C6CDBC' }, // accent @0.35 over paper
       },
       {
         id: 'water-outline',
         type: 'line',
         source: 'protomaps',
         'source-layer': 'water',
+        filter: ['==', '$type', 'Polygon'], // shorelines only, not streams
         paint: {
           'line-color': 'rgba(86,110,91,0.4)', // accentDeep, faint
           'line-width': 0.8,
         },
+      },
+
+      // --- Natural land cover (forest / grassland / scrub) ---
+      {
+        id: 'landcover',
+        type: 'fill',
+        source: 'protomaps',
+        'source-layer': 'landcover',
+        filter: ['in', 'kind', 'forest', 'grassland', 'scrub'],
+        paint: { 'fill-color': '#DBDCCC' }, // accentTint @0.18 over paper
       },
 
       // --- Parks / green areas ---
@@ -60,8 +78,24 @@ export function droppedMapStyle(apiKey?: string): object {
         type: 'fill',
         source: 'protomaps',
         'source-layer': 'landuse',
-        filter: ['in', 'pmap:kind', 'park', 'nature_reserve', 'forest', 'grass', 'meadow'],
-        paint: { 'fill-color': 'rgba(118,149,124,0.18)' }, // accentTint
+        filter: [
+          'in',
+          'kind',
+          'park',
+          'forest',
+          'wood',
+          'grass',
+          'meadow',
+          'nature_reserve',
+          'national_park',
+          'protected_area',
+          'recreation_ground',
+          'golf_course',
+          'garden',
+          'scrub',
+          'cemetery',
+        ],
+        paint: { 'fill-color': '#DBDCCC' }, // accentTint @0.18 over paper
       },
 
       // --- Buildings ---
@@ -70,19 +104,20 @@ export function droppedMapStyle(apiKey?: string): object {
         type: 'fill',
         source: 'protomaps',
         'source-layer': 'buildings',
+        filter: ['in', 'kind', 'building', 'building_part'], // skip address points
         paint: {
-          'fill-color': 'rgba(33,29,23,0.05)', // ink at very low opacity
-          'fill-outline-color': 'rgba(33,29,23,0.08)',
+          'fill-color': '#E7E1D4', // ink @0.05 over paper
+          'fill-outline-color': '#E2DBCB',
         },
       },
 
-      // --- Roads (major: motorway, primary, secondary, tertiary) ---
+      // --- Roads (major: highways + major roads) ---
       {
         id: 'roads-major-casing',
         type: 'line',
         source: 'protomaps',
         'source-layer': 'roads',
-        filter: ['in', 'pmap:kind', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
+        filter: ['in', 'kind', 'highway', 'major_road'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': 'rgba(33,29,23,0.10)',
@@ -94,7 +129,7 @@ export function droppedMapStyle(apiKey?: string): object {
         type: 'line',
         source: 'protomaps',
         'source-layer': 'roads',
-        filter: ['in', 'pmap:kind', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
+        filter: ['in', 'kind', 'highway', 'major_road'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': '#E8E0D0', // paperDeep
@@ -102,13 +137,13 @@ export function droppedMapStyle(apiKey?: string): object {
         },
       },
 
-      // --- Roads (minor: residential, service, path) ---
+      // --- Roads (minor: residential / service) ---
       {
         id: 'roads-minor',
         type: 'line',
         source: 'protomaps',
         'source-layer': 'roads',
-        filter: ['!in', 'pmap:kind', 'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'path', 'track'],
+        filter: ['in', 'kind', 'minor_road'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': 'rgba(33,29,23,0.07)',
@@ -122,7 +157,7 @@ export function droppedMapStyle(apiKey?: string): object {
         type: 'line',
         source: 'protomaps',
         'source-layer': 'roads',
-        filter: ['in', 'pmap:kind', 'path', 'pedestrian', 'footway'],
+        filter: ['in', 'kind', 'path'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': 'rgba(33,29,23,0.10)',
@@ -131,16 +166,16 @@ export function droppedMapStyle(apiKey?: string): object {
         },
       },
 
-      // --- Place labels (cities, neighbourhoods) ---
+      // --- Place labels (neighbourhoods, localities) ---
       {
         id: 'labels-place',
         type: 'symbol',
         source: 'protomaps',
         'source-layer': 'places',
-        filter: ['in', 'pmap:kind', 'neighbourhood', 'suburb', 'locality'],
+        filter: ['in', 'kind', 'neighbourhood', 'locality', 'macrohood'],
         layout: {
           'text-field': ['get', 'name'],
-          'text-font': ['Geist Regular'],
+          'text-font': ['Noto Sans Regular'],
           'text-size': ['interpolate', ['linear'], ['zoom'], 12, 9, 16, 12],
           'text-transform': 'uppercase',
           'text-letter-spacing': 0.15,
@@ -159,10 +194,10 @@ export function droppedMapStyle(apiKey?: string): object {
         type: 'symbol',
         source: 'protomaps',
         'source-layer': 'roads',
-        filter: ['in', 'pmap:kind', 'primary', 'secondary', 'tertiary', 'residential'],
+        filter: ['in', 'kind', 'highway', 'major_road', 'minor_road'],
         layout: {
           'text-field': ['get', 'name'],
-          'text-font': ['Geist Regular'],
+          'text-font': ['Noto Sans Regular'],
           'text-size': 9,
           'symbol-placement': 'line',
           'text-max-angle': 30,
