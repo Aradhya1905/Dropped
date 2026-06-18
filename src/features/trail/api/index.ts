@@ -1,5 +1,9 @@
-import { fetchTrailFound, fetchTrailSaved, fetchTrailDropped } from '../../../services/api';
-import type { ApiSecret } from '../../../services/api';
+import { fetchTrailFound, fetchTrailSaved, fetchTrailDropped, fetchDeviceStats } from '../../../services/api';
+import type { ApiSecret, ApiDeviceStats } from '../../../services/api';
+
+export async function getTrailStats(): Promise<ApiDeviceStats> {
+  return fetchDeviceStats();
+}
 
 export async function getTrailFound(limit = 20, offset = 0): Promise<{ secrets: ApiSecret[]; total: number }> {
   return fetchTrailFound(limit, offset);

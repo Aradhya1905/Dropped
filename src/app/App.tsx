@@ -2,12 +2,13 @@
  * App shell: providers + navigation. The design's warm-paper theme is fed to
  * the NavigationContainer so transition backgrounds stay on paper.
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { enableFreeze } from 'react-native-screens';
 
 import { colors } from '../design-system/tokens';
+import { initStepCounting } from '../services/pedometer';
 import { RootNavigator } from './navigation';
 import { AppProviders } from './providers';
 
@@ -27,6 +28,9 @@ const theme = {
 };
 
 export default function App(): React.JSX.Element {
+  // Count steps for the Trail's "steps this month" stat while the app is open.
+  useEffect(() => initStepCounting(), []);
+
   return (
     <AppProviders>
       <StatusBar

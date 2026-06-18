@@ -30,6 +30,8 @@ export interface UseDeviceLocationResult {
   coord: Coordinate | null;
   /** Resolved street/area line, e.g. "Bedford Ave, Williamsburg". */
   shortAddress: string | null;
+  /** Resolved city/town, e.g. "Bengaluru" — feeds the Trail "cities" stat. */
+  city: string | null;
   /** True while a one-shot fix or the first watch fix is pending. */
   fixing: boolean;
   /** Ask for permission; on grant, start watching. Returns the outcome. */
@@ -107,6 +109,7 @@ export function useDeviceLocation(): UseDeviceLocationResult {
     status,
     coord,
     shortAddress: address?.shortAddress ?? null,
+    city: address?.parts.city ?? null,
     fixing,
     request,
     refresh,

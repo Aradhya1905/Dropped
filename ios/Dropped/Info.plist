@@ -35,6 +35,8 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Dropped uses your location to find secrets near you and to know when you're within 50 m of one — that's when the seal breaks open.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Dropped counts your steps while you wander to show how far you've walked this month on your Trail.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

@@ -33,7 +33,7 @@ export function ComposerScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [mood, setMood] = useState<Mood>('joy');
   const [body, setBody] = useState('');
-  const { coord, shortAddress, status, refresh } = useDeviceLocation();
+  const { coord, shortAddress, city, status, refresh } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
 
   // This screen has its own location hook instance; warm it so we get a fix
@@ -52,6 +52,7 @@ export function ComposerScreen({ navigation }: Props) {
         mood,
         coordinate: coord,
         placeLabel: shortAddress ?? undefined,
+        city: city ?? undefined,
       });
       navigation.replace('Dropped', { secretId: secret.id });
     } catch {

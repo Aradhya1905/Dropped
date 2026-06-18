@@ -8,12 +8,14 @@ import { createMMKV } from 'react-native-mmkv';
 import {
   DEFAULT_MAP_STYLE,
   DEFAULT_NOTIFICATION_MODE,
+  EMPTY_STEP_STATE,
   StorageKeys,
   type MapStyle,
   type NotificationMode,
+  type StepState,
 } from './keys';
 
-export type { MapStyle, NotificationMode } from './keys';
+export type { MapStyle, NotificationMode, StepState } from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
 
@@ -132,6 +134,16 @@ export function getNotificationMode(): NotificationMode {
 
 export function setNotificationMode(mode: NotificationMode): void {
   mmkv.set(StorageKeys.notificationMode, mode);
+}
+
+// --- steps (locally counted, see pedometer service) --------------------------
+
+export function getStepState(): StepState {
+  return getJSON<StepState>(StorageKeys.stepState, EMPTY_STEP_STATE);
+}
+
+export function setStepState(state: StepState): void {
+  setJSON(StorageKeys.stepState, state);
 }
 
 /** Test/escape hatch: wipe everything. */

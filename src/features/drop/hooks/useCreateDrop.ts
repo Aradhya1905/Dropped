@@ -11,6 +11,7 @@ interface CreateDropParams {
   mood: Mood;
   coordinate: Coordinate;
   placeLabel?: string;
+  city?: string;
 }
 
 export function useCreateDrop() {
@@ -18,7 +19,7 @@ export function useCreateDrop() {
 
   const mutation = useMutation<Secret, ApiError, CreateDropParams>({
     mutationFn: params =>
-      postDrop(params.body, params.mood, params.coordinate, params.placeLabel).then(apiSecretToSecret),
+      postDrop(params.body, params.mood, params.coordinate, params.placeLabel, params.city).then(apiSecretToSecret),
     onSuccess: secret => upsert(secret),
   });
 

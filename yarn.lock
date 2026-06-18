@@ -1470,6 +1470,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@dongminyu/react-native-step-counter@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@dongminyu/react-native-step-counter@npm:0.4.0"
+  peerDependencies:
+    react: "*"
+    react-native: ">=0.71.0"
+  checksum: 10c0/73c3026861415716588b2412f68404be9a4dcf2a5a544ce7d05a23b2bc2c41bde7c8699edf6d0b884cdbaf3fee6046cc8a53933be7fcd25c88d432a43517390e
+  languageName: node
+  linkType: hard
+
 "@eslint-community/eslint-utils@npm:^4.2.0, @eslint-community/eslint-utils@npm:^4.9.1":
   version: 4.9.1
   resolution: "@eslint-community/eslint-utils@npm:4.9.1"
@@ -2981,6 +2991,7 @@ __metadata:
     "@babel/core": "npm:^7.25.2"
     "@babel/preset-env": "npm:^7.25.3"
     "@babel/runtime": "npm:^7.25.0"
+    "@dongminyu/react-native-step-counter": "npm:^0.4.0"
     "@maplibre/maplibre-react-native": "npm:^11.3.4"
     "@notifee/react-native": "npm:^9.1.8"
     "@react-native-clipboard/clipboard": "npm:^1.16.3"

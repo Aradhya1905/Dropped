@@ -119,6 +119,16 @@ export interface ApiDeviceInfo {
   dropsQuotaRemaining: number;
 }
 
+/** Aggregate Trail stats for this device (steps come from the device, not here). */
+export interface ApiDeviceStats {
+  droppedTotal: number;
+  droppedThisMonth: number;
+  foundTotal: number;
+  foundThisMonth: number;
+  citiesVisited: number;
+  streakDays: number;
+}
+
 // ── Endpoint functions ────────────────────────────────────────────────────────
 
 export const fetchHealth = () =>
@@ -127,11 +137,14 @@ export const fetchHealth = () =>
 export const fetchDeviceInfo = () =>
   api.get<ApiDeviceInfo>('/devices/me').then(r => r.data);
 
+export const fetchDeviceStats = () =>
+  api.get<ApiDeviceStats>('/devices/me/stats').then(r => r.data);
+
 export const fetchNearbyDrops = (lat: number, lng: number, radiusMeters = 2000) =>
   api.get<{ secrets: ApiSecret[] }>('/drops/nearby', { params: { lat, lng, radiusMeters } }).then(r => r.data);
 
-export const createDrop = (body: string, mood: Mood, coordinate: Coordinate, placeLabel?: string) =>
-  api.post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel }).then(r => r.data);
+export const createDrop = (body: string, mood: Mood, coordinate: Coordinate, placeLabel?: string, city?: string) =>
+  api.post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city }).then(r => r.data);
 
 export const revealDrop = (id: string, coordinate: Coordinate) =>
   api.post<ApiSecret>(`/drops/${id}/reveal`, { coordinate }).then(r => r.data);

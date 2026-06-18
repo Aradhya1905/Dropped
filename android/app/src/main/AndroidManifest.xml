@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Local "quiet hum" notifications (notifee). Runtime-requested on Android 13+. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Steps for the Trail "steps this month" stat, read from the on-device
+         step-counter sensor while the app is open. Runtime-requested on Android 10+. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <application
       android:name=".MainApplication"
