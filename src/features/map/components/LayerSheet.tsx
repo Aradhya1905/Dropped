@@ -17,6 +17,7 @@ type Props = {
 
 const SWATCH_COLORS: Record<MapStyleKey, string> = {
   dropped: colors.paper,
+  quiet: colors.accent,
   dark: '#1A1A1A',
   grayscale: '#C8C8C8',
 };

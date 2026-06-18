@@ -24,7 +24,7 @@ import type { Coordinate } from '../../types';
 import { droppedMapStyle } from './droppedStyle';
 import type { MapAdapter, MapMarker } from './types';
 
-export type MapStyleKey = 'dropped' | 'dark' | 'grayscale';
+export type MapStyleKey = 'dropped' | 'quiet' | 'dark' | 'grayscale';
 
 export interface MapStyleOption {
   key: MapStyleKey;
@@ -51,6 +51,7 @@ const MAP_GLYPHS_URL = Config.MAP_GLYPHS_URL;
 
 const STYLE_OPTIONS: MapStyleOption[] = [
   { key: 'dropped', label: 'Dropped', source: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL) },
+  { key: 'quiet', label: 'Quiet', source: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL, { labels: false }) },
   { key: 'dark', label: 'Dark', source: `https://api.protomaps.com/styles/v5/dark/en.json?key=${PROTOMAPS_API_KEY}` },
   { key: 'grayscale', label: 'Grayscale', source: `https://api.protomaps.com/styles/v5/grayscale/en.json?key=${PROTOMAPS_API_KEY}` },
 ];

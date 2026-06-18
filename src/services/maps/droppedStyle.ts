@@ -21,7 +21,11 @@
 const NOTO_GLYPHS =
   'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf';
 
-export function droppedMapStyle(apiKey?: string, glyphsUrl?: string): object {
+export function droppedMapStyle(
+  apiKey?: string,
+  glyphsUrl?: string,
+  options?: { labels?: boolean },
+): object {
   const tilesUrl = apiKey
     ? `https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=${apiKey}`
     : 'https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt';
@@ -35,8 +39,10 @@ export function droppedMapStyle(apiKey?: string, glyphsUrl?: string): object {
   // Prefer the Latin/romanized name (so Geist's Latin-only glyphs suffice),
   // falling back to the local name when no translation exists.
   const labelName = ['coalesce', ['get', 'name:en'], ['get', 'name']];
+  // Omit label (symbol) layers entirely for the label-free "Quiet" style.
+  const showLabels = options?.labels !== false;
 
-  return {
+  const style = {
     version: 8,
     glyphs: useGeist ? glyphsUrl : NOTO_GLYPHS,
     sprite: 'https://protomaps.github.io/basemaps-assets/sprites/v4/light',
@@ -235,4 +241,9 @@ export function droppedMapStyle(apiKey?: string, glyphsUrl?: string): object {
       // Transit lines intentionally omitted.
     ],
   };
+
+  if (!showLabels) {
+    style.layers = style.layers.filter(layer => layer.type !== 'symbol');
+  }
+  return style;
 }
