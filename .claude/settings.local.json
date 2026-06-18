@@ -17,7 +17,10 @@
       "Bash(curl -sL \"https://api.protomaps.com/styles/v5/grayscale/en.json?key=0e4ff5084fbca43f\" -o /tmp/v5gray.json)",
       "Bash(node -e \"const d=require\\('/tmp/v5gray.json'\\); console.log\\('SOURCES',JSON.stringify\\(d.sources\\)\\); console.log\\('SPRITE',d.sprite\\); console.log\\('GLYPHS',d.glyphs\\);\")",
       "Bash(curl -sL \"https://api.protomaps.com/styles/v5/grayscale/en.json?key=0e4ff5084fbca43f\" -o ./v5gray.json)",
-      "Bash(node -e \"const d=require\\('./v5gray.json'\\); console.log\\('SOURCES',JSON.stringify\\(d.sources,null,1\\)\\); console.log\\('SPRITE',d.sprite\\); console.log\\('GLYPHS',d.glyphs\\);\")"
+      "Bash(node -e \"const d=require\\('./v5gray.json'\\); console.log\\('SOURCES',JSON.stringify\\(d.sources,null,1\\)\\); console.log\\('SPRITE',d.sprite\\); console.log\\('GLYPHS',d.glyphs\\);\")",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)"
     ]
   },
   "plansDirectory": ".claude/plans"
