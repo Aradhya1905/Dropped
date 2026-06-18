@@ -22,11 +22,15 @@ export interface StepState {
 
 export const EMPTY_STEP_STATE: StepState = { pending: {} };
 
-/** Map visual style (the "layers" toggle on the Map screen). */
-export type MapStyle = 'paper' | 'satellite' | 'dark';
+/**
+ * Map visual style (the "layers" toggle on the Map screen). Mirrors the
+ * adapter's `MapStyleKey` so the You screen and the map share one persisted
+ * value. Keep in sync with `STYLE_OPTIONS` in `services/maps/maplibreAdapter`.
+ */
+export type MapStyle = 'dropped' | 'quiet' | 'dark' | 'grayscale';
 
 /** Quiet-hum notification setting from the You screen. */
 export type NotificationMode = 'off' | 'hum';
 
-export const DEFAULT_MAP_STYLE: MapStyle = 'paper';
+export const DEFAULT_MAP_STYLE: MapStyle = 'dropped';
 export const DEFAULT_NOTIFICATION_MODE: NotificationMode = 'off';

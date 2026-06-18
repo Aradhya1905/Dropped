@@ -79,3 +79,5 @@ yarn-error.log
 
 # Claude Plans
 .claude/plans
+# Release signing secrets — never commit
+android/keystore.properties

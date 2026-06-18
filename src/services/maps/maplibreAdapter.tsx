@@ -21,6 +21,7 @@ import {
 } from '@maplibre/maplibre-react-native';
 
 import type { Coordinate } from '../../types';
+import { getMapStyle, setMapStyle as persistMapStyle } from '../storage';
 import { droppedMapStyle } from './droppedStyle';
 import type { MapAdapter, MapMarker } from './types';
 
@@ -56,6 +57,11 @@ const STYLE_OPTIONS: MapStyleOption[] = [
   { key: 'grayscale', label: 'Grayscale', source: `https://api.protomaps.com/styles/v5/grayscale/en.json?key=${PROTOMAPS_API_KEY}` },
 ];
 
+/** Display label for a style key (e.g. for the You-screen settings row). */
+export function mapStyleLabel(key: MapStyleKey): string {
+  return STYLE_OPTIONS.find(s => s.key === key)?.label ?? STYLE_OPTIONS[0].label;
+}
+
 /** Default center shown before location permission is granted (New York, matching design). */
 const DEFAULT_CENTER: Coordinate = { lat: 40.7128, lng: -74.006 };
 
@@ -89,7 +95,12 @@ export function useMaplibreAdapter(
   const initialCenterRef = useRef<Coordinate>(initialCenter);
   initialCenterRef.current = initialCenter;
   const [markers, setMarkers] = useState<MapMarker[]>([]);
-  const [activeStyle, setActiveStyle] = useState<object | string>(() => STYLE_OPTIONS[0].source);
+  // Restore the persisted choice so the map and the You screen agree across
+  // mounts (default is STYLE_OPTIONS[0] — 'dropped').
+  const [activeStyle, setActiveStyle] = useState<object | string>(() => {
+    const saved = getMapStyle();
+    return (STYLE_OPTIONS.find(s => s.key === saved) ?? STYLE_OPTIONS[0]).source;
+  });
 
   const flyTo = useCallback((coordinate: Coordinate, zoom?: number) => {
     cameraRef.current?.flyTo({
@@ -109,7 +120,10 @@ export function useMaplibreAdapter(
 
   const setMapStyle = useCallback((key: MapStyleKey) => {
     const opt = STYLE_OPTIONS.find(s => s.key === key);
-    if (opt) setActiveStyle(opt.source);
+    if (opt) {
+      setActiveStyle(opt.source);
+      persistMapStyle(key);
+    }
   }, []);
 
   const onRegionDidChange = useCallback(

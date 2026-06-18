@@ -5,19 +5,15 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 
 import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
 import { ClockIcon, HumIcon, LayersIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { Passport } from '../components/Passport';
-import { getDeviceId } from '../../../services/storage';
+import { getDeviceId, getMapStyle, getNotificationMode } from '../../../services/storage';
+import { mapStyleLabel } from '../../../services/maps';
 import { useDeviceInfo } from '../hooks';
-
-const SETTINGS = [
-  { icon: <LayersIcon size={22} color={colors.accentDeep} />, label: 'Map style', value: 'Night ink' },
-  { icon: <ClockIcon size={22} />, label: 'Unlock radius', value: '50 m' },
-  { icon: <HumIcon size={22} />, label: 'Walk-by notifications', value: 'Quiet hum' },
-];
 
 const RULES = [
   'No usernames, no profiles.',
@@ -30,6 +26,22 @@ export function YouScreen() {
   const insets = useSafeAreaInsets();
   const { data: deviceInfo } = useDeviceInfo();
   const deviceId = getDeviceId().slice(0, 8).toUpperCase();
+  // Re-read persisted settings whenever this tab regains focus, so a style
+  // change made on the Map tab shows here without a remount.
+  useIsFocused();
+  const settings = [
+    {
+      icon: <LayersIcon size={22} color={colors.accentDeep} />,
+      label: 'Map style',
+      value: mapStyleLabel(getMapStyle()),
+    },
+    { icon: <ClockIcon size={22} />, label: 'Unlock radius', value: '50 m' },
+    {
+      icon: <HumIcon size={22} />,
+      label: 'Walk-by notifications',
+      value: getNotificationMode() === 'hum' ? 'Quiet hum' : 'Off',
+    },
+  ];
   return (
     <PaperScreen>
       <MapTexture blur />
@@ -45,7 +57,7 @@ export function YouScreen() {
         <Passport deviceId={deviceId} quotaRemaining={deviceInfo?.dropsQuotaRemaining} />
 
         <View style={styles.setList}>
-          {SETTINGS.map(s => (
+          {settings.map(s => (
             <View key={s.label} style={styles.setRow}>
               <View style={styles.setIco}>{s.icon}</View>
               <Text style={styles.setLbl}>{s.label}</Text>
