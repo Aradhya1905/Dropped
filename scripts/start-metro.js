@@ -18,7 +18,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const MAX_ATTEMPTS = 20;
-const DEFAULT_PORT = 8085;
+const DEFAULT_PORT = 8086;
 const PORT_FILE = path.join(__dirname, '.metro-port');
 
 function parsePreferredPort() {
@@ -58,7 +58,9 @@ async function findFreePort(start) {
     }
     console.log(`Port ${port} is busy, trying ${port + 1}...`);
   }
-  throw new Error(`No free port found in range ${start}-${start + MAX_ATTEMPTS - 1}`);
+  throw new Error(
+    `No free port found in range ${start}-${start + MAX_ATTEMPTS - 1}`,
+  );
 }
 
 (async () => {
@@ -68,7 +70,9 @@ async function findFreePort(start) {
   // Record the chosen port so companion scripts (e.g. android-dev-free) can read it.
   fs.writeFileSync(PORT_FILE, String(port));
 
-  console.log(`\nStarting Metro on port ${port} (written to scripts/.metro-port)\n`);
+  console.log(
+    `\nStarting Metro on port ${port} (written to scripts/.metro-port)\n`,
+  );
 
   // Strip our own --port/-p args so they aren't passed twice; we add the resolved one.
   const passThrough = process.argv.slice(2).filter((a, i, arr) => {

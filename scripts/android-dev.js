@@ -14,7 +14,7 @@ const { spawnSync } = require('child_process');
 
 const PORT_FILE = path.join(__dirname, '.metro-port');
 // Port the device requests the bundle on; reverse-forwarded to the host Metro port.
-const DEVICE_PORT = 8085;
+const DEVICE_PORT = 8086;
 
 // List connected, authorized devices as { id, isEmulator }.
 function listDevices() {

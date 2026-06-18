@@ -8,7 +8,16 @@
       "PowerShell(npx tsc --noEmit 2>&1)",
       "Bash(node -e \"const p = require\\('c:/My_Projects/Dropped/node_modules/zustand/package.json'\\); console.log\\('zustand', p.version\\)\")",
       "Bash(python -c ' *)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://droppeddev.duckdns.org/health)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://droppeddev.duckdns.org/health)",
+      "WebFetch(domain:docs.protomaps.com)",
+      "WebFetch(domain:api.protomaps.com)",
+      "Bash(curl -s \"https://api.protomaps.com/styles/v5/grayscale/en.json?key=0e4ff5084fbca43f\" -o /tmp/v5gray.json)",
+      "Read(//tmp/**)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('sources'\\),indent=1\\)\\); print\\('SPRITE',d.get\\('sprite'\\)\\); print\\('GLYPHS',d.get\\('glyphs'\\)\\)\")",
+      "Bash(curl -sL \"https://api.protomaps.com/styles/v5/grayscale/en.json?key=0e4ff5084fbca43f\" -o /tmp/v5gray.json)",
+      "Bash(node -e \"const d=require\\('/tmp/v5gray.json'\\); console.log\\('SOURCES',JSON.stringify\\(d.sources\\)\\); console.log\\('SPRITE',d.sprite\\); console.log\\('GLYPHS',d.glyphs\\);\")",
+      "Bash(curl -sL \"https://api.protomaps.com/styles/v5/grayscale/en.json?key=0e4ff5084fbca43f\" -o ./v5gray.json)",
+      "Bash(node -e \"const d=require\\('./v5gray.json'\\); console.log\\('SOURCES',JSON.stringify\\(d.sources,null,1\\)\\); console.log\\('SPRITE',d.sprite\\); console.log\\('GLYPHS',d.glyphs\\);\")"
     ]
   },
   "plansDirectory": ".claude/plans"
