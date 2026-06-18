@@ -20,6 +20,24 @@ jest.mock('react-native-safe-area-context', () => {
   return { SafeAreaProvider, ...rest };
 });
 
+// react-native-mmkv is a Nitro native module with no Jest preset; provide an
+// in-memory stand-in so any test that transitively imports services/storage
+// (e.g. App → pedometer → api → storage) loads without the native binding.
+// Tests that assert on storage behaviour mock it locally with their own store.
+jest.mock('react-native-mmkv', () => {
+  const store = new Map();
+  const instance = {
+    getString: k => (typeof store.get(k) === 'string' ? store.get(k) : undefined),
+    getBoolean: k => (typeof store.get(k) === 'boolean' ? store.get(k) : undefined),
+    getNumber: k => (typeof store.get(k) === 'number' ? store.get(k) : undefined),
+    set: (k, v) => store.set(k, v),
+    delete: k => store.delete(k),
+    contains: k => store.has(k),
+    clearAll: () => store.clear(),
+  };
+  return { createMMKV: () => instance };
+});
+
 // MapLibre has no Jest preset; mock the whole package so tests don't need
 // native modules. The useMaplibreAdapter hook is tested via the adapter unit
 // tests (which use noopAdapter), not via the real MapLibre implementation.

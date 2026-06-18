@@ -10,16 +10,17 @@ export const StorageKeys = {
 } as const;
 
 /**
- * Locally-counted steps for the Trail "steps this month" stat. The pedometer
- * service accumulates live sensor deltas into the current month's bucket; the
- * `month` key ('YYYY-MM') lets it reset automatically when the month rolls over.
+ * Locally-counted steps not yet synced to the backend. The pedometer service
+ * accumulates live sensor deltas into `pending`, keyed by the device's local
+ * calendar day ('YYYY-MM-DD'), and clears each day's entry once the backend has
+ * accepted it. The server owns the displayed total (and its day/month/lifetime
+ * scope) — this is only the unsynced buffer.
  */
 export interface StepState {
-  month: string;
-  steps: number;
+  pending: Record<string, number>;
 }
 
-export const EMPTY_STEP_STATE: StepState = { month: '', steps: 0 };
+export const EMPTY_STEP_STATE: StepState = { pending: {} };
 
 /** Map visual style (the "layers" toggle on the Map screen). */
 export type MapStyle = 'paper' | 'satellite' | 'dark';

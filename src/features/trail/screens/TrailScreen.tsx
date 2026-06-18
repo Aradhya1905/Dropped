@@ -10,7 +10,7 @@ import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/compo
 import { colors, fonts } from '../../../design-system/tokens';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
-import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useMonthlySteps } from '../hooks';
+import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
 import type { Secret } from '../../../types';
 
 const FASTENERS = ['tape', 'pin', 'tapeRight'] as const;
@@ -34,7 +34,7 @@ export function TrailScreen() {
   const saved = useTrailSaved();
   const dropped = useTrailDropped();
   const stats = useTrailStats();
-  const { steps } = useMonthlySteps();
+  const { steps } = useSteps();
 
   const tabs = [
     { key: 'found' as const, label: 'Found', count: found.data?.total ?? 0 },
@@ -64,7 +64,7 @@ export function TrailScreen() {
 
         <Receipt
           cells={[
-            { value: steps != null ? steps.toLocaleString() : '—', label: 'steps' },
+            { value: (steps ?? 0).toLocaleString(), label: 'steps' },
             { value: String(stats.data?.citiesVisited ?? 0), label: 'cities' },
             { value: String(stats.data?.streakDays ?? 0), unit: 'd', label: 'streak' },
             { value: String(stats.data?.droppedTotal ?? dropped.data?.total ?? 0), label: 'dropped' },

@@ -5,31 +5,31 @@
  * surface so features never import the sensor SDK directly.
  *
  * This is a deliberately light, "fun stat" counter — not a health integration.
- * It counts steps *live, while the app is in the foreground* and accumulates
- * them into the current month's local bucket (MMKV, via services/storage). No
- * Health Connect / HealthKit, no background service, no historical backfill:
- * steps taken while the app is closed are simply not counted, which is fine for
- * the Trail's "look how far you've wandered" receipt.
+ * It counts steps *live, while the app is in the foreground* and buffers them
+ * locally, keyed by the device's calendar day (MMKV, via services/storage),
+ * then syncs the day-tagged deltas to the backend. The server owns the displayed
+ * total and its scope (day / month / lifetime). No background service and no
+ * historical backfill: steps taken while the app is closed are not counted,
+ * which is fine for the Trail's "look how far you've wandered" receipt.
  *
- * Everything degrades to `null`/no-op when the sensor is missing, the native
- * module isn't linked yet, or the user denies motion access. The app must never
- * crash because steps are unavailable.
+ * Everything degrades to a no-op when the sensor is missing, the native module
+ * isn't linked, or the user denies motion access. The app must never crash
+ * because steps are unavailable.
  */
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import type { EventSubscription } from 'react-native';
 
+import { postDeviceSteps } from '../api';
 import { getStepState, setStepState } from '../storage';
 
-/** 'YYYY-MM' bucket key for a date (defaults to now). */
-function monthKey(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
+/** Max day-entries to sync per request (matches the backend's cap). */
+const MAX_SYNC_DAYS = 60;
 
-/** Current step state, with the month bucket reset if we've rolled over. */
-function currentMonthState(): { month: string; steps: number } {
-  const state = getStepState();
-  const mk = monthKey();
-  return state.month === mk ? state : { month: mk, steps: 0 };
+/** 'YYYY-MM-DD' local-day key for a date (defaults to now). */
+function dayKey(d: Date = new Date()): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 // ── live counting ────────────────────────────────────────────────────────────
@@ -39,13 +39,23 @@ let subscription: EventSubscription | null = null;
 // first event establishes a baseline — so we never mistake a cumulative
 // since-boot reading for a giant delta.
 let sessionBase: number | null = null;
-// Set by requestPermission(): whether the sensor is usable. Lets the Trail show
-// "—" instead of a misleading "0" when motion is denied/unsupported.
+// Set by requestPermission(): whether the sensor is usable. Gates counting and
+// syncing so we never spin on an unsupported device.
 let available = false;
 
 /** Whether step counting is permitted and supported on this device. */
 export function isAvailable(): boolean {
   return available;
+}
+
+/** Add a step delta to today's local unsynced buffer. */
+function bufferSteps(delta: number): void {
+  if (delta <= 0) return;
+  const state = getStepState();
+  const key = dayKey();
+  setStepState({
+    pending: { ...state.pending, [key]: (state.pending[key] ?? 0) + delta },
+  });
 }
 
 /**
@@ -77,11 +87,10 @@ export async function requestPermission(): Promise<boolean> {
 }
 
 /**
- * Begin counting steps from now, accumulating live deltas into this month's
- * bucket. `onUpdate` (optional) receives the running month total after each
- * sensor event, for live UI. Idempotent — a second call is a no-op until stop.
+ * Begin counting steps from now, buffering live deltas into today's local
+ * bucket. Idempotent — a second call is a no-op until stop.
  */
-export function startCounting(onUpdate?: (monthSteps: number) => void): void {
+export function startCounting(): void {
   if (subscription) return;
   sessionBase = null;
   try {
@@ -95,11 +104,7 @@ export function startCounting(onUpdate?: (monthSteps: number) => void): void {
       }
       const delta = total - sessionBase;
       sessionBase = total;
-      if (delta <= 0) return; // counter reset or no movement
-      const state = currentMonthState();
-      const next = { month: state.month, steps: state.steps + delta };
-      setStepState(next);
-      onUpdate?.(next.steps);
+      bufferSteps(delta); // ignores <= 0 (counter reset / no movement)
     });
   } catch (e) {
     console.log('[Pedometer] startCounting failed', e);
@@ -120,30 +125,60 @@ export function stopCounting(): void {
 }
 
 /**
+ * Sync the buffered, day-tagged step deltas to the backend. No-op when nothing
+ * is pending or the sensor is unavailable. On success, subtracts exactly what
+ * was sent (re-reading first, so steps counted mid-request aren't lost); on
+ * failure the buffer is left intact to retry on the next flush.
+ */
+export async function flushSteps(): Promise<void> {
+  if (!available) return;
+  const { pending } = getStepState();
+  const entries = Object.entries(pending)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1)) // newest day first
+    .slice(0, MAX_SYNC_DAYS)
+    .map(([day, delta]) => ({ day, delta }));
+  if (entries.length === 0) return;
+  try {
+    await postDeviceSteps(entries);
+    const current = getStepState().pending;
+    const next: Record<string, number> = { ...current };
+    for (const { day, delta } of entries) {
+      const remaining = (next[day] ?? 0) - delta;
+      if (remaining > 0) next[day] = remaining;
+      else delete next[day];
+    }
+    setStepState({ pending: next });
+  } catch (e) {
+    console.log('[Pedometer] flushSteps failed', e);
+  }
+}
+
+/**
  * Wire step counting to the app lifecycle: request permission once, then count
- * whenever the app is in the foreground and stop when it backgrounds. Call once
- * from the app shell; returns a teardown function. Steps accrue during the
- * whole drop→walk→reveal loop, not just while the Trail is open.
+ * and sync whenever the app is in the foreground, stopping (and flushing) when
+ * it backgrounds. Call once from the app shell; returns a teardown function.
+ * Steps accrue during the whole drop→walk→reveal loop, not just on the Trail.
  */
 export function initStepCounting(): () => void {
   const begin = async () => {
     if (!available) await requestPermission();
-    if (available) startCounting();
+    if (available) {
+      startCounting();
+      flushSteps().catch(() => {});
+    }
   };
   begin();
   const sub = AppState.addEventListener('change', state => {
-    if (state === 'active') begin();
-    else stopCounting();
+    if (state === 'active') {
+      begin();
+    } else {
+      stopCounting();
+      flushSteps().catch(() => {});
+    }
   });
   return () => {
     sub.remove();
     stopCounting();
   };
-}
-
-// ── read ─────────────────────────────────────────────────────────────────────
-
-/** Steps accumulated this calendar month (0 if none / new month). */
-export function getStepsThisMonth(): number {
-  return currentMonthState().steps;
 }

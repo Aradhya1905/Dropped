@@ -140,6 +140,14 @@ export const fetchDeviceInfo = () =>
 export const fetchDeviceStats = () =>
   api.get<ApiDeviceStats>('/devices/me/stats').then(r => r.data);
 
+/** The single steps number for the Trail receipt (scope decided server-side). */
+export const fetchDeviceSteps = () =>
+  api.get<{ steps: number }>('/devices/me/steps').then(r => r.data.steps);
+
+/** Sync locally-counted, day-tagged step deltas; returns the new steps total. */
+export const postDeviceSteps = (entries: { day: string; delta: number }[]) =>
+  api.post<{ steps: number }>('/devices/me/steps', { entries }).then(r => r.data.steps);
+
 export const fetchNearbyDrops = (lat: number, lng: number, radiusMeters = 2000) =>
   api.get<{ secrets: ApiSecret[] }>('/drops/nearby', { params: { lat, lng, radiusMeters } }).then(r => r.data);
 
