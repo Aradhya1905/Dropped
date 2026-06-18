@@ -87,6 +87,34 @@ export async function requestPermission(): Promise<boolean> {
 }
 
 /**
+ * Confirm motion access *without prompting* — for app-start, where surfacing a
+ * permission dialog would be jarring. On Android this is a silent
+ * ACTIVITY_RECOGNITION check; the actual request lives in the onboarding
+ * Location screen (see requestPermission). Sets `available` and returns it.
+ */
+export async function ensureAvailableSilently(): Promise<boolean> {
+  try {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
+      );
+      if (!granted) {
+        available = false;
+        return false;
+      }
+    }
+    const { isStepCountingSupported } = require('@dongminyu/react-native-step-counter');
+    const { supported } = await isStepCountingSupported();
+    available = Boolean(supported);
+    return available;
+  } catch (e) {
+    console.log('[Pedometer] silent availability check failed', e);
+    available = false;
+    return false;
+  }
+}
+
+/**
  * Begin counting steps from now, buffering live deltas into today's local
  * bucket. Idempotent — a second call is a no-op until stop.
  */
@@ -155,14 +183,18 @@ export async function flushSteps(): Promise<void> {
 }
 
 /**
- * Wire step counting to the app lifecycle: request permission once, then count
- * and sync whenever the app is in the foreground, stopping (and flushing) when
- * it backgrounds. Call once from the app shell; returns a teardown function.
- * Steps accrue during the whole drop→walk→reveal loop, not just on the Trail.
+ * Wire step counting to the app lifecycle: count and sync whenever the app is
+ * in the foreground, stopping (and flushing) when it backgrounds. Call once
+ * from the app shell; returns a teardown function. Steps accrue during the
+ * whole drop→walk→reveal loop, not just on the Trail.
+ *
+ * Does NOT prompt for permission — that happens once in onboarding (the Location
+ * screen). At app start we only check the grant silently; if motion access was
+ * never granted, counting stays a no-op until it is.
  */
 export function initStepCounting(): () => void {
   const begin = async () => {
-    if (!available) await requestPermission();
+    if (!available) await ensureAvailableSilently();
     if (available) {
       startCounting();
       flushSteps().catch(() => {});

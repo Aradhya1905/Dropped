@@ -21,6 +21,7 @@ import {
 import { AnonLockIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { getCurrent, requestPermission } from '../../../services/location';
+import { requestPermission as requestActivityPermission } from '../../../services/pedometer';
 import { setOnboardingComplete } from '../../../services/storage';
 import { LocationPermissionSheet } from '../../map/components';
 import { RadiusStage } from '../components/RadiusStage';
@@ -46,6 +47,9 @@ export function LocationScreen({ navigation }: Props) {
       if (status === 'granted') {
         // Warm the GPS so the map has a fix waiting; don't block on it.
         getCurrent().catch(() => {});
+        // Ask for motion access here too, so the app start never prompts. The
+        // step counter is optional — degrade silently if denied.
+        requestActivityPermission().catch(() => {});
         enterApp();
       } else if (status === 'blocked') {
         setBlockedSheet(true);
