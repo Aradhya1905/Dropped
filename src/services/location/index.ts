@@ -78,6 +78,22 @@ export async function requestPermission(): Promise<PermissionStatus> {
 }
 
 /**
+ * Silent permission probe — never prompts. Used at app start to decide whether
+ * the live watch can begin without re-asking (onboarding already granted it).
+ * Android checks the OS grant directly; iOS has no silent check API, so we
+ * optimistically return true and let the watch's `onError` no-op if not
+ * authorized.
+ */
+export async function hasPermission(): Promise<boolean> {
+  if (Platform.OS === 'android') {
+    return PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+  }
+  return true;
+}
+
+/**
  * One-shot current position. Forces a fresh fix (`maximumAge: 0`, supported on
  * the one-shot API) so we never echo a stale cached location. Rejects with the
  * SDK's GeoError on failure.

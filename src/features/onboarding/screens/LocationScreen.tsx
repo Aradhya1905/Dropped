@@ -20,7 +20,7 @@ import {
 } from '../../../design-system/components';
 import { AnonLockIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
-import { getCurrent, requestPermission } from '../../../services/location';
+import { useDeviceLocation } from '../../../services/location/LocationContext';
 import { requestPermission as requestActivityPermission } from '../../../services/pedometer';
 import { setOnboardingComplete } from '../../../services/storage';
 import { LocationPermissionSheet } from '../../map/components';
@@ -30,6 +30,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Location'>;
 
 export function LocationScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  // Grant through the shared location context so it starts the live GPS watch
+  // immediately — a fix is then streaming by the time the map mounts.
+  const { request } = useDeviceLocation();
   const enterApp = () => {
     setOnboardingComplete(true);
     navigation.replace('Main');
@@ -43,10 +46,8 @@ export function LocationScreen({ navigation }: Props) {
   const allow = async () => {
     setBusy(true);
     try {
-      const status = await requestPermission();
+      const status = await request();
       if (status === 'granted') {
-        // Warm the GPS so the map has a fix waiting; don't block on it.
-        getCurrent().catch(() => {});
         // Ask for motion access here too, so the app start never prompts. The
         // step counter is optional — degrade silently if denied.
         requestActivityPermission().catch(() => {});

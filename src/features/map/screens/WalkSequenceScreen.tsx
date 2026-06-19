@@ -171,10 +171,10 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   const { coord, shortAddress } = useDeviceLocation();
 
-  // GPS-derived distance + beat
-  const distM = coord && secret
-    ? haversineMeters(coord, secret.drop.coordinate)
-    : null;
+  // GPS-derived distance + beat. A missing coordinate would make haversine
+  // return NaN (all comparisons false → silent "approach"); guard for null.
+  const rawDist = coord && secret ? haversineMeters(coord, secret.drop.coordinate) : null;
+  const distM = rawDist != null && Number.isFinite(rawDist) ? rawDist : null;
 
   const gpsBeat: WalkBeat =
     distM == null ? 'approach' :
@@ -182,19 +182,14 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
     distM <= RANGE_THRESHOLD ? 'range' :
     'approach';
 
-  // In DEV, allow manual tap-advance; in prod, follow GPS only.
+  // Real GPS always drives the beat once we have a fix — walking into range
+  // advances approach → range → arrived on its own. Tap-to-advance survives
+  // only as a no-GPS simulator fallback (emulator with no location set).
   const [devBeat, setDevBeat] = useState<WalkBeat>(route.params?.beat ?? 'approach');
-  const beat = __DEV__ ? devBeat : gpsBeat;
-
-  // Sync dev beat to GPS in DEV mode when GPS is ahead
-  useEffect(() => {
-    if (!__DEV__) return;
-    if (gpsBeat === 'arrived' && devBeat !== 'arrived') setDevBeat('arrived');
-    else if (gpsBeat === 'range' && devBeat === 'approach') setDevBeat('range');
-  }, [gpsBeat, devBeat]);
+  const beat = coord ? gpsBeat : devBeat;
 
   const advanceDev = () => {
-    if (!__DEV__ || beat === 'arrived') return;
+    if (!__DEV__ || coord || beat === 'arrived') return;
     LayoutAnimation.configureNext(LayoutAnimation.create(600, 'easeInEaseOut', 'opacity'));
     setDevBeat(b => (b === 'approach' ? 'range' : 'arrived'));
   };

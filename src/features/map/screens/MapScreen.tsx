@@ -22,6 +22,7 @@ import { useMaplibreAdapter } from '../../../services/maps';
 import { LayersIcon, LocateIcon, QuillIcon } from '../../../design-system/icons';
 import { colors, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation, useNearbyDrops } from '../hooks';
+import { useDropsStore } from '../../../store/dropsStore';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
 import { MapLoader } from '../components/MapLoader';
@@ -39,19 +40,27 @@ type Props = CompositeScreenProps<
 
 export function MapScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { coord, shortAddress, status, refresh } = useDeviceLocation();
+  const { coord, shortAddress, status, refresh, request } = useDeviceLocation();
   // Open the map already centered on the user so the default center never
   // flashes (the map only mounts once we have a fix — see the guard below).
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } = useMaplibreAdapter(coord ?? undefined);
   const { data: drops = [] } = useNearbyDrops(coord);
+  const upsertDrop = useDropsStore(s => s.upsertDrop);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
 
-  // Onboarding usually grants + warms location first; guard in case it didn't.
+  // Sync fetched secrets into Zustand so SecretDetailScreen can read them.
   useEffect(() => {
-    if (status === 'unknown') {
-      refresh();
+    drops.forEach(s => upsertDrop(s));
+  }, [drops, upsertDrop]);
+
+  // The context auto-starts the live watch when permission is already held.
+  // This is the cold-start guard: if we land here without a grant (skipped or
+  // denied onboarding), prompt once so the watch can begin.
+  useEffect(() => {
+    if (status === 'unknown' || status === 'denied') {
+      request();
     }
-  }, [status, refresh]);
+  }, [status, request]);
 
   // Recenter map on first real fix.
   const centeredRef = useRef(false);

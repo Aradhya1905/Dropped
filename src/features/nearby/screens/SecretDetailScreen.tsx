@@ -78,7 +78,7 @@ export function SecretDetailScreen({ navigation, route }: Props) {
         <View style={[styles.inner, { paddingBottom: insets.bottom + 26 }]}>
           <Grabber style={styles.grabber} />
           <View style={styles.head}>
-            <EmotionTag label="ache" />
+            <EmotionTag label={secret?.mood ?? 'wonder'} />
             <CloseX onPress={() => navigation.goBack()} />
           </View>
 

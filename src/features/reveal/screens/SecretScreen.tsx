@@ -63,7 +63,9 @@ export function SecretScreen({ navigation, route }: Props) {
             <View>
               <View style={styles.placeMeta}>
                 <PinIcon size={11} strokeWidth={1.5} />
-                <Text style={styles.placeMetaText}>{secret?.drop.placeLabel ?? ''}</Text>
+                <Text style={styles.placeMetaText}>
+                  {secret ? _coordLabel(secret.drop.coordinate) : ''}
+                </Text>
               </View>
               <Text style={styles.placeName}>{secret?.drop.placeLabel ?? 'Here'}</Text>
             </View>
@@ -128,6 +130,12 @@ export function SecretScreen({ navigation, route }: Props) {
       </View>
     </PaperScreen>
   );
+}
+
+function _coordLabel(c: { lat: number; lng: number }): string {
+  const fmt = (n: number, pos: string, neg: string) =>
+    `${Math.abs(n).toFixed(4)}° ${n >= 0 ? pos : neg}`;
+  return `${fmt(c.lat, 'N', 'S')} · ${fmt(c.lng, 'E', 'W')}`;
 }
 
 function _yearsAgo(ms: number): string {

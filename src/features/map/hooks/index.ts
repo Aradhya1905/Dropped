@@ -1,4 +1,4 @@
-export { useDeviceLocation } from './useDeviceLocation';
+export { useDeviceLocation, LocationProvider } from './useDeviceLocation';
 export type {
   UseDeviceLocationResult,
   LocationStatus,

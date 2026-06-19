@@ -5,9 +5,15 @@ import { apiSecretToSecret } from '../../../services/api/mappers';
 import { useDeviceLocation } from '../../map/hooks';
 import { postReveal } from '../api';
 
+// Bengaluru city center — lets the tap work in dev without real GPS.
+const DEV_COORD = __DEV__ ? { lat: 12.9716, lng: 77.5946 } : null;
+
 export function useReveal() {
   const upsert = useDropsStore(s => s.upsertDrop);
-  const { coord } = useDeviceLocation();
+  const { coord: liveCoord } = useDeviceLocation();
+
+  // In dev, fall back to a fake coord so the button is never permanently disabled.
+  const coord = liveCoord ?? DEV_COORD;
 
   const mutation = useMutation({
     mutationFn: ({ id }: { id: string }) => {
