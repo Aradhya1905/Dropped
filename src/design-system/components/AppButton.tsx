@@ -7,7 +7,15 @@
  * scale-press on the whole pill.
  */
 import React, { useRef } from 'react';
-import { Animated, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import {
+  Animated,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 
 import { colors, fonts } from '../tokens';
 
@@ -37,12 +45,25 @@ export function AppButton({
   const isPrimary = variant === 'primary';
 
   const handlePressIn = () =>
-    Animated.spring(press, { toValue: 1, useNativeDriver: true, speed: 28, bounciness: 0 }).start();
+    Animated.spring(press, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 28,
+      bounciness: 0,
+    }).start();
 
   const handlePressOut = () =>
-    Animated.spring(press, { toValue: 0, useNativeDriver: true, speed: 24, bounciness: 9 }).start();
+    Animated.spring(press, {
+      toValue: 0,
+      useNativeDriver: true,
+      speed: 24,
+      bounciness: 9,
+    }).start();
 
-  const scale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.955] });
+  const scale = press.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.955],
+  });
 
   return (
     <Animated.View style={[styles.wrap, { transform: [{ scale }] }, style]}>
@@ -84,14 +105,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 18,
     gap: 10,
   },
   primary: { backgroundColor: colors.ink },
   ghost: { backgroundColor: 'transparent', height: 44 },
-  outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.line },
-  label: { fontFamily: fonts.sansMedium, fontSize: 15.5, letterSpacing: 0.155 },
+  outline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  label: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 15.5,
+    letterSpacing: 0.155,
+    flexShrink: 1,
+  },
   labelPrimary: { color: colors.paperCard },
   labelGhost: { color: colors.inkSoft, fontSize: 14 },
   labelOutline: { color: colors.ink },
-  dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.accent },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.accent,
+  },
 });

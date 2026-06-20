@@ -19,7 +19,11 @@ import type {
 } from '../../../app/navigation/types';
 import { WaxSeal } from '../../../design-system/components';
 import { useMaplibreAdapter } from '../../../services/maps';
-import { LayersIcon, LocateIcon, QuillIcon } from '../../../design-system/icons';
+import {
+  LayersIcon,
+  LocateIcon,
+  QuillIcon,
+} from '../../../design-system/icons';
 import { colors, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation, useNearbyDrops } from '../hooks';
 import { useDropsStore } from '../../../store/dropsStore';
@@ -43,7 +47,8 @@ export function MapScreen({ navigation }: Props) {
   const { coord, shortAddress, status, refresh, request } = useDeviceLocation();
   // Open the map already centered on the user so the default center never
   // flashes (the map only mounts once we have a fix — see the guard below).
-  const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } = useMaplibreAdapter(coord ?? undefined);
+  const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
+    useMaplibreAdapter(coord ?? undefined);
   const { data: drops = [] } = useNearbyDrops(coord);
   const upsertDrop = useDropsStore(s => s.upsertDrop);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
@@ -81,6 +86,13 @@ export function MapScreen({ navigation }: Props) {
   // Nearest drop within 50 m drives the RangeCard.
   const nearestInRange = drops.find(s => isWithin(coord, s.drop.coordinate));
 
+  // FAB vertical anchors. With the RangeCard docked the drop seal should
+  // half-overlap the card's top-right corner (per design 04), with the recenter
+  // FAB stacked just above it. Card bottom = insets.bottom + 12, height ~96, so
+  // its top edge sits at insets.bottom + 108; the 58px drop seal straddles it.
+  const dropFabBottom = nearestInRange ? insets.bottom + 49 : 100;
+  const recenterFabBottom = dropFabBottom + 70;
+
   return (
     <View style={styles.root}>
       <MaplibreView>
@@ -96,7 +108,9 @@ export function MapScreen({ navigation }: Props) {
             <MapPin
               deltaY={i % 2 === 0 ? -9 : 9}
               duration={9000 + i * 1000}
-              onPress={() => navigation.navigate('SecretDetail', { secretId: secret.id })}
+              onPress={() =>
+                navigation.navigate('SecretDetail', { secretId: secret.id })
+              }
             />
           </Marker>
         ))}
@@ -127,7 +141,11 @@ export function MapScreen({ navigation }: Props) {
           refresh();
           adapter.flyTo(coord);
         }}
-        style={({ pressed }) => [styles.recenterFab, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.recenterFab,
+          { bottom: recenterFabBottom },
+          pressed && styles.pressed,
+        ]}
       >
         <LocateIcon size={21} />
       </Pressable>
@@ -136,7 +154,7 @@ export function MapScreen({ navigation }: Props) {
         size={58}
         shadow="sealLarge"
         onPress={() => navigation.navigate('Composer')}
-        style={styles.dropFab}
+        style={[styles.dropFab, { bottom: dropFabBottom }]}
       >
         <QuillIcon size={25} />
       </WaxSeal>
@@ -144,10 +162,14 @@ export function MapScreen({ navigation }: Props) {
       {nearestInRange ? (
         <RangeCard
           kicker="you're within range —"
-          title={nearestInRange.drop.placeLabel ?? 'A secret was dropped here'}
-          meta={`Tap to break the seal · ${_yearsAgo(nearestInRange.drop.createdAt)}`}
-          onPress={() => navigation.navigate('Opening', { secretId: nearestInRange.id })}
-          style={[styles.rangeCard, { bottom: insets.bottom + 12 }]}
+          title="A secret was dropped here"
+          meta={`Tap to break the seal · ${_yearsAgo(
+            nearestInRange.drop.createdAt,
+          )}`}
+          onPress={() =>
+            navigation.navigate('Opening', { secretId: nearestInRange.id })
+          }
+          style={[styles.rangeCard, { bottom: insets.bottom - 35 }]}
         />
       ) : null}
 
@@ -189,7 +211,6 @@ const styles = StyleSheet.create({
   recenterFab: {
     position: 'absolute',
     right: 18,
-    bottom: 168,
     zIndex: 21,
     width: 46,
     height: 46,
@@ -201,7 +222,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     boxShadow: shadows.chip,
   },
-  dropFab: { position: 'absolute', right: 18, bottom: 100, zIndex: 21 },
+  dropFab: { position: 'absolute', right: 18, zIndex: 21 },
   rangeCard: {
     position: 'absolute',
     left: 16,
