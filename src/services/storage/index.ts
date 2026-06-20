@@ -5,6 +5,7 @@
  */
 import { createMMKV } from 'react-native-mmkv';
 
+import { getNativeUniqueId, nativeIdToUuidV4 } from '../device';
 import {
   DEFAULT_MAP_STYLE,
   DEFAULT_NOTIFICATION_MODE,
@@ -51,13 +52,27 @@ function generateDeviceId(): string {
 }
 
 /**
- * The anonymous device id. Lazily generated and persisted on first call, then
- * stable for the install's lifetime.
+ * The anonymous device id, in uuid-v4 form (what the backend's `X-Device-Id`
+ * header expects).
+ *
+ * Source of truth is the native unique id (Android `ANDROID_ID`), mapped into a
+ * stable uuid via `nativeIdToUuidV4`, so it survives an app-data-clear that wipes
+ * MMKV. MMKV is only a cache/fallback: if the platform can't supply a native id
+ * we fall back to the cached value, then to a freshly generated uuid.
  */
 export function getDeviceId(): string {
-  const existing = mmkv.getString(StorageKeys.deviceId);
-  if (existing) {
-    return existing;
+  const native = getNativeUniqueId();
+  if (native && native !== 'unknown') {
+    const id = nativeIdToUuidV4(native);
+    if (mmkv.getString(StorageKeys.deviceId) !== id) {
+      mmkv.set(StorageKeys.deviceId, id);
+    }
+    return id;
+  }
+
+  const cached = mmkv.getString(StorageKeys.deviceId);
+  if (cached) {
+    return cached;
   }
   const id = generateDeviceId();
   mmkv.set(StorageKeys.deviceId, id);

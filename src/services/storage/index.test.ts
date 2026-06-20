@@ -9,6 +9,12 @@ import {
   setOnboardingComplete,
 } from './index';
 
+// Stub the device adapter so storage doesn't reach for the native unique id.
+jest.mock('../device', () => ({
+  getNativeUniqueId: () => 'fixed-native-id',
+  nativeIdToUuidV4: () => 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+}));
+
 // In-memory MMKV stand-in so storage logic is testable without the native module.
 jest.mock('react-native-mmkv', () => {
   const store = new Map<string, string | boolean | number>();
@@ -32,7 +38,7 @@ jest.mock('react-native-mmkv', () => {
 beforeEach(() => clearAll());
 
 describe('storage device id', () => {
-  it('generates once and stays stable across calls', () => {
+  it('derives a uuid from the native id and stays stable across calls', () => {
     const a = getDeviceId();
     const b = getDeviceId();
     expect(a).toBe(b);

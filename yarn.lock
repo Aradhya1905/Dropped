@@ -3019,6 +3019,7 @@ __metadata:
     react-native: "npm:0.85.3"
     react-native-compass-heading: "npm:^2.0.2"
     react-native-config: "npm:^1.6.1"
+    react-native-device-info: "npm:^15.0.2"
     react-native-geolocation-service: "npm:^5.3.1"
     react-native-gesture-handler: "npm:^3.0.0"
     react-native-mmkv: "npm:^4.3.1"
@@ -7856,6 +7857,15 @@ __metadata:
     react-native-windows:
       optional: true
   checksum: 10c0/9e2bbb7fb04bac878471f7b06132d84233c482952fc7dd0b651669a62cd35c35428302c7502a92898402505ec9b8d7997848122356b42de5c072dcce549d5813
+  languageName: node
+  linkType: hard
+
+"react-native-device-info@npm:^15.0.2":
+  version: 15.0.2
+  resolution: "react-native-device-info@npm:15.0.2"
+  peerDependencies:
+    react-native: "*"
+  checksum: 10c0/c4a1d9ae049f42f0aa3c5aba539a9826d2400cb15a6d17815824204e4e842fbc15c80afec7387acd07e02f80a1fa49aaef1d4d6e96bc9ec53c42ba63046e8ce1
   languageName: node
   linkType: hard
 

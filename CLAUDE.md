@@ -23,6 +23,7 @@ anonymous device id. Moderation is the hard problem, not engineering.
   - **Storage** — `react-native-mmkv` v4 (Nitro Module; needs `react-native-nitro-modules`)
   - **Animation** — `react-native-reanimated` v4 + `react-native-worklets` (paired; reveal/near animations)
   - **Location** — `react-native-geolocation-service` (GPS watch, distance-to-drop)
+  - **Identity** — `react-native-device-info` (stable anonymous id from `ANDROID_ID`/IDFV, behind `services/device`; survives app-data-clear)
   - **Camera/media** — `react-native-vision-camera` v5 + `react-native-nitro-image` (paired), `react-native-svg`
   - **UI** — `react-native-modal`, `@react-native-clipboard/clipboard`
   - **Map** — `@maplibre/maplibre-react-native` with Protomaps CDN tiles, custom paper/ink/sage style JSON (`services/maps/droppedStyle.ts`), adapter at `services/maps/maplibreAdapter.ts`
