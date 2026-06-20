@@ -20,7 +20,11 @@
     "installApk-free": "node scripts/install-apk.js",
     "installOn_Sumsung": "node scripts/install-apk.js --device RZ8M31LX0QY",
     "installOn_NothingPhone": "node scripts/install-apk.js --device 001206481004686",
-    "installDebugApkAndStart": "adb reverse tcp:8086 tcp:8086 && adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell am start -n com.dropped/.MainActivity"
+    "installDebugApkAndStart": "adb reverse tcp:8086 tcp:8086 && adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell am start -n com.dropped/.MainActivity",
+    "build:apk": "cd android && gradlew.bat assembleRelease",
+    "build:apk-debug": "cd android && gradlew.bat assembleDebug",
+    "build:aab": "cd android && gradlew.bat bundleRelease",
+    "build:clean": "cd android && gradlew.bat clean"
   },
   "dependencies": {
     "@dongminyu/react-native-step-counter": "^0.4.0",
