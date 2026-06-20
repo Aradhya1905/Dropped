@@ -110,6 +110,29 @@ export function useMaplibreAdapter(
     });
   }, []);
 
+  const fitBounds = useCallback((coordinates: Coordinate[], padding = 64) => {
+    if (coordinates.length === 0) return;
+    let west = coordinates[0].lng;
+    let east = coordinates[0].lng;
+    let south = coordinates[0].lat;
+    let north = coordinates[0].lat;
+    for (const c of coordinates) {
+      west = Math.min(west, c.lng);
+      east = Math.max(east, c.lng);
+      south = Math.min(south, c.lat);
+      north = Math.max(north, c.lat);
+    }
+    // Degenerate (single point) — just centre so fitBounds doesn't NaN-zoom.
+    if (west === east && south === north) {
+      cameraRef.current?.flyTo({ center: [west, south], zoom: DEFAULT_ZOOM, duration: 600 });
+      return;
+    }
+    cameraRef.current?.fitBounds([west, south, east, north], {
+      padding: { top: padding, right: padding, bottom: padding, left: padding },
+      duration: 600,
+    });
+  }, []);
+
   const setMarkersImpl = useCallback((next: MapMarker[]) => {
     setMarkers(next);
   }, []);
@@ -160,7 +183,7 @@ export function useMaplibreAdapter(
     [activeStyle, onRegionDidChange],
   );
 
-  const adapter: MapAdapter = { flyTo, setMarkers: setMarkersImpl, getCenter };
+  const adapter: MapAdapter = { flyTo, fitBounds, setMarkers: setMarkersImpl, getCenter };
 
   const activeStyleKey: MapStyleKey =
     STYLE_OPTIONS.find(s => s.source === activeStyle)?.key ?? 'dropped';

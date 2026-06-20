@@ -7,6 +7,7 @@ import type { MapAdapter, MapMarker } from './types';
  */
 export const noopAdapter: MapAdapter = {
   flyTo(_coordinate: Coordinate, _zoom?: number): void {},
+  fitBounds(_coordinates: Coordinate[], _padding?: number): void {},
   setMarkers(_markers: MapMarker[]): void {},
   getCenter(): Coordinate | null {
     return null;

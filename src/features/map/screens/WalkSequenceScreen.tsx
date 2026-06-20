@@ -1,22 +1,20 @@
 /**
  * 04a/b/c — walking a secret into range, in three beats: out of range,
- * crossing the 50 m line, then standing right on top of it.
+ * crossing the 50 m line, then standing on top of it — now over a REAL map.
  *
- * Beats are driven by real GPS distance (updates automatically as you walk).
- * In __DEV__ mode, tapping the screen still advances the beat manually.
+ * Geometry is geographic: your live GPS dot, the drop's wax pin, a real 50 m
+ * unlock ring, and a street-following walking path (from the backend /route/foot
+ * proxy). The path + footsteps only render when the proxy returns one; when it
+ * can't (quota spent / offline) the map, dot, pin, and ring still show.
+ *
+ * Beats are driven by real straight-line GPS distance (haversine) — that, not
+ * the route, is what gates the 50 m reveal.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  LayoutAnimation,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import { GeoJSONSource, Layer, Marker } from '@maplibre/maplibre-react-native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -28,14 +26,22 @@ import type {
   WalkBeat,
 } from '../../../app/navigation/types';
 import { PulseRing } from '../../../design-system/components';
-import { HeadingIcon, LockIcon, PinIcon } from '../../../design-system/icons';
+import { HeadingIcon, LocateIcon, LockIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
-import { useDeviceLocation } from '../hooks';
+import { useDeviceLocation, useFootRoute } from '../hooks';
 import { FindCard } from '../components/FindCard';
 import { MapStatus } from '../components/MapStatus';
-import { RouteLine } from '../components/RouteLine';
+import { MapLoader } from '../components/MapLoader';
+import { UserDot } from '../components/UserDot';
+import { useMaplibreAdapter } from '../../../services/maps';
 import { useDropsStore } from '../../../store/dropsStore';
-import { haversineMeters } from '../../../utils/geo';
+import {
+  circlePolygon,
+  haversineMeters,
+  samplePointsAlongLine,
+} from '../../../utils/geo';
+import type { Coordinate } from '../../../types';
+import { REVEAL_RADIUS_M } from '../../../types';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MapStackParamList, 'Walk'>,
@@ -45,49 +51,12 @@ type Props = CompositeScreenProps<
   >
 >;
 
-// All coordinates live in the design's 346×780 screen space; converted to
-// percentages so they track the stretched route line on any device.
-const pctX = (x: number) => `${(x / 346) * 100}%` as const;
-const pctY = (y: number) => `${(y / 780) * 100}%` as const;
-
-const FOOTSTEPS: Array<[number, number]> = [
-  [250, 638],
-  [236, 590],
-  [224, 544],
-  [212, 486],
-  [200, 430],
-  [187, 372],
-  [177, 326],
-];
-
-const BEATS: Record<WalkBeat, { stepsOn: number; walker: [number, number] }> = {
-  approach: { stepsOn: 2, walker: [236, 590] },
-  range: { stepsOn: 5, walker: [193, 388] },
-  arrived: { stepsOn: 7, walker: [177, 330] },
-};
-
-const ZONE_CENTER: [number, number] = [173, 288];
-
-// Distance thresholds in metres
+// Distance thresholds in metres.
 const RANGE_THRESHOLD = 150;
-const ARRIVED_THRESHOLD = 50;
+const ARRIVED_THRESHOLD = REVEAL_RADIUS_M;
 
-/** Zero-size anchor at a design-space point; children center on it. */
-function Anchor({
-  at,
-  zIndex,
-  children,
-}: {
-  at: [number, number];
-  zIndex?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <View pointerEvents="none" style={[styles.anchor, { left: pctX(at[0]), top: pctY(at[1]), zIndex }]}>
-      {children}
-    </View>
-  );
-}
+/** Footstep spacing along the walking route, in metres. */
+const FOOTSTEP_SPACING_M = 35;
 
 /** The buried secret's wax pin — grows and shakes as you arrive. */
 function SecretPin({ beat }: { beat: WalkBeat }) {
@@ -108,13 +77,13 @@ function SecretPin({ beat }: { beat: WalkBeat }) {
     return () => loop.stop();
   }, [beat, shake]);
 
-  const scale = beat === 'approach' ? 0.78 : beat === 'arrived' ? 1.16 : 1;
+  const scale = beat === 'approach' ? 0.82 : beat === 'arrived' ? 1.16 : 1;
   return (
     <Animated.View
       style={[
         styles.secretPin,
         {
-          opacity: beat === 'approach' ? 0.85 : 1,
+          opacity: beat === 'approach' ? 0.9 : 1,
           transform: [
             { scale },
             { rotate: shake.interpolate({ inputRange: [-1, 1], outputRange: ['-7deg', '6deg'] }) },
@@ -154,6 +123,7 @@ function CrossRipple() {
   }, [t]);
   return (
     <Animated.View
+      pointerEvents="none"
       style={[
         styles.crossRipple,
         {
@@ -170,33 +140,70 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   const { secretId } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   const { coord, shortAddress } = useDeviceLocation();
+  const drop: Coordinate | null = secret?.drop.coordinate ?? null;
+
+  const { adapter, MaplibreView } = useMaplibreAdapter(coord ?? undefined);
+  const { data: footRoute } = useFootRoute(coord, drop);
 
   // GPS-derived distance + beat. A missing coordinate would make haversine
   // return NaN (all comparisons false → silent "approach"); guard for null.
-  const rawDist = coord && secret ? haversineMeters(coord, secret.drop.coordinate) : null;
+  const rawDist = coord && drop ? haversineMeters(coord, drop) : null;
   const distM = rawDist != null && Number.isFinite(rawDist) ? rawDist : null;
 
-  const gpsBeat: WalkBeat =
+  const beat: WalkBeat =
     distM == null ? 'approach' :
     distM <= ARRIVED_THRESHOLD ? 'arrived' :
     distM <= RANGE_THRESHOLD ? 'range' :
     'approach';
 
-  // Real GPS always drives the beat once we have a fix — walking into range
-  // advances approach → range → arrived on its own. Tap-to-advance survives
-  // only as a no-GPS simulator fallback (emulator with no location set).
-  const [devBeat, setDevBeat] = useState<WalkBeat>(route.params?.beat ?? 'approach');
-  const beat = coord ? gpsBeat : devBeat;
+  // Frame both points on the first fix and whenever the beat changes — so the
+  // pair stays in view as you close in ("fit both, then follow").
+  const fittedRef = useRef(false);
+  const lastBeatRef = useRef<WalkBeat | null>(null);
+  useEffect(() => {
+    if (!coord || !drop) return;
+    if (!fittedRef.current || lastBeatRef.current !== beat) {
+      fittedRef.current = true;
+      lastBeatRef.current = beat;
+      adapter.fitBounds([coord, drop], 96);
+    }
+  }, [coord, drop, beat, adapter]);
 
-  const advanceDev = () => {
-    if (!__DEV__ || coord || beat === 'arrived') return;
-    LayoutAnimation.configureNext(LayoutAnimation.create(600, 'easeInEaseOut', 'opacity'));
-    setDevBeat(b => (b === 'approach' ? 'range' : 'arrived'));
-  };
-
-  const cfg = BEATS[beat];
+  // Until the first GPS fix (or if the drop isn't in the store yet), cover the
+  // screen with the loader — the native map surface must not mount underneath.
+  if (coord == null || drop == null) {
+    return <MapLoader />;
+  }
 
   const distLabel = distM != null ? `${Math.round(distM)} m` : '— m';
+
+  // 50 m unlock zone as a real geographic polygon.
+  const zoneRing = circlePolygon(drop, REVEAL_RADIUS_M).map(c => [c.lng, c.lat]);
+  const zoneFeature = {
+    type: 'Feature' as const,
+    properties: {},
+    geometry: { type: 'Polygon' as const, coordinates: [zoneRing] },
+  };
+  const zoneFillOpacity = beat === 'arrived' ? 0.18 : beat === 'range' ? 0.12 : 0.07;
+  const zoneLineOpacity = beat === 'approach' ? 0.5 : 0.9;
+
+  // Walking path + footsteps — only when the proxy actually returned a route.
+  const routeAvailable = !!footRoute?.available && footRoute.geometry != null;
+  const routeFeature = routeAvailable
+    ? { type: 'Feature' as const, properties: {}, geometry: footRoute!.geometry! }
+    : null;
+  // Space footsteps ≥35 m apart, widening on long routes so we never spawn
+  // more than ~40 markers.
+  const footstepSpacing = Math.max(
+    FOOTSTEP_SPACING_M,
+    Math.round((footRoute?.distanceMeters ?? 0) / 40),
+  );
+  const footsteps = routeAvailable
+    ? samplePointsAlongLine(
+        footRoute!.geometry!.coordinates.map(([lng, lat]) => ({ lat, lng })),
+        footstepSpacing,
+      )
+    : [];
 
   const status =
     beat === 'approach' ? (
@@ -223,128 +230,103 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
       />
     );
 
-  const mapContent = (
-    <View style={StyleSheet.absoluteFill}>
-      <RouteLine />
-
-      {/* the 50 m unlock zone */}
-      <Anchor at={ZONE_CENTER} zIndex={3}>
-        <View
-          style={[
-            styles.uzone,
-            beat === 'approach' && styles.uzoneFaint,
-            beat === 'range' && styles.uzoneWake,
-            beat === 'arrived' && styles.uzoneHere,
-          ]}
-        >
-          <Svg width={212} height={212} style={StyleSheet.absoluteFill}>
-            <Defs>
-              <RadialGradient id="uzoneGrad" cx="50%" cy="50%" r="50%">
-                <Stop offset="0" stopColor={colors.accent} stopOpacity={0.14} />
-                <Stop
-                  offset="0.7"
-                  stopColor={colors.accent}
-                  stopOpacity={beat === 'arrived' ? 0.08 : 0.04}
-                />
-                <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
-              </RadialGradient>
-            </Defs>
-            <Circle cx={106} cy={106} r={105} fill="url(#uzoneGrad)" />
-          </Svg>
-        </View>
-      </Anchor>
-      <Anchor at={ZONE_CENTER} zIndex={4}>
-        {[0, 1150, 2300].map(delay => (
-          <PulseRing
-            key={delay}
-            size={56}
-            fromScale={0.5}
-            toScale={3}
-            peakOpacity={0.6}
-            durationMs={beat === 'approach' ? 5000 : 3400}
-            delayMs={delay}
-            borderWidth={1.5}
-            borderColor={colors.accent}
-          />
-        ))}
-      </Anchor>
-      <Anchor at={[ZONE_CENTER[0], ZONE_CENTER[1] - 122]} zIndex={6}>
-        <View style={styles.uzLbl}>
-          <Text style={styles.uzLblText}>50 m unlock zone</Text>
-        </View>
-      </Anchor>
-      <Anchor at={ZONE_CENTER} zIndex={6}>
-        <SecretPin beat={beat} />
-      </Anchor>
-      {beat === 'arrived' ? (
-        <Anchor at={[173, 204]} zIndex={9}>
-          <Text style={styles.arrived}>you made it!</Text>
-        </Anchor>
-      ) : null}
-
-      {/* footsteps along the route */}
-      {FOOTSTEPS.map(([x, y], i) => (
-        <View
-          key={i}
-          pointerEvents="none"
-          style={[styles.fstep, { left: pctX(x), top: pctY(y) }, i < cfg.stepsOn && styles.fstepOn]}
-        />
-      ))}
-
-      {/* you, walking */}
-      {beat === 'range' ? (
-        <Anchor at={cfg.walker} zIndex={7}>
-          <CrossRipple />
-        </Anchor>
-      ) : null}
-      <Anchor at={cfg.walker} zIndex={8}>
-        <PulseRing
-          size={44}
-          fromScale={0.6}
-          toScale={1.6}
-          peakOpacity={0.5}
-          durationMs={2600}
-          borderWidth={2}
-          borderColor={colors.accent}
-        />
-        <View style={styles.walker}>
-          <View style={styles.walkerDot} />
-        </View>
-      </Anchor>
-      <Anchor at={cfg.walker} zIndex={9}>
-        <View style={styles.distPillWrap}>
-          <View style={styles.distPill}>
-            {beat === 'approach' ? (
-              <Text style={styles.distText}>
-                <Text style={styles.distEm}>{distLabel}</Text> to go
-              </Text>
-            ) : beat === 'range' ? (
-              <Text style={styles.distText}>
-                you're <Text style={styles.distEm}>in range</Text>
-              </Text>
-            ) : (
-              <Text style={styles.distText}>
-                <Text style={styles.distEm}>0 m</Text> · you're here
-              </Text>
-            )}
-          </View>
-          <View style={styles.distCaret} />
-        </View>
-      </Anchor>
-    </View>
-  );
-
   return (
     <View style={styles.root}>
-      {__DEV__ ? (
-        <Pressable style={StyleSheet.absoluteFill} onPress={beat === 'arrived' ? undefined : advanceDev}>
-          {mapContent}
-        </Pressable>
-      ) : (
-        mapContent
-      )}
+      <MaplibreView>
+        {/* the 50 m unlock zone */}
+        <GeoJSONSource id="walk-zone" data={zoneFeature}>
+          <Layer
+            id="walk-zone-fill"
+            type="fill"
+            paint={{ 'fill-color': colors.accent, 'fill-opacity': zoneFillOpacity }}
+          />
+          <Layer
+            id="walk-zone-line"
+            type="line"
+            paint={{
+              'line-color': colors.accent,
+              'line-width': 1.6,
+              'line-dasharray': [2, 3],
+              'line-opacity': zoneLineOpacity,
+            }}
+          />
+        </GeoJSONSource>
+
+        {/* the walking route (street-following) */}
+        {routeFeature ? (
+          <GeoJSONSource id="walk-route" data={routeFeature}>
+            <Layer
+              id="walk-route-line"
+              type="line"
+              layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              paint={{
+                'line-color': colors.accent,
+                'line-width': 3,
+                'line-dasharray': [0.6, 2],
+                'line-opacity': 0.75,
+              }}
+            />
+          </GeoJSONSource>
+        ) : null}
+
+        {/* footsteps along the route */}
+        {footsteps.map((p, i) => (
+          <Marker key={`step-${i}`} id={`walk-step-${i}`} lngLat={[p.lng, p.lat]} anchor="center">
+            <View style={styles.fstep} />
+          </Marker>
+        ))}
+
+        {/* you, walking */}
+        <Marker id="walk-user" lngLat={[coord.lng, coord.lat]} anchor="center">
+          <View style={styles.userWrap}>
+            {beat === 'range' ? <CrossRipple /> : null}
+            <UserDot />
+          </View>
+        </Marker>
+
+        {/* the buried secret */}
+        <Marker id="walk-drop" lngLat={[drop.lng, drop.lat]} anchor="center">
+          <View style={styles.dropWrap}>
+            <PulseRing
+              size={48}
+              fromScale={0.6}
+              toScale={beat === 'approach' ? 2.6 : 3.4}
+              peakOpacity={0.5}
+              durationMs={beat === 'approach' ? 4200 : 3000}
+              borderWidth={1.5}
+              borderColor={colors.accent}
+            />
+            <SecretPin beat={beat} />
+          </View>
+        </Marker>
+
+        {/* "50 m unlock zone" caption, floating above the pin */}
+        {beat !== 'arrived' ? (
+          <Marker id="walk-zone-label" lngLat={[drop.lng, drop.lat]} anchor="bottom" offset={[0, -40]}>
+            <View style={styles.uzLbl}>
+              <Text style={styles.uzLblText}>50 m unlock zone</Text>
+            </View>
+          </Marker>
+        ) : (
+          <Marker id="walk-arrived" lngLat={[drop.lng, drop.lat]} anchor="top" offset={[0, 34]}>
+            <Text style={styles.arrived}>you made it!</Text>
+          </Marker>
+        )}
+      </MaplibreView>
 
       <View style={[styles.statusWrap, { top: insets.top + 10 }]}>{status}</View>
+
+      <Pressable
+        accessibilityLabel="Recenter on you and the secret"
+        onPress={() => adapter.fitBounds([coord, drop], 96)}
+        style={({ pressed }) => [
+          styles.recenterFab,
+          { bottom: insets.bottom + 150 },
+          pressed && styles.pressed,
+        ]}
+      >
+        <LocateIcon size={21} />
+      </Pressable>
 
       {beat === 'approach' ? (
         <FindCard
@@ -382,19 +364,8 @@ function _yearsAgo(ms: number): string {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
-  anchor: { position: 'absolute', width: 0, height: 0, alignItems: 'center', justifyContent: 'center' },
-  uzone: {
-    width: 212,
-    height: 212,
-    borderRadius: 106,
-    borderWidth: 1.6,
-    borderStyle: 'dashed',
-    borderColor: colors.accent,
-    overflow: 'hidden',
-  },
-  uzoneFaint: { opacity: 0.5 },
-  uzoneWake: { boxShadow: '0 0 36px -6px rgba(118,149,124,0.4)' },
-  uzoneHere: { boxShadow: '0 0 50px -4px rgba(118,149,124,0.45)' },
+  userWrap: { alignItems: 'center', justifyContent: 'center' },
+  dropWrap: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   uzLbl: {
     backgroundColor: colors.paperCard,
     borderRadius: 10,
@@ -425,19 +396,11 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-4deg' }],
   },
   fstep: {
-    position: 'absolute',
     width: 8,
     height: 12,
-    marginLeft: -4,
-    marginTop: -6,
     borderRadius: 6,
-    backgroundColor: 'rgba(86,110,91,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(86,110,91,0.25)',
-    zIndex: 4,
-  },
-  fstepOn: {
     backgroundColor: colors.accent,
+    borderWidth: 1,
     borderColor: colors.accent,
     boxShadow: '0 2px 5px -1px rgba(86,110,91,0.5)',
   },
@@ -449,38 +412,21 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.accent,
   },
-  walker: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: `0 0 0 4px ${colors.paperCard}, 0 4px 10px -2px rgba(43,33,20,0.5)`,
-  },
-  walkerDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.accent },
-  distPillWrap: { position: 'absolute', bottom: 16, alignItems: 'center' },
-  distPill: {
+  recenterFab: {
+    position: 'absolute',
+    right: 18,
+    zIndex: 21,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     backgroundColor: colors.paperCard,
-    borderRadius: 13,
     borderWidth: 1,
     borderColor: colors.lineSoft,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    boxShadow: '0 8px 16px -8px rgba(43,33,20,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 8px 16px -8px rgba(43,33,20,0.4)',
   },
-  distText: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 10 * 0.06, color: colors.ink },
-  distEm: { fontFamily: fonts.monoMedium, color: colors.accentDeep },
-  distCaret: {
-    width: 9,
-    height: 9,
-    marginTop: -5,
-    backgroundColor: colors.paperCard,
-    transform: [{ rotate: '45deg' }],
-    borderRightWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.lineSoft,
-  },
+  pressed: { opacity: 0.8 },
   statusWrap: { position: 'absolute', left: 16, right: 16, zIndex: 20 },
   findCard: { position: 'absolute', left: 16, right: 16, bottom: 12, zIndex: 20 },
 });

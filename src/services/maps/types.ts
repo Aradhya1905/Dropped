@@ -15,6 +15,8 @@ export interface MapMarker {
 export interface MapAdapter {
   /** Center + zoom the camera on a coordinate. */
   flyTo(coordinate: Coordinate, zoom?: number): void;
+  /** Frame the camera so every coordinate is visible, with optional padding (px). */
+  fitBounds(coordinates: Coordinate[], padding?: number): void;
   /** Replace the rendered markers. */
   setMarkers(markers: MapMarker[]): void;
   /** Last known map center (e.g. to query secrets in view). */
