@@ -38,7 +38,7 @@
 	<key>NSMotionUsageDescription</key>
 	<string>Dropped counts your steps while you wander to show how far you've walked this month on your Trail.</string>
 	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
+	<string>BootSplash</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>
