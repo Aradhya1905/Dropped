@@ -38,7 +38,7 @@ import { useDropsStore } from '../../../store/dropsStore';
 import {
   circlePolygon,
   haversineMeters,
-  samplePointsAlongLine,
+  samplePathSteps,
 } from '../../../utils/geo';
 import type { Coordinate } from '../../../types';
 import { REVEAL_RADIUS_M } from '../../../types';
@@ -57,6 +57,12 @@ const ARRIVED_THRESHOLD = REVEAL_RADIUS_M;
 
 /** Footstep spacing along the walking route, in metres. */
 const FOOTSTEP_SPACING_M = 35;
+
+/**
+ * Steps within this along-route distance of the user glow solid ("walked");
+ * beyond it they stay faint ("ahead") — a bright→faint trail from the feet out.
+ */
+const STEP_LIT_RANGE_M = 70;
 
 /** The buried secret's wax pin — grows and shakes as you arrive. */
 function SecretPin({ beat }: { beat: WalkBeat }) {
@@ -199,7 +205,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
     Math.round((footRoute?.distanceMeters ?? 0) / 40),
   );
   const footsteps = routeAvailable
-    ? samplePointsAlongLine(
+    ? samplePathSteps(
         footRoute!.geometry!.coordinates.map(([lng, lat]) => ({ lat, lng })),
         footstepSpacing,
       )
@@ -269,12 +275,24 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
           </GeoJSONSource>
         ) : null}
 
-        {/* footsteps along the route */}
-        {footsteps.map((p, i) => (
-          <Marker key={`step-${i}`} id={`walk-step-${i}`} lngLat={[p.lng, p.lat]} anchor="center">
-            <View style={styles.fstep} />
-          </Marker>
-        ))}
+        {/* footsteps along the route — faint ellipses tilted to follow the
+            path, glowing solid at the feet and fading toward the target */}
+        {footsteps.map((s, i) => {
+          const alongDist = (i + 1) * footstepSpacing;
+          const lit = alongDist <= STEP_LIT_RANGE_M;
+          const opacity = lit ? 1 - 0.45 * (alongDist / STEP_LIT_RANGE_M) : 0.85;
+          return (
+            <Marker key={`step-${i}`} id={`walk-step-${i}`} lngLat={[s.coord.lng, s.coord.lat]} anchor="center">
+              <View
+                style={[
+                  styles.fstep,
+                  lit && styles.fstepOn,
+                  { opacity, transform: [{ rotate: `${s.headingDeg}deg` }] },
+                ]}
+              />
+            </Marker>
+          );
+        })}
 
         {/* you, walking */}
         <Marker id="walk-user" lngLat={[coord.lng, coord.lat]} anchor="center">
@@ -395,12 +413,18 @@ const styles = StyleSheet.create({
     color: colors.accentDeep,
     transform: [{ rotate: '-4deg' }],
   },
+  // .fstep — faint, not-yet-walked: translucent sage with a soft ring.
   fstep: {
     width: 8,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.accent,
+    backgroundColor: 'rgba(86,110,91,0.20)',
     borderWidth: 1,
+    borderColor: 'rgba(86,110,91,0.28)',
+  },
+  // .fstep.on — lit, near the user: solid sage with a lifted shadow.
+  fstepOn: {
+    backgroundColor: colors.accent,
     borderColor: colors.accent,
     boxShadow: '0 2px 5px -1px rgba(86,110,91,0.5)',
   },

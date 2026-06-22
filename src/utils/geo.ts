@@ -98,3 +98,43 @@ export function samplePointsAlongLine(
   }
   return out;
 }
+
+/** A sampled step along a route: its coordinate and the travel heading there. */
+export interface PathStep {
+  coord: Coordinate;
+  headingDeg: number;
+}
+
+/**
+ * Like {@link samplePointsAlongLine}, but tags each point with the segment
+ * bearing (so a footstep mark can be rotated to follow the path) and SKIPS the
+ * start vertex — so no step lands directly under the user's own location dot.
+ * `headingDeg` is 0–360 (0 = north, clockwise); usable as a screen rotation
+ * while the map is north-up.
+ */
+export function samplePathSteps(
+  line: Coordinate[],
+  everyMeters: number,
+): PathStep[] {
+  if (line.length < 2) return [];
+  const out: PathStep[] = [];
+  let carried = 0;
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1];
+    const b = line[i];
+    const seg = haversineMeters(a, b);
+    if (seg === 0) continue;
+    const headingDeg = bearingTo(a, b);
+    let dist = carried;
+    while (dist + everyMeters <= seg) {
+      dist += everyMeters;
+      const t = dist / seg;
+      out.push({
+        coord: { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t },
+        headingDeg,
+      });
+    }
+    carried = seg - dist;
+  }
+  return out;
+}
