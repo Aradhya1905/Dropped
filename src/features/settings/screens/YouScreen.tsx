@@ -3,7 +3,7 @@
  * handwritten house rules.
  */
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -21,6 +21,7 @@ import {
   getNotificationMode,
 } from '../../../services/storage';
 import { mapStyleLabel } from '../../../services/maps';
+import { forceTestCrash } from '../../../services/analytics';
 import { useDeviceInfo } from '../hooks';
 
 const RULES = [
@@ -102,6 +103,17 @@ export function YouScreen() {
             — kept by everyone who walks here
           </Text>
         </View>
+
+        {/* TEMP: dev-only Crashlytics smoke test — remove after verifying. */}
+        {__DEV__ && (
+          <Pressable
+            onPress={forceTestCrash}
+            style={styles.crashBtn}
+            accessibilityRole="button"
+          >
+            <Text style={styles.crashBtnText}>force test crash (dev)</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </PaperScreen>
   );
@@ -156,5 +168,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 30,
     transform: [{ rotate: '-1deg' }],
+  },
+  crashBtn: {
+    marginTop: 8,
+    alignSelf: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+  },
+  crashBtnText: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    color: colors.inkFaint,
   },
 });
