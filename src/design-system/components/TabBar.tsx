@@ -25,16 +25,22 @@ export function TabBar({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.bar, { height: 72 + insets.bottom, paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.bar,
+        { height: 65 + insets.bottom, paddingBottom: insets.bottom },
+      ]}
+    >
       {items.map(item => {
-        const color = item.key === activeKey ? colors.accentDeep : colors.inkFaint;
+        const color =
+          item.key === activeKey ? colors.accentDeep : colors.inkFaint;
         return (
           <Pressable
             key={item.key}
             onPress={() => onPress(item.key)}
             accessibilityRole="tab"
             accessibilityState={{ selected: item.key === activeKey }}
-            style={styles.tab}
+            style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
           >
             {item.icon(color)}
             <Text style={[styles.label, { color }]}>{item.label}</Text>
@@ -48,14 +54,14 @@ export function TabBar({
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-around',
-    paddingTop: 11,
+    alignItems: 'stretch',
+    paddingTop: 8,
     backgroundColor: colors.paperCard,
     borderTopWidth: 1,
     borderTopColor: colors.lineSoft,
   },
-  tab: { alignItems: 'center', gap: 5 },
+  tab: { flex: 1, alignItems: 'center', gap: 5, marginTop: 7 },
+  tabPressed: { opacity: 0.6 },
   label: {
     fontFamily: fonts.mono,
     fontSize: 8.5,
