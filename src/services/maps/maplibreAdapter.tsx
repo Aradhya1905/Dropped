@@ -9,7 +9,7 @@
  *
  * API key: set PROTOMAPS_API_KEY in `.env` (loaded via react-native-config).
  */
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import Config from 'react-native-config';
 import { StyleSheet, type NativeSyntheticEvent } from 'react-native';
 import {
@@ -122,9 +122,16 @@ export function useMaplibreAdapter(
       south = Math.min(south, c.lat);
       north = Math.max(north, c.lat);
     }
-    // Degenerate (single point) — just centre so fitBounds doesn't NaN-zoom.
-    if (west === east && south === north) {
-      cameraRef.current?.flyTo({ center: [west, south], zoom: DEFAULT_ZOOM, duration: 600 });
+    // Degenerate / near-degenerate — fitBounds on a sub-metre box NaN/over-zooms
+    // MapLibre native (hard crash on Android). Once the two points are within a
+    // few metres (~5e-5° ≈ 5 m) just centre between them instead.
+    const EPSILON_DEG = 5e-5;
+    if (east - west < EPSILON_DEG && north - south < EPSILON_DEG) {
+      cameraRef.current?.flyTo({
+        center: [(west + east) / 2, (south + north) / 2],
+        zoom: DEFAULT_ZOOM,
+        duration: 600,
+      });
       return;
     }
     cameraRef.current?.fitBounds([west, south, east, north], {
@@ -183,7 +190,12 @@ export function useMaplibreAdapter(
     [activeStyle, onRegionDidChange],
   );
 
-  const adapter: MapAdapter = { flyTo, fitBounds, setMarkers: setMarkersImpl, getCenter };
+  // Stable identity so consumer effects keyed on the adapter don't re-run every
+  // render (the callbacks themselves are already memoized).
+  const adapter: MapAdapter = useMemo(
+    () => ({ flyTo, fitBounds, setMarkers: setMarkersImpl, getCenter }),
+    [flyTo, fitBounds, setMarkersImpl, getCenter],
+  );
 
   const activeStyleKey: MapStyleKey =
     STYLE_OPTIONS.find(s => s.source === activeStyle)?.key ?? 'dropped';

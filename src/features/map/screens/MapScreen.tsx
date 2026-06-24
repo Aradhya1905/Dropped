@@ -3,7 +3,7 @@
  * your geo-anchored position dot (via MapLibre UserLocation), the drop FAB,
  * and the "within range" card when you're within 50 m of a drop.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -67,6 +67,29 @@ export function MapScreen({ navigation }: Props) {
     }
   }, [status, request]);
 
+  // Secret markers depend only on the drops list — memoize so streaming GPS
+  // fixes (which re-render this screen) don't rebuild every marker and churn
+  // the native map (flicker). Must run before the coord==null early return.
+  const dropMarkers = useMemo(
+    () =>
+      drops.map((secret, i) => (
+        <Marker
+          key={secret.id}
+          id={secret.id}
+          lngLat={[secret.drop.coordinate.lng, secret.drop.coordinate.lat]}
+        >
+          <MapPin
+            deltaY={i % 2 === 0 ? -9 : 9}
+            duration={9000 + i * 1000}
+            onPress={() =>
+              navigation.navigate('SecretDetail', { secretId: secret.id })
+            }
+          />
+        </Marker>
+      )),
+    [drops, navigation],
+  );
+
   // Recenter map on first real fix.
   const centeredRef = useRef(false);
   useEffect(() => {
@@ -99,21 +122,7 @@ export function MapScreen({ navigation }: Props) {
         <Marker id="user-location" lngLat={[coord.lng, coord.lat]}>
           <UserDot />
         </Marker>
-        {drops.map((secret, i) => (
-          <Marker
-            key={secret.id}
-            id={secret.id}
-            lngLat={[secret.drop.coordinate.lng, secret.drop.coordinate.lat]}
-          >
-            <MapPin
-              deltaY={i % 2 === 0 ? -9 : 9}
-              duration={9000 + i * 1000}
-              onPress={() =>
-                navigation.navigate('SecretDetail', { secretId: secret.id })
-              }
-            />
-          </Marker>
-        ))}
+        {dropMarkers}
       </MaplibreView>
 
       <LocChip

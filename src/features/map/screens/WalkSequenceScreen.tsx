@@ -10,7 +10,7 @@
  * Beats are driven by real straight-line GPS distance (haversine) — that, not
  * the route, is what gates the 50 m reveal.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
@@ -166,50 +166,74 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   // pair stays in view as you close in ("fit both, then follow").
   const fittedRef = useRef(false);
   const lastBeatRef = useRef<WalkBeat | null>(null);
+  const { fitBounds } = adapter;
   useEffect(() => {
     if (!coord || !drop) return;
     if (!fittedRef.current || lastBeatRef.current !== beat) {
       fittedRef.current = true;
       lastBeatRef.current = beat;
-      adapter.fitBounds([coord, drop], 96);
+      fitBounds([coord, drop], 96);
     }
-  }, [coord, drop, beat, adapter]);
+  }, [coord, drop, beat, fitBounds]);
+
+  // --- map children, memoized so streaming GPS fixes don't re-upload the
+  // native GeoJSON sources / re-spawn markers (flicker). These hooks must run
+  // before the early return below, so they're null-safe on `drop`.
+
+  // 50 m unlock zone as a real geographic polygon. Depends only on the (stable)
+  // drop, so it never changes identity once the drop is known.
+  const dropLngLat = useMemo<[number, number] | null>(
+    () => (drop ? [drop.lng, drop.lat] : null),
+    [drop],
+  );
+  const zoneFeature = useMemo(() => {
+    if (!drop) return null;
+    const zoneRing = circlePolygon(drop, REVEAL_RADIUS_M).map(c => [c.lng, c.lat]);
+    return {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: { type: 'Polygon' as const, coordinates: [zoneRing] },
+    };
+  }, [drop]);
+
+  // Walking path + footsteps — only when the proxy returned a usable route.
+  // A malformed / empty LineString is treated as no-route — handing one to the
+  // native source crashes.
+  const routeFeature = useMemo(() => {
+    const coords = footRoute?.geometry?.coordinates;
+    if (!footRoute?.available || !Array.isArray(coords) || coords.length < 2) {
+      return null;
+    }
+    return { type: 'Feature' as const, properties: {}, geometry: footRoute.geometry! };
+  }, [footRoute]);
+  // Space footsteps ≥35 m apart, widening on long routes so we never spawn
+  // more than ~40 markers.
+  const footsteps = useMemo(() => {
+    const coords = footRoute?.geometry?.coordinates;
+    if (!footRoute?.available || !Array.isArray(coords) || coords.length < 2) {
+      return { spacing: FOOTSTEP_SPACING_M, steps: [] as ReturnType<typeof samplePathSteps> };
+    }
+    const spacing = Math.max(
+      FOOTSTEP_SPACING_M,
+      Math.round((footRoute.distanceMeters ?? 0) / 40),
+    );
+    const steps = samplePathSteps(
+      coords.map(([lng, lat]) => ({ lat, lng })),
+      spacing,
+    );
+    return { spacing, steps };
+  }, [footRoute]);
 
   // Until the first GPS fix (or if the drop isn't in the store yet), cover the
   // screen with the loader — the native map surface must not mount underneath.
-  if (coord == null || drop == null) {
+  if (coord == null || drop == null || dropLngLat == null || zoneFeature == null) {
     return <MapLoader />;
   }
 
   const distLabel = distM != null ? `${Math.round(distM)} m` : '— m';
-
-  // 50 m unlock zone as a real geographic polygon.
-  const zoneRing = circlePolygon(drop, REVEAL_RADIUS_M).map(c => [c.lng, c.lat]);
-  const zoneFeature = {
-    type: 'Feature' as const,
-    properties: {},
-    geometry: { type: 'Polygon' as const, coordinates: [zoneRing] },
-  };
   const zoneFillOpacity = beat === 'arrived' ? 0.18 : beat === 'range' ? 0.12 : 0.07;
   const zoneLineOpacity = beat === 'approach' ? 0.5 : 0.9;
-
-  // Walking path + footsteps — only when the proxy actually returned a route.
-  const routeAvailable = !!footRoute?.available && footRoute.geometry != null;
-  const routeFeature = routeAvailable
-    ? { type: 'Feature' as const, properties: {}, geometry: footRoute!.geometry! }
-    : null;
-  // Space footsteps ≥35 m apart, widening on long routes so we never spawn
-  // more than ~40 markers.
-  const footstepSpacing = Math.max(
-    FOOTSTEP_SPACING_M,
-    Math.round((footRoute?.distanceMeters ?? 0) / 40),
-  );
-  const footsteps = routeAvailable
-    ? samplePathSteps(
-        footRoute!.geometry!.coordinates.map(([lng, lat]) => ({ lat, lng })),
-        footstepSpacing,
-      )
-    : [];
+  const footstepSpacing = footsteps.spacing;
 
   const status =
     beat === 'approach' ? (
@@ -277,7 +301,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
 
         {/* footsteps along the route — faint ellipses tilted to follow the
             path, glowing solid at the feet and fading toward the target */}
-        {footsteps.map((s, i) => {
+        {footsteps.steps.map((s, i) => {
           const alongDist = (i + 1) * footstepSpacing;
           const lit = alongDist <= STEP_LIT_RANGE_M;
           const opacity = lit ? 1 - 0.45 * (alongDist / STEP_LIT_RANGE_M) : 0.85;
@@ -303,7 +327,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
         </Marker>
 
         {/* the buried secret */}
-        <Marker id="walk-drop" lngLat={[drop.lng, drop.lat]} anchor="center">
+        <Marker id="walk-drop" lngLat={dropLngLat} anchor="center">
           <View style={styles.dropWrap}>
             <PulseRing
               size={48}
@@ -320,13 +344,13 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
 
         {/* "50 m unlock zone" caption, floating above the pin */}
         {beat !== 'arrived' ? (
-          <Marker id="walk-zone-label" lngLat={[drop.lng, drop.lat]} anchor="bottom" offset={[0, -40]}>
+          <Marker id="walk-zone-label" lngLat={dropLngLat} anchor="bottom" offset={[0, -40]}>
             <View style={styles.uzLbl}>
               <Text style={styles.uzLblText}>50 m unlock zone</Text>
             </View>
           </Marker>
         ) : (
-          <Marker id="walk-arrived" lngLat={[drop.lng, drop.lat]} anchor="top" offset={[0, 34]}>
+          <Marker id="walk-arrived" lngLat={dropLngLat} anchor="top" offset={[0, 34]}>
             <Text style={styles.arrived}>you made it!</Text>
           </Marker>
         )}
