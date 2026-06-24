@@ -4047,6 +4047,9 @@ __metadata:
     react-native-vision-camera: "npm:5.0.11"
     react-native-worklets: "npm:^0.9.1"
     react-test-renderer: "npm:19.2.3"
+    reactotron-core-client: "npm:^2.10.0"
+    reactotron-react-native: "npm:^5.2.0"
+    reactotron-react-query: "npm:^2.0.2"
     typescript: "npm:^5.8.3"
     zustand: "npm:^5.0.14"
   languageName: unknown
@@ -8316,6 +8319,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mitt@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "mitt@npm:3.0.1"
+  checksum: 10c0/3ab4fdecf3be8c5255536faa07064d05caa3dd332bd318ff02e04621f7b3069ca1de9106cfe8e7ced675abfc2bec2ce4c4ef321c4a1bb1fb29df8ae090741913
+  languageName: node
+  linkType: hard
+
 "mkdirp@npm:^1.0.4":
   version: 1.0.4
   resolution: "mkdirp@npm:1.0.4"
@@ -9360,6 +9370,45 @@ __metadata:
   version: 19.2.3
   resolution: "react@npm:19.2.3"
   checksum: 10c0/094220b3ba3a76c1b668f972ace1dd15509b157aead1b40391d1c8e657e720c201d9719537375eff08f5e0514748c0319063392a6f000e31303aafc4471f1436
+  languageName: node
+  linkType: hard
+
+"reactotron-core-client@npm:2.10.0, reactotron-core-client@npm:^2.10.0":
+  version: 2.10.0
+  resolution: "reactotron-core-client@npm:2.10.0"
+  dependencies:
+    reactotron-core-contract: "npm:0.4.0"
+  checksum: 10c0/eb6634176564ff5a200e31cc9a5f42669ed621dc88250f970aba405019e6d077e56342ef477ea5a929bf70eaec82607717bf72129caf87491f199f4a2f7c08fb
+  languageName: node
+  linkType: hard
+
+"reactotron-core-contract@npm:0.4.0":
+  version: 0.4.0
+  resolution: "reactotron-core-contract@npm:0.4.0"
+  checksum: 10c0/22ddf3766cd7937f1fd447f1094320a90072b3a0df75ce25917d5899b5ac4221ca62ccf244082c121789bcb2df35f1cfedd9ba083e20ba2a05561cd00f397027
+  languageName: node
+  linkType: hard
+
+"reactotron-react-native@npm:^5.2.0":
+  version: 5.2.0
+  resolution: "reactotron-react-native@npm:5.2.0"
+  dependencies:
+    mitt: "npm:^3.0.1"
+    reactotron-core-client: "npm:2.10.0"
+    reactotron-core-contract: "npm:0.4.0"
+  peerDependencies:
+    react-native: ">=0.40.0"
+  checksum: 10c0/ce0e68c1d5a46e4bf0161427b5f4c8096d7403e0c811d21f2fc2d37f4269c0794441f7b9ea52fb696f80d00e96136b2036ef024faba8531f2d7e4f0e5f4341e0
+  languageName: node
+  linkType: hard
+
+"reactotron-react-query@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "reactotron-react-query@npm:2.0.2"
+  peerDependencies:
+    "@tanstack/react-query": ^5.80.10
+    reactotron-core-client: ^2.9.7
+  checksum: 10c0/8a69e449cb7efa9ac55f171260f92bde90a67e1db2279f1cda43533b53f415d091ed95dd63e676c9c11893cbd82e409a54289e5a8269daf232314a5445a87e65
   languageName: node
   linkType: hard
 

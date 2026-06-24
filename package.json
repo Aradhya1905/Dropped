@@ -11,6 +11,7 @@
     "start-auto": "node scripts/start-metro.js",
     "test": "jest",
     "adb-reverse": "adb reverse tcp:8086 tcp:8086",
+    "adb-reactotron": "adb reverse tcp:9090 tcp:9090",
     "adb-reverse_NothingPhone": "adb -s 001206481004686 reverse tcp:8086 tcp:8086",
     "adb-reverse_Samsung": "adb -s RZ8M31LX0QY reverse tcp:8086 tcp:8086",
     "android-dev": "yarn android --active-arch-only",
@@ -80,6 +81,9 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.2.3",
+    "reactotron-core-client": "^2.10.0",
+    "reactotron-react-native": "^5.2.0",
+    "reactotron-react-query": "^2.0.2",
     "typescript": "^5.8.3"
   },
   "engines": {
