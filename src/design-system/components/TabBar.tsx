@@ -59,6 +59,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paperCard,
     borderTopWidth: 1,
     borderTopColor: colors.lineSoft,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
   },
   tab: { flex: 1, alignItems: 'center', gap: 5, marginTop: 7 },
   tabPressed: { opacity: 0.6 },
