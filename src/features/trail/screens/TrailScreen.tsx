@@ -2,9 +2,11 @@
  * 10 Your trail — the collected scrapbook: torn-receipt stats,
  * found/saved/dropped tabs, and the feed of secrets you've stood inside.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
@@ -28,7 +30,14 @@ function _relTime(ms: number): string {
 
 export function TrailScreen() {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<'found' | 'saved' | 'dropped'>('found');
+
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['trail'] });
+    }, [queryClient]),
+  );
 
   const found = useTrailFound();
   const saved = useTrailSaved();

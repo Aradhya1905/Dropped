@@ -22,6 +22,8 @@ export function useNearbyDrops(coord: Coordinate | null) {
     queryFn: () => getNearbyDrops(coord!.lat, coord!.lng).then(ss => ss.map(apiSecretToSecret)),
     enabled: coord != null,
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    // No time-based polling: refetch on screen focus and whenever the user
+    // crosses into a new ~33 m grid cell (the query key changes). Standing
+    // still reading a secret shouldn't churn the network or battery.
   });
 }

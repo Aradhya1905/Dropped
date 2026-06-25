@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useDropsStore } from '../../../store/dropsStore';
 import { apiSecretToSecret } from '../../../services/api/mappers';
@@ -11,6 +11,7 @@ const DEV_COORD = __DEV__ ? { lat: 12.9716, lng: 77.5946 } : null;
 export function useReveal() {
   const upsert = useDropsStore(s => s.upsertDrop);
   const { coord: liveCoord } = useDeviceLocation();
+  const queryClient = useQueryClient();
 
   // In dev, fall back to a fake coord so the button is never permanently disabled.
   const coord = liveCoord ?? DEV_COORD;
@@ -20,7 +21,10 @@ export function useReveal() {
       if (!coord) return Promise.reject(new Error('No location'));
       return postReveal(id, coord).then(apiSecretToSecret);
     },
-    onSuccess: secret => upsert(secret),
+    onSuccess: secret => {
+      upsert(secret);
+      queryClient.invalidateQueries({ queryKey: ['trail'] });
+    },
   });
 
   return {

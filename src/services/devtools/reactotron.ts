@@ -1,53 +1,64 @@
 /**
- * Reactotron — dev-only debugging bridge to the Reactotron desktop app.
+ * Reactotron — dev-only debugging bridge.
  *
- * Wired up in `index.js` behind an `if (__DEV__) require(...)`, so this file and
- * its devDependencies are dead-code-eliminated from release bundles. Gives us:
- *   • a network timeline (all axios/XHR traffic),
- *   • a React Query cache + query inspector (`reactotron-react-query`),
- *   • a Zustand state timeline (see `store/withReactotron.ts`),
- *   • Dropped-specific custom commands (buttons in the Reactotron sidebar).
+ * What's tracked:
+ *   • Console logs / warns / errors (built-in to useReactNative)
+ *   • Network calls via axios/XHR (built-in networking plugin)
+ *   • MMKV storage writes (via onMmkvChange listener below)
+ *
+ * What's NOT tracked (intentionally removed):
+ *   • React Query cache state (reactotron-react-query removed)
+ *   • Zustand state changes (withReactotron middleware removed from stores)
  *
  * Connecting (Android): open the Reactotron desktop app, then run
  * `yarn adb-reactotron` so the device can reach the desktop on port 9090.
  */
 import Reactotron from 'reactotron-react-native';
-import {
-  QueryClientManager,
-  reactotronReactQuery,
-} from 'reactotron-react-query';
 
 import { queryClient } from '../../app/queryClient';
 import { useDropsStore } from '../../store';
 import { forceTestCrash } from '../analytics';
-import { clearAll, getDeviceId } from '../storage';
+import { clearAll, getDeviceId, getMmkvRaw, onMmkvChange } from '../storage';
 
-const queryClientManager = new QueryClientManager({ queryClient });
-
-const reactotron = Reactotron.configure({
-  name: 'Dropped',
-  onDisconnect: () => queryClientManager.unsubscribe(),
-})
+const reactotron = Reactotron.configure({ name: 'Dropped' })
   .useReactNative({
-    // MMKV is our storage, not AsyncStorage — don't load that plugin.
     asyncStorage: false,
     networking: {
       // Keep map tiles, glyph fonts and symbolicate noise out of the timeline.
       ignoreUrls: /symbolicate|\.(png|jpg|jpeg|pbf|mvt|pmtiles|ttf|otf)(\?|$)/,
     },
   })
-  .use(reactotronReactQuery(queryClientManager))
   .connect();
 
 // Fresh log on every Metro reload.
 reactotron.clear?.();
 
-// Expose the instance: the Zustand middleware reads this global, and it lets you
-// poke `console.tron.log(...)` from anywhere while debugging.
+// ── MMKV storage tracking ─────────────────────────────────────────────────────
+
+onMmkvChange(key => {
+  const raw = getMmkvRaw(key);
+  let value: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      value = raw;
+    }
+  }
+  reactotron.display({
+    name: 'MMKV',
+    preview: key,
+    value: { key, value },
+  });
+});
+
+// ── Global access ─────────────────────────────────────────────────────────────
+
+// Expose the instance so you can call `console.tron.log(...)` anywhere in debug.
 (globalThis as { __DROPPED_TRON__?: unknown }).__DROPPED_TRON__ = reactotron;
 (console as { tron?: unknown }).tron = reactotron;
 
-// ── Dropped-specific custom commands ─────────────────────────────────────────
+// ── Custom commands ───────────────────────────────────────────────────────────
 
 reactotron.onCustomCommand({
   command: 'Log device id',

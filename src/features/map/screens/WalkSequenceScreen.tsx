@@ -344,13 +344,13 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
 
         {/* "50 m unlock zone" caption, floating above the pin */}
         {beat !== 'arrived' ? (
-          <Marker id="walk-zone-label" lngLat={dropLngLat} anchor="bottom" offset={[0, -40]}>
+          <Marker key="walk-zone-label" id="walk-zone-label" lngLat={dropLngLat} anchor="bottom" offset={[0, -40]}>
             <View style={styles.uzLbl}>
               <Text style={styles.uzLblText}>50 m unlock zone</Text>
             </View>
           </Marker>
         ) : (
-          <Marker id="walk-arrived" lngLat={dropLngLat} anchor="top" offset={[0, 34]}>
+          <Marker key="walk-arrived" id="walk-arrived" lngLat={dropLngLat} anchor="top" offset={[0, 34]}>
             <Text style={styles.arrived}>you made it!</Text>
           </Marker>
         )}

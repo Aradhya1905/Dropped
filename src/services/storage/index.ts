@@ -165,3 +165,15 @@ export function setStepState(state: StepState): void {
 export function clearAll(): void {
   mmkv.clearAll();
 }
+
+/** Dev tooling: subscribe to any MMKV write. Returns a remove handle. */
+export function onMmkvChange(
+  listener: (key: string) => void,
+): { remove: () => void } {
+  return mmkv.addOnValueChangedListener(listener);
+}
+
+/** Dev tooling: read a raw MMKV value as a string (returns undefined if not set or boolean). */
+export function getMmkvRaw(key: string): string | boolean | number | undefined {
+  return mmkv.getString(key) ?? mmkv.getBoolean(key) ?? mmkv.getNumber(key);
+}

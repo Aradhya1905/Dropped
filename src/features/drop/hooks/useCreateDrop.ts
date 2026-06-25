@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { Coordinate, Mood, Secret } from '../../../types';
 import type { ApiError } from '../../../services/api';
@@ -16,11 +16,15 @@ interface CreateDropParams {
 
 export function useCreateDrop() {
   const upsert = useDropsStore(s => s.upsertDrop);
+  const queryClient = useQueryClient();
 
   const mutation = useMutation<Secret, ApiError, CreateDropParams>({
     mutationFn: params =>
       postDrop(params.body, params.mood, params.coordinate, params.placeLabel, params.city).then(apiSecretToSecret),
-    onSuccess: secret => upsert(secret),
+    onSuccess: secret => {
+      upsert(secret);
+      queryClient.invalidateQueries({ queryKey: ['trail'] });
+    },
   });
 
   return {
