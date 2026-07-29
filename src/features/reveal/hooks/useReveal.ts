@@ -24,6 +24,8 @@ export function useReveal() {
     onSuccess: secret => {
       upsert(secret);
       queryClient.invalidateQueries({ queryKey: ['trail'] });
+      // Keep the map pins in sync with the new revealed state.
+      queryClient.invalidateQueries({ queryKey: ['drops', 'nearby'] });
     },
   });
 

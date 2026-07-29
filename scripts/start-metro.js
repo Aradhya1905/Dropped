@@ -3,13 +3,18 @@
  *
  * Order of port selection:
  *   1. --port <n> / -p <n> CLI arg, or RCT_METRO_PORT / PORT env var (preferred port)
- *   2. defaults to 8085
+ *   2. scripts/metro-defaults.json "port" field (per-project/per-checkout default,
+ *      not committed upstream so each project clone can set its own)
+ *   3. defaults to 8086
  * If the preferred port is busy, scans upward until a free one is found.
  *
  * Usage:
- *   node scripts/start-metro.js            -> tries 8085, then 8086, 8087...
+ *   yarn start                             -> uses metro-defaults.json, falls back to 8086
  *   node scripts/start-metro.js -p 8086    -> tries 8086, then 8087...
- *   yarn start-free                        -> tries 8086 first (see package.json)
+ *
+ * Per-project default:
+ *   Copy scripts/metro-defaults.example.json to scripts/metro-defaults.json
+ *   and set "port" to whatever this project/checkout should default to.
  */
 
 const net = require('net');
@@ -20,6 +25,17 @@ const { spawn } = require('child_process');
 const MAX_ATTEMPTS = 20;
 const DEFAULT_PORT = 8086;
 const PORT_FILE = path.join(__dirname, '.metro-port');
+const DEFAULTS_FILE = path.join(__dirname, 'metro-defaults.json');
+
+function readProjectDefaultPort() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(DEFAULTS_FILE, 'utf8'));
+    const port = parseInt(raw.port, 10);
+    return Number.isNaN(port) ? null : port;
+  } catch {
+    return null;
+  }
+}
 
 function parsePreferredPort() {
   const args = process.argv.slice(2);
@@ -34,6 +50,10 @@ function parsePreferredPort() {
   const envPort = process.env.RCT_METRO_PORT || process.env.PORT;
   if (envPort) {
     return parseInt(envPort, 10);
+  }
+  const projectDefault = readProjectDefaultPort();
+  if (projectDefault) {
+    return projectDefault;
   }
   return DEFAULT_PORT;
 }

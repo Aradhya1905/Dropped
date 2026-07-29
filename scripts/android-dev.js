@@ -5,7 +5,7 @@
  *   - adb reverse tcp:8085 tcp:<metroPort>  (device still asks for 8085, host forwards)
  *   - react-native run-android --active-arch-only --port <metroPort>
  *
- * Run `yarn start-free` (or start-auto) in another terminal first.
+ * Run `yarn start` in another terminal first.
  */
 
 const fs = require('fs');
@@ -78,7 +78,7 @@ const port = readMetroPort();
 if (port === null) {
   console.error(
     '\nNo Metro port found (scripts/.metro-port missing).\n' +
-      'Start Metro first in another terminal:  yarn start-free\n',
+      'Start Metro first in another terminal:  yarn start\n',
   );
   process.exit(1);
 }
@@ -104,7 +104,7 @@ const runArgs = [
   'react-native',
   'run-android',
   '--active-arch-only',
-  // Metro is already running (yarn start-free) on this port. Without
+  // Metro is already running (yarn start) on this port. Without
   // --no-packager, run-android tries to launch its own packager on --port,
   // collides with the running one, and prompts to bump the port (breaking the
   // adb reverse forwarding set up above). The app fetches the bundle on the

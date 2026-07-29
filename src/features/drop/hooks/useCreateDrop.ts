@@ -24,6 +24,10 @@ export function useCreateDrop() {
     onSuccess: secret => {
       upsert(secret);
       queryClient.invalidateQueries({ queryKey: ['trail'] });
+      // The new drop must show up on the map right away — without this the
+      // nearby query keeps serving its cached (30 s staleTime) list and the
+      // pin only appears after an app restart.
+      queryClient.invalidateQueries({ queryKey: ['drops', 'nearby'] });
     },
   });
 

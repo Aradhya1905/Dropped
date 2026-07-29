@@ -3,9 +3,10 @@
  * your geo-anchored position dot (via MapLibre UserLocation), the drop FAB,
  * and the "within range" card when you're within 50 m of a drop.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -49,7 +50,7 @@ export function MapScreen({ navigation }: Props) {
   // flashes (the map only mounts once we have a fix — see the guard below).
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
     useMaplibreAdapter(coord ?? undefined);
-  const { data: drops = [] } = useNearbyDrops(coord);
+  const { data: drops = [], refetch: refetchDrops } = useNearbyDrops(coord);
   const upsertDrop = useDropsStore(s => s.upsertDrop);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
 
@@ -57,6 +58,15 @@ export function MapScreen({ navigation }: Props) {
   useEffect(() => {
     drops.forEach(s => upsertDrop(s));
   }, [drops, upsertDrop]);
+
+  // RN has no window-focus events, so react-query never refetches on its own
+  // when we come back from the composer/reveal flow. Pull the list again on
+  // screen focus so a fresh drop shows up without an app restart.
+  useFocusEffect(
+    useCallback(() => {
+      refetchDrops();
+    }, [refetchDrops]),
+  );
 
   // The context auto-starts the live watch when permission is already held.
   // This is the cold-start guard: if we land here without a grant (skipped or
