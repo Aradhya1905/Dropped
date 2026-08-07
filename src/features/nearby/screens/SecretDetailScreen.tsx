@@ -2,8 +2,13 @@
  * 05 Walk closer — a sealed secret too far to read: compass, distance,
  * address tag, blurred preview, and the "walk here to unlock" CTA, all on a
  * sheet over the blurred map.
+ *
+ * Inside the whisper band (150–50 m) the blurred placeholder gives way to the
+ * secret's mood and its first few words — the hook that's supposed to make you
+ * walk the last two blocks. The teaser is only ever what the server sent; the
+ * body still doesn't exist on this device until a verified reveal.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -20,10 +25,11 @@ import {
   Sheet,
 } from '../../../design-system/components';
 import { PinIcon, WalkIcon } from '../../../design-system/icons';
-import { colors, fonts, shadows } from '../../../design-system/tokens';
+import { colors, fonts, moodColor, shadows } from '../../../design-system/tokens';
 import { Compass } from '../components/Compass';
 import { useDropsStore } from '../../../store/dropsStore';
-import { useDeviceLocation } from '../../map/hooks';
+import { useDeviceLocation, useNearbyDrops } from '../../map/hooks';
+import { WHISPER_RADIUS_M } from '../../../types';
 import { haversineMeters, bearingTo } from '../../../utils/geo';
 import { fadesInLabel } from '../../../utils/expiry';
 import { useCompassHeading } from '../../../services/location/useCompassHeading';
@@ -49,6 +55,16 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   const { secretId } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   const { coord } = useDeviceLocation();
+
+  // Same query key as the map's, so this costs nothing while you stand still
+  // and refetches when you cross a ~33 m grid cell. Without it the whisper on
+  // this screen would be frozen at whatever the map last fetched — and this is
+  // the screen you're looking at *while* you close the distance.
+  const { data: fresh } = useNearbyDrops(coord);
+  const upsertDrop = useDropsStore(s => s.upsertDrop);
+  useEffect(() => {
+    fresh?.forEach(s => upsertDrop(s));
+  }, [fresh, upsertDrop]);
 
   const deviceHeading = useCompassHeading();
 
@@ -77,6 +93,17 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   // null for a drop that lives forever — this screen then reads exactly as it
   // did before expiring drops existed.
   const fadesLabel = fadesInLabel(secret?.expiresAt);
+
+  // The client's own half of the 150 m line: the server decides what to send,
+  // this decides what to show. Latched once heard — GPS jitter on the boundary
+  // must not make a whisper blink in and out, and there's nothing to take back
+  // once you've read it.
+  const heardRef = useRef(false);
+  if (distM != null && distM <= WHISPER_RADIUS_M) {
+    heardRef.current = true;
+  }
+  const whisper = heardRef.current ? secret?.whisper : undefined;
+  const whisperInk = moodColor(whisper?.mood).ink;
 
   return (
     <PaperScreen>
@@ -119,10 +146,27 @@ export function SecretDetailScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.previewNote}>
-            <Text style={styles.previewHand}>
-              {'Something was left here. '}
-              <Text style={styles.previewBlur}>Walk close enough and it will open.</Text>
-            </Text>
+            {whisper ? (
+              // Close enough to hear it, not close enough to read it. The
+              // teaser is the server's — capped, cut on a word boundary, and
+              // never the whole confession.
+              <>
+                <Text style={[styles.whisperKicker, { color: whisperInk }]}>
+                  you can almost hear it
+                </Text>
+                <Text style={[styles.previewHand, { color: whisperInk }]}>
+                  {`“${whisper.teaser}”`}
+                </Text>
+                <Text style={styles.previewHand}>
+                  <Text style={styles.previewBlur}>The rest opens at 50 m.</Text>
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.previewHand}>
+                {'Something was left here. '}
+                <Text style={styles.previewBlur}>Walk close enough and it will open.</Text>
+              </Text>
+            )}
             {(secret?.replyCount ?? 0) > 0 && (
               // The count is public; the replies themselves are not. Knowing
               // people answered here is the pull — reading them still costs a walk.
@@ -135,7 +179,9 @@ export function SecretDetailScreen({ navigation, route }: Props) {
               <Svg width={11} height={11} viewBox="0 0 16 16" fill="none">
                 <Path d="M5 7V5a3 3 0 0 1 6 0v2M4 7h8v5H4z" stroke={colors.accentDeep} strokeWidth={1.5} />
               </Svg>
-              <Text style={styles.sealRowText}>sealed · walk here to read</Text>
+              <Text style={styles.sealRowText}>
+                {whisper ? 'whispering · walk here to read' : 'sealed · walk here to read'}
+              </Text>
             </View>
             {/*
               The reason to walk today rather than some day. Sits under the
@@ -230,6 +276,13 @@ const styles = StyleSheet.create({
     fontSize: 19,
     lineHeight: 19 * 1.2,
     color: colors.ink,
+  },
+  whisperKicker: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 8.5,
+    letterSpacing: 8.5 * 0.2,
+    textTransform: 'uppercase',
+    marginBottom: 5,
   },
   previewBlur: {
     color: 'transparent',

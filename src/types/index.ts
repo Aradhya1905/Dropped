@@ -22,6 +22,17 @@ export interface Drop {
 
 export type Mood = 'joy' | 'ache' | 'trouble' | 'wonder';
 
+/**
+ * What a sealed secret gives away while you're inside the whisper band: its
+ * mood and the first word or two. Server-computed and server-gated — the body
+ * is never on the wire until a verified reveal, so the client can only ever
+ * show what it was sent.
+ */
+export interface Whisper {
+  mood: Mood;
+  teaser: string;
+}
+
 /** The anonymous confession itself, tied to one drop. */
 export interface Secret {
   id: string;
@@ -46,6 +57,11 @@ export interface Secret {
    * before expiring drops shipped carries.
    */
   expiresAt?: number;
+  /**
+   * Mood + teaser, present only on a sealed drop the server judged to be inside
+   * the whisper band. Absent = you're too far to hear anything.
+   */
+  whisper?: Whisper;
 }
 
 /** The lifespans an author may pick in the composer. `undefined` = forever. */
@@ -78,3 +94,17 @@ export type RevealState = 'locked' | 'near' | 'revealed';
 
 /** Default unlock radius in meters. */
 export const REVEAL_RADIUS_M = 50;
+
+/**
+ * Outer edge of the whisper band, in meters. Between this and
+ * {@link REVEAL_RADIUS_M} a sealed drop gives up its mood and a few words.
+ *
+ * The server has its own `WHISPER_RADIUS_M` (env-tunable) and decides what to
+ * *send*; this decides what to *show*. They're expected to agree on 150, and
+ * the client guard is belt-and-braces: showing a whisper the server didn't send
+ * is impossible, and hiding one it did send is merely conservative.
+ *
+ * `useWarmth` derives its `far` band from this, so the whisper appearing and
+ * the haptic pulse quickening land at the same step.
+ */
+export const WHISPER_RADIUS_M = 150;

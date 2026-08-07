@@ -106,6 +106,33 @@ describe('reply mapping', () => {
     expect(apiSecretToSecret(apiSecret).expiresAt).toBeUndefined();
   });
 
+  it('carries a whisper through apiSecretToSecret', () => {
+    const whispering = {
+      ...apiSecret,
+      whisper: { mood: 'ache' as const, teaser: 'I never told…' },
+    };
+    expect(apiSecretToSecret(whispering).whisper).toEqual({
+      mood: 'ache',
+      teaser: 'I never told…',
+    });
+  });
+
+  it('leaves whisper undefined when the server sent none', () => {
+    // Absent means "too far to hear it" (or a server predating the whisper
+    // tier). Either way the UI must read it as plain undefined, not as empty.
+    expect(apiSecretToSecret(apiSecret).whisper).toBeUndefined();
+  });
+
+  it('never invents a body from a whisper', () => {
+    // The teaser is the only content that leaves the 50 m gate. A sealed
+    // secret stays bodiless on this device no matter what it whispers.
+    const whispering = {
+      ...apiSecret,
+      whisper: { mood: 'ache' as const, teaser: 'I never told…' },
+    };
+    expect(apiSecretToSecret(whispering).body).toBeUndefined();
+  });
+
   it('never carries author identity on a reply', () => {
     const wire: ApiReply = {
       id: 'r1',

@@ -11,7 +11,7 @@ import axios, {
 } from 'axios';
 
 import { getDeviceId } from '../storage';
-import type { Coordinate, ExpiresInDays, Mood } from '../../types';
+import type { Coordinate, ExpiresInDays, Mood, Whisper } from '../../types';
 
 // Dev server — update to prod URL before release
 export const DROPPED_API_URL = 'https://droppeddev.duckdns.org';
@@ -114,6 +114,11 @@ export interface ApiSecret {
   distanceMeters?: number;
   /** ms epoch when the drop fades. Absent = forever. */
   expiresAt?: number;
+  /**
+   * Mood + a short teaser, sent only for a sealed drop inside the whisper band.
+   * Never arrives alongside `body` — by then there is nothing left to whisper.
+   */
+  whisper?: Whisper;
 }
 
 /**

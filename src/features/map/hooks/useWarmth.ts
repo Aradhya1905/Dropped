@@ -16,12 +16,16 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { trigger, type HapticKind } from '../../../services/haptics';
-import { REVEAL_RADIUS_M } from '../../../types';
+import { REVEAL_RADIUS_M, WHISPER_RADIUS_M } from '../../../types';
 
 /** Beyond this you get nothing — the secret isn't "near" in any useful sense. */
 export const WARMTH_COLD_M = 200;
-/** First contact: a slow, faint thump. Also the walk's "in range" line. */
-export const WARMTH_FAR_M = 150;
+/**
+ * First contact: a slow, faint thump. Also the walk's "in range" line, and the
+ * line the whisper appears on — one constant so the buzz, the beat and the
+ * teaser can't drift apart.
+ */
+export const WARMTH_FAR_M = WHISPER_RADIUS_M;
 /** Quickening. Also how far along the route footsteps stay lit. */
 export const WARMTH_WARM_M = 70;
 /** Inside this you've unlocked it; the reveal owns the feel from here. */

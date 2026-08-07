@@ -22,7 +22,7 @@ all wired end to end.
 | [02](02-warmth-haptics.md) | Warmth haptics on approach | client only | S | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-02-warmth-haptics.md) |
 | [03](03-replies-in-place.md) | Replies in place | backend + client | L | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-03-replies-in-place.md) |
 | [04](04-expiring-drops.md) | Expiring drops | backend + client | S | **built** (visual device QA owed) | [plan](../.claude/plans/2026-08-07-04-expiring-drops.md) |
-| [05](05-whisper-tier.md) | Whisper tier (three-stage reveal) | backend + client | M | todo | [plan](../.claude/plans/2026-08-07-05-whisper-tier.md) |
+| [05](05-whisper-tier.md) | Whisper tier (three-stage reveal) | backend + client | M | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-05-whisper-tier.md) |
 | [06](06-mood-filter.md) | Mood filter + mood-tinted pins | backend + client | S | todo | [plan](../.claude/plans/2026-08-07-06-mood-filter.md) |
 | [07](07-share-a-spot.md) | Share-a-spot deep link | backend + client | M | todo | [plan](../.claude/plans/2026-08-07-07-share-a-spot.md) |
 | [08](08-anniversary-echo.md) | Anniversary echo | backend + client | M | todo | [plan](../.claude/plans/2026-08-07-08-anniversary-echo.md) |

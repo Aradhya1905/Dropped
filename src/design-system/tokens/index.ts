@@ -1,5 +1,7 @@
 export { colors } from './colors';
 export type { ColorToken } from './colors';
+export { moodColor, moodColors } from './mood';
+export type { MoodColor } from './mood';
 export { typography, fonts, textStyles, fontSize, lineHeight, letterSpacing } from './typography';
 export type { FontToken } from './typography';
 export { spacing } from './spacing';

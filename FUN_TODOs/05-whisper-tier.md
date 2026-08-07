@@ -1,7 +1,8 @@
 # 05 — Whisper tier (three-stage reveal)
 
-**Effort:** M · **Where:** backend + client · **Status:** todo
+**Effort:** M · **Where:** backend + client · **Status:** built — device QA owed
 **Plan:** [2026-08-07-05-whisper-tier.md](../.claude/plans/2026-08-07-05-whisper-tier.md)
+(the plan's "As built" section records where the shipped code differs from it)
 
 ## What
 

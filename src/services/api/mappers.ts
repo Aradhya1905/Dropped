@@ -26,6 +26,9 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     // Absent stays absent: a drop with no expiry lives forever, and the UI
     // reads `undefined` as "no countdown" rather than needing a sentinel.
     expiresAt: s.expiresAt,
+    // Likewise absent = out of the whisper band (or a server that predates the
+    // whisper tier). The UI reads `undefined` as "you're too far to hear it".
+    whisper: s.whisper,
   };
 }
 

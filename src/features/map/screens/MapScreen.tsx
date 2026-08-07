@@ -34,6 +34,7 @@ import { MapLoader } from '../components/MapLoader';
 import { RangeCard } from '../components/RangeCard';
 import { LayerSheet } from '../components/LayerSheet';
 import { isWithin } from '../../../utils/geo';
+import { WHISPER_RADIUS_M } from '../../../types';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MapStackParamList, 'MapHome'>,
@@ -80,6 +81,12 @@ export function MapScreen({ navigation }: Props) {
   // Secret markers depend only on the drops list — memoize so streaming GPS
   // fixes (which re-render this screen) don't rebuild every marker and churn
   // the native map (flicker). Must run before the coord==null early return.
+  //
+  // Whisper visibility is deliberately keyed off the server's own
+  // `distanceMeters` from the same response, not off the live fix: the server
+  // decides what to send, we decide what to show, and both read 150 m from the
+  // one snapshot. Re-deriving it per GPS fix would rebuild every marker a few
+  // times a second and make the whole map flicker.
   const dropMarkers = useMemo(
     () =>
       drops.map((secret, i) => (
@@ -93,6 +100,11 @@ export function MapScreen({ navigation }: Props) {
             duration={9000 + i * 1000}
             replyCount={secret.replyCount}
             expiresAt={secret.expiresAt}
+            whisper={
+              (secret.distanceMeters ?? Infinity) <= WHISPER_RADIUS_M
+                ? secret.whisper
+                : undefined
+            }
             onPress={() =>
               navigation.navigate('SecretDetail', { secretId: secret.id })
             }
