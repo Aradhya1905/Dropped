@@ -22,7 +22,8 @@ export interface Drop {
    * without reverse geocoding.
    *
    * Coarser than {@link placeLabel} and therefore the safer of the two: it is
-   * what groups a trail into one constellation per city.
+   * what groups a trail into one constellation per city, and what lets a wax
+   * seal say "your first one here" without knowing which bench.
    */
   city?: string;
   /** ms epoch. */

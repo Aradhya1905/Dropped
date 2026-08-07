@@ -17,6 +17,7 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
       placeLabel: s.drop.placeLabel,
       // Absent stays absent: a drop whose author never resolved a city belongs
       // to no constellation, which is different from belonging to one called "".
+      // The seal derivation reads it the same way — no city, no new-city find.
       city: s.drop.city,
       createdAt: s.drop.createdAt,
     },

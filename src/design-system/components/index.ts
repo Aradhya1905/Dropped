@@ -3,7 +3,7 @@ export type { PulseRingProps } from './anim';
 export { PaperScreen } from './PaperScreen';
 export { MapTexture } from './MapTexture';
 export { WaxSeal } from './WaxSeal';
-export type { WaxSealProps } from './WaxSeal';
+export type { SealMotif, WaxSealProps } from './WaxSeal';
 export { Tape } from './Tape';
 export { AppButton } from './AppButton';
 export type { AppButtonProps } from './AppButton';

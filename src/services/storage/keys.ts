@@ -14,6 +14,7 @@ export const StorageKeys = {
   accurateCompass: 'settings.accurateCompass',
   mutedEchoIds: 'echo.muted',
   echoCache: 'echo.cache',
+  seals: 'trail.seals',
 } as const;
 
 /**
@@ -101,6 +102,37 @@ export interface EchoMemo {
   placeLabel?: string;
   mood: string;
 }
+
+/**
+ * A collected wax seal, exactly as it was pressed.
+ *
+ * Written **once**, at reveal time, and never rewritten — that is the whole
+ * contract of the collection (see `features/trail/seals/derive.ts`). Note what
+ * isn't here: no body, no coordinate. A seal remembers that you stood
+ * somewhere, not what was said there or precisely where.
+ */
+export interface StoredSeal {
+  motif: 'plain' | 'first' | 'worn' | 'city';
+  /** The mood the wax is tinted with. */
+  tint: string;
+  night: boolean;
+  /** Stamped on the seal. Only set for a `city` motif. */
+  cityLabel?: string;
+  /**
+   * The drop's city, kept whichever motif won, so "is this a new city?" stays
+   * answerable after a first-finder seal has already been pressed there.
+   */
+  city?: string;
+  /** ms epoch of the reveal — the grid's sort order. */
+  at: number;
+}
+
+/**
+ * Cap on remembered seals. A reveal is a walk, so 5k of them is a lifetime of
+ * this app; past that the oldest are dropped rather than letting one MMKV
+ * string grow forever. Same discipline as {@link FOG_CELL_CAP}.
+ */
+export const SEAL_CAP = 5_000;
 
 /**
  * The last echo check: where, when, and what came back.

@@ -16,11 +16,13 @@ import {
   DEFAULT_NOTIFICATION_MODE,
   EMPTY_STEP_STATE,
   FOG_CELL_CAP,
+  SEAL_CAP,
   StorageKeys,
   type EchoCache,
   type MapStyle,
   type NotificationMode,
   type StepState,
+  type StoredSeal,
 } from './keys';
 
 export type {
@@ -29,8 +31,9 @@ export type {
   MapStyle,
   NotificationMode,
   StepState,
+  StoredSeal,
 } from './keys';
-export { FOG_CELL_CAP } from './keys';
+export { FOG_CELL_CAP, SEAL_CAP } from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
 
@@ -348,6 +351,73 @@ export function onWalkedCellsChange(listener: () => void): { remove: () => void 
   return mmkv.addOnValueChangedListener(key => {
     if (key === StorageKeys.walkedCells) listener();
   });
+}
+
+// --- collected wax seals -----------------------------------------------------
+
+/**
+ * Every seal this device has pressed, keyed by secret id.
+ *
+ * Dumb storage on purpose: nothing here derives a seal. The derive-once rule
+ * lives one layer up in `features/trail/seals`, which is the only caller that
+ * should ever reach {@link putSeal} — see that module for why a seal must never
+ * be recomputed.
+ */
+export function getSeals(): Record<string, StoredSeal> {
+  const stored = getJSON<unknown>(StorageKeys.seals, {});
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
+    return {};
+  }
+  return stored as Record<string, StoredSeal>;
+}
+
+export function getSeal(secretId: string): StoredSeal | null {
+  return getSeals()[secretId] ?? null;
+}
+
+/**
+ * Write a seal. **Never overwrites an existing one** — the immutability of a
+ * pressed seal is enforced here as well as by its single caller, because a
+ * silent overwrite is exactly the bug that would be impossible to notice.
+ */
+export function putSeal(secretId: string, seal: StoredSeal): void {
+  const seals = getSeals();
+  if (seals[secretId]) {
+    return;
+  }
+  seals[secretId] = seal;
+
+  const ids = Object.keys(seals);
+  if (ids.length > SEAL_CAP) {
+    // Oldest reveal first; a missing `at` sorts as oldest and gets evicted.
+    const doomed = ids
+      .sort((a, b) => (seals[a].at ?? 0) - (seals[b].at ?? 0))
+      .slice(0, ids.length - SEAL_CAP);
+    for (const id of doomed) {
+      delete seals[id];
+    }
+  }
+  setJSON(StorageKeys.seals, seals);
+}
+
+/**
+ * Cities this device has already stamped a seal in. Backs the "new city" motif,
+ * which is why it reads `city` (recorded on every seal) rather than `cityLabel`
+ * (only set when the city motif actually won).
+ */
+export function getSealCities(): string[] {
+  const cities = new Set<string>();
+  for (const seal of Object.values(getSeals())) {
+    if (seal.city) {
+      cities.add(seal.city);
+    }
+  }
+  return [...cities];
+}
+
+/** Forget the collection (settings wipe / rollback). */
+export function clearSeals(): void {
+  mmkv.remove(StorageKeys.seals);
 }
 
 /** Test/escape hatch: wipe everything. */

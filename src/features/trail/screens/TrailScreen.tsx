@@ -18,6 +18,7 @@ import { useDropsStore } from '../../../store/dropsStore';
 import { ConstellationCard } from '../components/ConstellationCard';
 import { FogHeader } from '../components/FogHeader';
 import { Receipt } from '../components/Receipt';
+import { SealGrid } from '../components/SealGrid';
 import { TrailCard } from '../components/TrailCard';
 import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
 import { fadesInLabel, isExpired } from '../../../utils/expiry';
@@ -33,6 +34,9 @@ export function TrailScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<'found' | 'saved' | 'dropped'>('found');
+  // Two ways to look at the same page: the pasted-in cards, or the sheet of
+  // seals you pressed getting them.
+  const [view, setView] = useState<'cards' | 'seals'>('cards');
 
   // The scrapbook is where a memory belongs, so this is the other half of the
   // Map's echo card — same hook, same once-a-day-per-250 m discipline, same
@@ -42,11 +46,12 @@ export function TrailScreen() {
   const knownDrops = useDropsStore(s => s.drops);
 
   /**
-   * Open what an echo is about: straight to the secret when this device has
-   * already revealed it (its body is in the store), otherwise to the sealed
-   * screen — an anniversary is never a shortcut past the 50 m walk.
+   * Open a secret from anywhere on this page: straight to it when this device
+   * has already revealed it (its body is in the store), otherwise to the sealed
+   * screen. Neither an anniversary nor a collected seal is a shortcut past the
+   * 50 m walk.
    */
-  const openEcho = (secretId: string) => {
+  const openSecret = (secretId: string) => {
     const known = knownDrops.find(d => d.id === secretId);
     navigation.navigate(known?.body ? 'Secret' : 'SecretDetail', { secretId });
   };
@@ -116,7 +121,7 @@ export function TrailScreen() {
               <EchoCard
                 key={echo.secretId}
                 echo={echo}
-                onPress={() => openEcho(echo.secretId)}
+                onPress={() => openSecret(echo.secretId)}
                 onMute={() => muteEcho(echo.secretId)}
               />
             ))}
@@ -139,6 +144,14 @@ export function TrailScreen() {
           })}
         </View>
 
+        <View style={styles.views}>
+          {(['cards', 'seals'] as const).map(v => (
+            <Pressable key={v} onPress={() => setView(v)} hitSlop={8}>
+              <Text style={[styles.viewText, v === view && styles.viewTextOn]}>{v}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         <ScrollView
           style={styles.feed}
           contentContainerStyle={styles.feedContent}
@@ -146,6 +159,16 @@ export function TrailScreen() {
         >
           {isLoading ? (
             <ActivityIndicator color={colors.accent} style={styles.loader} />
+          ) : view === 'seals' ? (
+            <SealGrid
+              secrets={activeSecrets}
+              onPress={s => openSecret(s.id)}
+              emptyLabel={
+                tab === 'found'
+                  ? 'No seals yet. They break when you walk to them.'
+                  : 'Nothing here yet.'
+              }
+            />
           ) : activeSecrets.length === 0 ? (
             <Text style={styles.empty}>Nothing here yet.</Text>
           ) : (
@@ -216,6 +239,21 @@ const styles = StyleSheet.create({
   tabTextOn: { color: colors.accentDeep },
   tabCount: { fontFamily: fonts.serif, fontSize: 13, color: colors.inkFaint },
   tabCountOn: { color: colors.accentDeep },
+  views: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 14,
+    marginTop: 12,
+    marginHorizontal: 2,
+  },
+  viewText: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 9 * 0.16,
+    textTransform: 'uppercase',
+    color: colors.inkFaint,
+  },
+  viewTextOn: { color: colors.accentDeep },
   feed: { flex: 1, marginTop: 16 },
   feedContent: { paddingTop: 6, paddingHorizontal: 2, paddingBottom: 24, gap: 15 },
   loader: { marginTop: 40 },

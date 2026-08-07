@@ -209,9 +209,10 @@ describe('reply mapping', () => {
   });
 
   it('carries drop.city through apiSecretToSecret', () => {
-    // The field the whole city constellation groups on. It reaches the client
-    // only because `toDrop()` maps it — it existed as a column for a while
-    // without ever being on the wire.
+    // The field the whole city constellation groups on, and the one the wax
+    // seals' "new city" motif reads — neither can derive it from a coordinate.
+    // It reaches the client only because `toDrop()` maps it: it existed as a
+    // column for a while without ever being on the wire.
     const placed = {
       ...apiSecret,
       drop: { ...apiSecret.drop, city: 'Bengaluru' },
