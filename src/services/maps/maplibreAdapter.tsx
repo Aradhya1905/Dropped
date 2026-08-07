@@ -23,6 +23,8 @@ import {
 import type { Coordinate } from '../../types';
 import { getMapStyle, setMapStyle as persistMapStyle } from '../storage';
 import { droppedMapStyle } from './droppedStyle';
+import { FogLayer, type BoundsSubscribe } from './FogLayer';
+import type { FogView } from './fog';
 import type { MapAdapter, MapMarker } from './types';
 
 export type MapStyleKey = 'dropped' | 'quiet' | 'dark' | 'grayscale';
@@ -72,6 +74,24 @@ const DEFAULT_ZOOM = 15;
 // Adapter hook
 // ---------------------------------------------------------------------------
 
+export interface MaplibreAdapterOptions {
+  /**
+   * Cover unwalked ground in fog and clear it as the user walks (idea 01).
+   * Off by default — screens opt in.
+   */
+  fog?: boolean;
+  /** Override the street-level default (e.g. a pulled-back header map). */
+  initialZoom?: number;
+  /**
+   * Render into the RN view hierarchy instead of onto its own surface. Needed
+   * whenever the map is a *part* of a screen rather than the whole of it: on
+   * Android the default GLSurfaceView punches through sibling z-order, so a
+   * card-embedded map would paint over everything below it. Costs a little
+   * performance, hence opt-in.
+   */
+  embedded?: boolean;
+}
+
 export interface MaplibreAdapterResult {
   adapter: MapAdapter;
   markers: MapMarker[];
@@ -83,6 +103,11 @@ export interface MaplibreAdapterResult {
 
 export function useMaplibreAdapter(
   initialCenter: Coordinate = DEFAULT_CENTER,
+  {
+    fog = false,
+    initialZoom = DEFAULT_ZOOM,
+    embedded = false,
+  }: MaplibreAdapterOptions = {},
 ): MaplibreAdapterResult {
   const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapRef>(null);
@@ -94,6 +119,8 @@ export function useMaplibreAdapter(
   // the native <Map> actually mounts — avoids freezing a stale center.
   const initialCenterRef = useRef<Coordinate>(initialCenter);
   initialCenterRef.current = initialCenter;
+  const initialZoomRef = useRef<number>(initialZoom);
+  initialZoomRef.current = initialZoom;
   const [markers, setMarkers] = useState<MapMarker[]>([]);
   // Restore the persisted choice so the map and the You screen agree across
   // mounts (default is STYLE_OPTIONS[0] — 'dropped').
@@ -156,12 +183,39 @@ export function useMaplibreAdapter(
     }
   }, []);
 
+  // Viewport bounds are pushed to subscribers (the fog layer) through a ref
+  // rather than state: putting them in state would change `MaplibreView`'s memo
+  // deps on every pan and remount the native map.
+  const viewRef = useRef<FogView | null>(null);
+  const viewListenersRef = useRef(new Set<(v: FogView) => void>());
+
+  const subscribeBounds = useCallback<BoundsSubscribe>(listener => {
+    viewListenersRef.current.add(listener);
+    if (viewRef.current) listener(viewRef.current);
+    return () => {
+      viewListenersRef.current.delete(listener);
+    };
+  }, []);
+
   const onRegionDidChange = useCallback(
     (e: NativeSyntheticEvent<ViewStateChangeEvent>) => {
       const [lng, lat] = e.nativeEvent.center;
       centerRef.current = { lat, lng };
+
+      const bounds = e.nativeEvent.bounds;
+      if (!bounds) return;
+      const [west, south, east, north] = bounds;
+      const next = { west, south, east, north };
+      viewRef.current = next;
+      for (const listener of viewListenersRef.current) listener(next);
     },
     [],
+  );
+
+  // Stable element identity, so adding fog never re-creates MaplibreView.
+  const fogLayer = useMemo(
+    () => (fog ? <FogLayer subscribeBounds={subscribeBounds} /> : null),
+    [fog, subscribeBounds],
   );
 
   const MaplibreView = useCallback(
@@ -170,6 +224,7 @@ export function useMaplibreAdapter(
         ref={mapRef}
         style={[styles.map, viewStyle]}
         mapStyle={activeStyle as never}
+        androidView={embedded ? 'texture' : 'surface'}
         onRegionDidChange={onRegionDidChange}
         logo={false}
         attribution={false}
@@ -180,14 +235,15 @@ export function useMaplibreAdapter(
           ref={cameraRef}
           initialViewState={{
             center: [initialCenterRef.current.lng, initialCenterRef.current.lat],
-            zoom: DEFAULT_ZOOM,
+            zoom: initialZoomRef.current,
           }}
         />
+        {/* Under the markers: pins and the user dot stay legible through fog. */}
+        {fogLayer}
         {children}
       </Map>
     ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeStyle, onRegionDidChange],
+    [activeStyle, onRegionDidChange, fogLayer, embedded],
   );
 
   // Stable identity so consumer effects keyed on the adapter don't re-run every

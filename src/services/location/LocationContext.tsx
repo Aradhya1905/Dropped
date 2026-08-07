@@ -1,14 +1,30 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import type { Coordinate } from '../../types';
 import {
   getCurrent,
   hasPermission,
   requestPermission,
+  shouldRecordFix,
   watch,
   type PermissionStatus,
 } from './index';
 import { useReverseGeocode } from '../maps';
+import { addWalkedCells } from '../storage';
+import { cellIdFor } from '../../utils/geo';
+
+/**
+ * Fog cells are only recorded from fixes at least this precise (meters). A
+ * coarse fix would smear the cleared path across streets the user never walked,
+ * and the trail is permanent — better to miss a block than to paint a lie.
+ */
+const FOG_ACCURACY_MAX_M = 25;
+
+/** Flush buffered cells after this many fixes… */
+const FOG_FLUSH_EVERY_FIXES = 10;
+/** …or this long, whichever comes first — so a slow walk still persists. */
+const FOG_FLUSH_EVERY_MS = 15_000;
 
 export type LocationStatus = PermissionStatus | 'unknown';
 
@@ -41,6 +57,36 @@ function useLocationImpl(): UseDeviceLocationResult {
   const mountedRef = useRef(true);
   const refetchGeocodeRef = useRef<(() => void) | null>(null);
 
+  // Fog-of-war capture buffer. Batched so a walk isn't one MMKV write per
+  // second; see FUN_TODOs/01-fog-of-war.md. Foreground only — the watch lives
+  // in the React tree, so nothing is recorded while the app is closed.
+  const cellBufferRef = useRef<string[]>([]);
+  const lastFlushRef = useRef(Date.now());
+
+  const flushCells = useCallback(() => {
+    if (cellBufferRef.current.length === 0) return;
+    addWalkedCells(cellBufferRef.current);
+    cellBufferRef.current = [];
+    lastFlushRef.current = Date.now();
+  }, []);
+
+  const recordCell = useCallback(
+    (coordinate: Coordinate, accuracy: number) => {
+      if (!shouldRecordFix(accuracy, FOG_ACCURACY_MAX_M)) return;
+      const id = cellIdFor(coordinate);
+      // Standing still re-emits the same cell — don't buffer it repeatedly.
+      const buffer = cellBufferRef.current;
+      if (buffer[buffer.length - 1] !== id) buffer.push(id);
+      if (
+        buffer.length >= FOG_FLUSH_EVERY_FIXES ||
+        Date.now() - lastFlushRef.current >= FOG_FLUSH_EVERY_MS
+      ) {
+        flushCells();
+      }
+    },
+    [flushCells],
+  );
+
   const { address, refetch: refetchGeocode } = useReverseGeocode(coord, { debounceMs: 800 });
   refetchGeocodeRef.current = refetchGeocode;
 
@@ -48,16 +94,17 @@ function useLocationImpl(): UseDeviceLocationResult {
     stopWatchRef.current?.();
     setFixing(true);
     stopWatchRef.current = watch(
-      next => {
+      fix => {
         if (!mountedRef.current) return;
-        setCoord(next);
+        recordCell(fix.coordinate, fix.accuracy);
+        setCoord(fix.coordinate);
         setFixing(false);
       },
       () => {
         if (mountedRef.current) setFixing(false);
       },
     );
-  }, []);
+  }, [recordCell]);
 
   const request = useCallback(async (): Promise<PermissionStatus> => {
     const result = await requestPermission();
@@ -88,8 +135,19 @@ function useLocationImpl(): UseDeviceLocationResult {
       mountedRef.current = false;
       stopWatchRef.current?.();
       stopWatchRef.current = null;
+      // Don't lose the tail of a walk that ended under the batch threshold.
+      flushCells();
     };
-  }, []);
+  }, [flushCells]);
+
+  // The provider outlives every screen, so its unmount cleanup may never run on
+  // a force-stop. Persist the buffered cells the moment we lose the foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active') flushCells();
+    });
+    return () => sub.remove();
+  }, [flushCells]);
 
   // Onboarding grants OS permission but lives on a different screen; once we're
   // back in the app, start the live watch immediately if permission is already

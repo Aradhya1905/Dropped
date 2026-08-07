@@ -1,4 +1,11 @@
-import { haversineMeters, isWithin, samplePathSteps } from './geo';
+import {
+  cellBounds,
+  cellIdFor,
+  FOG_CELL_DEG,
+  haversineMeters,
+  isWithin,
+  samplePathSteps,
+} from './geo';
 import { REVEAL_RADIUS_M } from '../types';
 
 // Two points on Bengaluru's MG Road, ~1 block apart.
@@ -27,6 +34,56 @@ describe('geo', () => {
 
   it('exports the documented reveal radius', () => {
     expect(REVEAL_RADIUS_M).toBe(50);
+  });
+});
+
+describe('fog cell grid', () => {
+  it('is stable for the same coordinate', () => {
+    expect(cellIdFor(a)).toBe(cellIdFor(a));
+  });
+
+  it('is idempotent within one cell', () => {
+    const jittered = {
+      lat: a.lat + FOG_CELL_DEG / 3,
+      lng: a.lng + FOG_CELL_DEG / 3,
+    };
+    // Only true when `a` isn't sitting right on a cell edge — snap it inward.
+    const inside = {
+      lat: Math.floor(a.lat / FOG_CELL_DEG) * FOG_CELL_DEG + FOG_CELL_DEG / 4,
+      lng: Math.floor(a.lng / FOG_CELL_DEG) * FOG_CELL_DEG + FOG_CELL_DEG / 4,
+    };
+    expect(cellIdFor(inside)).toBe(
+      cellIdFor({ lat: inside.lat + FOG_CELL_DEG / 4, lng: inside.lng }),
+    );
+    expect(cellIdFor(jittered)).toMatch(/^-?\d+:-?\d+$/);
+  });
+
+  it('separates coordinates more than a cell apart', () => {
+    const far = { lat: a.lat + FOG_CELL_DEG * 1.5, lng: a.lng };
+    expect(cellIdFor(far)).not.toBe(cellIdFor(a));
+  });
+
+  it('cellBounds contains the coordinate that produced the id', () => {
+    const [sw, ne] = cellBounds(cellIdFor(a))!;
+    expect(a.lat).toBeGreaterThanOrEqual(sw.lat);
+    expect(a.lat).toBeLessThanOrEqual(ne.lat);
+    expect(a.lng).toBeGreaterThanOrEqual(sw.lng);
+    expect(a.lng).toBeLessThanOrEqual(ne.lng);
+  });
+
+  it('measures roughly 10 m on a side at mid-latitude', () => {
+    const [sw, ne] = cellBounds(cellIdFor(a))!;
+    const northSouth = haversineMeters(sw, { lat: ne.lat, lng: sw.lng });
+    const eastWest = haversineMeters(sw, { lat: sw.lat, lng: ne.lng });
+    expect(northSouth).toBeGreaterThan(8);
+    expect(northSouth).toBeLessThan(12);
+    // East-west shrinks by cos(lat) — still ~10 m this close to the equator.
+    expect(eastWest).toBeGreaterThan(8);
+    expect(eastWest).toBeLessThan(12);
+  });
+
+  it('returns null for a malformed id', () => {
+    expect(cellBounds('nonsense')).toBeNull();
   });
 });
 

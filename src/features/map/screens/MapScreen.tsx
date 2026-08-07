@@ -49,7 +49,7 @@ export function MapScreen({ navigation }: Props) {
   // Open the map already centered on the user so the default center never
   // flashes (the map only mounts once we have a fix — see the guard below).
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
-    useMaplibreAdapter(coord ?? undefined);
+    useMaplibreAdapter(coord ?? undefined, { fog: true });
   const { data: drops = [], refetch: refetchDrops } = useNearbyDrops(coord);
   const upsertDrop = useDropsStore(s => s.upsertDrop);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);

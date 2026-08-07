@@ -71,6 +71,44 @@ export function circlePolygon(
   return ring;
 }
 
+// --- fog-of-war grid ---------------------------------------------------------
+
+/**
+ * Fog cell edge, in degrees. 0.00009° of latitude ≈ 10 m — fine enough that a
+ * cleared path reads as a street, coarse enough that a long walk stays a few
+ * thousand cells.
+ */
+export const FOG_CELL_DEG = 0.00009;
+
+/**
+ * The grid is a **fixed degree grid on both axes**, so cells are not square
+ * away from the equator: a cell's east-west extent shrinks by cos(lat) (~2.6%
+ * at Bengaluru's 12.97°, much more at high latitude). That's deliberate.
+ * Correcting per-latitude would make a cell id depend on where you were when
+ * you computed it, so a long north-south walk would re-tile itself — visibly
+ * worse than a slightly oblong cell.
+ */
+export function cellIdFor(c: Coordinate): string {
+  const latIdx = Math.floor(c.lat / FOG_CELL_DEG);
+  const lngIdx = Math.floor(c.lng / FOG_CELL_DEG);
+  return `${latIdx}:${lngIdx}`;
+}
+
+/**
+ * Inverse of {@link cellIdFor}: the cell's south-west and north-east corners,
+ * for drawing it as a rectangle. Returns `null` for a malformed id.
+ */
+export function cellBounds(id: string): [Coordinate, Coordinate] | null {
+  const [latRaw, lngRaw] = id.split(':');
+  const latIdx = Number(latRaw);
+  const lngIdx = Number(lngRaw);
+  if (!Number.isFinite(latIdx) || !Number.isFinite(lngIdx)) return null;
+  return [
+    { lat: latIdx * FOG_CELL_DEG, lng: lngIdx * FOG_CELL_DEG },
+    { lat: (latIdx + 1) * FOG_CELL_DEG, lng: (lngIdx + 1) * FOG_CELL_DEG },
+  ];
+}
+
 /**
  * Resample a polyline so points sit roughly `everyMeters` apart along it —
  * used to space footstep marks evenly down the walking route regardless of how

@@ -1,9 +1,13 @@
 import {
   addSavedId,
+  addWalkedCells,
   clearAll,
+  clearWalkedCells,
+  FOG_CELL_CAP,
   getDeviceId,
   getOnboardingComplete,
   getSavedIds,
+  getWalkedCells,
   isSaved,
   removeSavedId,
   setOnboardingComplete,
@@ -30,7 +34,9 @@ jest.mock('react-native-mmkv', () => {
     set: (k: string, v: string | boolean | number) => {
       store.set(k, v);
     },
+    remove: (k: string) => store.delete(k),
     clearAll: () => store.clear(),
+    addOnValueChangedListener: () => ({ remove: () => {} }),
   };
   return { createMMKV: () => instance };
 });
@@ -51,6 +57,35 @@ describe('storage onboarding flag', () => {
     expect(getOnboardingComplete()).toBe(false);
     setOnboardingComplete(true);
     expect(getOnboardingComplete()).toBe(true);
+  });
+});
+
+describe('storage walked cells (fog of war)', () => {
+  it('round-trips a set of cells', () => {
+    expect(getWalkedCells().size).toBe(0);
+    addWalkedCells(['1:2', '3:4']);
+    expect(getWalkedCells()).toEqual(new Set(['1:2', '3:4']));
+  });
+
+  it('does not grow on duplicates', () => {
+    addWalkedCells(['1:2']);
+    addWalkedCells(['1:2', '1:2']);
+    expect(getWalkedCells().size).toBe(1);
+  });
+
+  it('clears', () => {
+    addWalkedCells(['1:2']);
+    clearWalkedCells();
+    expect(getWalkedCells().size).toBe(0);
+  });
+
+  it('caps the set and evicts the oldest cell first', () => {
+    const ids = Array.from({ length: FOG_CELL_CAP + 1 }, (_, i) => `0:${i}`);
+    addWalkedCells(ids);
+    const cells = getWalkedCells();
+    expect(cells.size).toBe(FOG_CELL_CAP);
+    expect(cells.has('0:0')).toBe(false); // first inserted, evicted
+    expect(cells.has(`0:${FOG_CELL_CAP}`)).toBe(true); // last inserted, kept
   });
 });
 

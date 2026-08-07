@@ -7,7 +7,15 @@ export const StorageKeys = {
   mapStyle: 'settings.mapStyle',
   notificationMode: 'settings.notificationMode',
   stepState: 'steps.state',
+  walkedCells: 'trail.walkedCells',
 } as const;
+
+/**
+ * Cap on remembered fog cells. ~20k cells ≈ a few hundred km of walking, and
+ * the whole set lives in one MMKV string — past this we drop the oldest so the
+ * value can't grow without bound. See `getWalkedCells` for the encoding.
+ */
+export const FOG_CELL_CAP = 20_000;
 
 /**
  * Locally-counted steps not yet synced to the backend. The pedometer service

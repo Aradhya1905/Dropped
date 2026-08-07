@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
+import { FogHeader } from '../components/FogHeader';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
 import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
@@ -80,6 +81,8 @@ export function TrailScreen() {
           ]}
         />
 
+        <FogHeader />
+
         <View style={styles.tabs}>
           {tabs.map(t => {
             const on = t.key === tab;
@@ -137,7 +140,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   titleEm: { fontFamily: fonts.serifItalic, color: colors.accentDeep },
-  tabs: { flexDirection: 'row', gap: 8, marginTop: 20, marginHorizontal: 2 },
+  tabs: { flexDirection: 'row', gap: 8, marginTop: 14, marginHorizontal: 2 },
   tab: {
     flex: 1,
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import {
   DEFAULT_MAP_STYLE,
   DEFAULT_NOTIFICATION_MODE,
   EMPTY_STEP_STATE,
+  FOG_CELL_CAP,
   StorageKeys,
   type MapStyle,
   type NotificationMode,
@@ -17,6 +18,7 @@ import {
 } from './keys';
 
 export type { MapStyle, NotificationMode, StepState } from './keys';
+export { FOG_CELL_CAP } from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
 
@@ -159,6 +161,59 @@ export function getStepState(): StepState {
 
 export function setStepState(state: StepState): void {
   setJSON(StorageKeys.stepState, state);
+}
+
+// --- fog of war: cells the user has physically walked through ----------------
+
+/**
+ * The walked-cell set is stored as newline-joined ids rather than JSON: cell
+ * ids are `${int}:${int}` so they can never contain a newline, and splitting a
+ * string beats `JSON.parse`-ing a 20k-element array on every read. Insertion
+ * order is preserved in the serialized form so the cap can evict oldest-first.
+ *
+ * This never leaves the device — the walked path is the one piece of location
+ * history the app promises to keep local. See FUN_TODOs/01-fog-of-war.md.
+ */
+export function getWalkedCells(): Set<string> {
+  const raw = mmkv.getString(StorageKeys.walkedCells);
+  if (!raw) return new Set();
+  return new Set(raw.split('\n'));
+}
+
+/**
+ * Add cells to the walked set, keeping insertion order and evicting the
+ * oldest once past {@link FOG_CELL_CAP}. No-ops when nothing is actually new,
+ * so the common case (standing still) costs zero writes.
+ */
+export function addWalkedCells(ids: string[]): void {
+  if (ids.length === 0) return;
+  const existing = getWalkedCells();
+  const added = ids.filter(id => id.length > 0 && !existing.has(id));
+  if (added.length === 0) return;
+
+  // Set preserves insertion order, so this stays oldest-first.
+  for (const id of added) existing.add(id);
+
+  let ordered = [...existing];
+  if (ordered.length > FOG_CELL_CAP) {
+    ordered = ordered.slice(ordered.length - FOG_CELL_CAP);
+  }
+  mmkv.set(StorageKeys.walkedCells, ordered.join('\n'));
+}
+
+/** Forget the walked path entirely (settings wipe / rollback). */
+export function clearWalkedCells(): void {
+  mmkv.remove(StorageKeys.walkedCells);
+}
+
+/**
+ * Notify when the walked set changes, so the fog layer repaints as the user
+ * walks instead of only when the map region moves.
+ */
+export function onWalkedCellsChange(listener: () => void): { remove: () => void } {
+  return mmkv.addOnValueChangedListener(key => {
+    if (key === StorageKeys.walkedCells) listener();
+  });
 }
 
 /** Test/escape hatch: wipe everything. */
