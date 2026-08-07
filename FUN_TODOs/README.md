@@ -30,8 +30,8 @@ all wired end to end.
 | [10](10-city-constellation.md) | City constellation | mostly client | M | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-10-city-constellation.md) |
 | [11](11-wax-seal-collection.md) | Wax seal collection | client only | S | todo | [plan](../.claude/plans/2026-08-07-11-wax-seal-collection.md) |
 | [12](12-lying-compass.md) | Lying compass | client only | S | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-12-lying-compass.md) |
-| [13](13-settings-retention.md) | Settings: retention levers | client + small backend | M | todo | [plan](../.claude/plans/2026-08-07-13-settings-retention.md) |
-| [14](14-settings-trust.md) | Settings: trust & privacy | client + backend | M | todo | [plan](../.claude/plans/2026-08-07-14-settings-trust.md) |
+| [13](13-settings-retention.md) | Settings: retention levers | **client only** | M | backend **done** (none needed — verified); client todo | [plan](../.claude/plans/2026-08-07-13-settings-retention.md) |
+| [14](14-settings-trust.md) | Settings: trust & privacy | client + backend | M | backend **done** (`DELETE /devices/me`); client todo | [plan](../.claude/plans/2026-08-07-14-settings-trust.md) |
 | [15](15-settings-polish.md) | Settings: polish & accessibility | client only | S | todo | [plan](../.claude/plans/2026-08-07-15-settings-polish.md) |
 | [16](16-background-walk-engine.md) | Background walk engine (prerequisite) | client + native | L | todo | [plan](../.claude/plans/2026-08-07-16-background-walk-engine.md) |
 

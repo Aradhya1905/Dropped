@@ -1,7 +1,54 @@
 # 14 — Settings: trust & privacy
 
-**Effort:** M · **Where:** client + backend · **Status:** todo
+**Effort:** M · **Where:** client + backend · **Status:** **backend complete** ·
+client todo
 **Plan:** [2026-08-07-14-settings-trust.md](../.claude/plans/2026-08-07-14-settings-trust.md)
+
+> ## ✅ Backend complete — 2026-08-07
+>
+> `DELETE /devices/me` ships in `Dropped_Backend` on `feature/funToDos`
+> (migration `0009_device_erasure.sql`). Everything below marked *backend* is
+> done; the client half — privacy zones, the two-step confirm, the surfaced
+> report action — is untouched and still open.
+>
+> **What landed**
+>
+> - `DELETE /devices/me`, one transaction, FK-safe order, answering a receipt:
+>   `{ deleted: { reveals, saves, hearts, reports, stepDays },
+>      anonymised: { drops, replies } }`. The client's confirmation copy is built
+>   from those numbers, so a dialog can name what dies *and* what survives.
+> - **The cascade decision, written down** in `tables.md` → *Erasure*: drops and
+>   replies are anonymised to a **shared** sentinel device (`'__deleted__'`,
+>   inserted by the migration), never deleted. Shared rather than one row per
+>   wipe on purpose — a per-wipe tombstone still says "these fourteen
+>   confessions are one person", which is a real deanonymisation vector across a
+>   map.
+> - `heart_count`, `reveal_count` and `stood_here` are **given back** before the
+>   rows go, so counters other people read don't drift upward forever.
+>   `reply_count` is deliberately untouched: an anonymised reply is still a voice.
+> - Reports are deleted with the reporter, but **nothing is un-hidden** — a
+>   verdict already reached stands, or "delete my account" becomes a
+>   moderation-evasion tool. (Also why reports are *not* anonymised: the
+>   threshold counts `DISTINCT device_id`, so collapsing erased reporters into
+>   one row would quietly lower it.)
+> - `replies_drop_device_uniq` is now **partial** (`WHERE device_id <>
+>   '__deleted__'`). Without it, the second person to ask for erasure is refused
+>   because of the first — both replies to the same drop would collide on the
+>   sentinel. `reply.repo`'s `ON CONFLICT` clause repeats the predicate verbatim;
+>   the coupling is flagged in both files and in `tables.md`.
+> - An empty body with `Content-Type: application/json` no longer 400s at the
+>   parser. The panic wipe must not fail because a client sets a default header.
+> - `tests/erase.spec.ts` — 18 tests. Full suite: 215 passing.
+>
+> **Still owed on the client** (unchanged by this): privacy zones at the capture
+> layer, `usePanicWipe` with the two-step confirm, the visible report action,
+> and the "Your data" section. Two server-side facts the client work depends on:
+>
+> 1. **Do not wipe locally until the call returns 200.** A local wipe after a
+>    failed server call leaves someone believing their confessions are gone while
+>    they are still on the map.
+> 2. The endpoint is **idempotent** — a retry after a timeout returns zero counts
+>    rather than an error, so the retry path is safe to take.
 
 In an anonymous location app that collects confessions, **trust is a retention
 feature**. People uninstall when they get an uneasy feeling, not when they run
@@ -25,17 +72,17 @@ out of content. These three settings answer the three uneasy questions.
 - One row, hard confirm: rotate the device id and erase everything local.
   `clearAll()` already exists in `services/storage` — the local half is one call
   plus a fresh `deviceId`.
-- **Backend work needed — this endpoint does not exist yet** (`devices.routes.ts`
-  has only `GET /devices/me`, `/stats`, and the steps pair):
-  `DELETE /devices/me`. Cascade behaviour needs a decision, because **none** of
-  the `device_id` FKs cascade — `reveals`, `saves`, `hearts`, `reports` and
-  `drops` all plain-`REFERENCES devices(id)`, so the delete must clear them in
-  order or it fails on the FK:
-  - `reveals`, `saves`, `hearts`, `device_steps`, `reports` → delete.
-  - `drops` → **anonymise, don't delete.** A drop someone else already walked to
-    and revealed shouldn't vanish from the world; null the `device_id` (needs the
-    column made nullable, or a shared `deleted` sentinel device row). Decide and
-    write it down in `tables.md`.
+- ~~**Backend work needed — this endpoint does not exist yet.**~~ **Done.**
+  `DELETE /devices/me` exists. None of the `device_id` FKs cascade, so the erase
+  clears them by hand in one transaction; the decision that needed making is
+  made and written into `tables.md` → *Erasure*:
+  - `reveals`, `saves`, `hearts`, `device_steps`, `reports` → deleted, with
+    `heart_count` / `reveal_count` / `stood_here` given back first.
+  - `drops` **and `replies`** → **anonymised, not deleted**, re-pointed at a
+    shared `'__deleted__'` sentinel device row rather than nulling the column.
+    Sentinel over nullable because it keeps the FK and every existing query
+    intact; *shared* over per-wipe because one tombstone per person still links
+    their drops to each other.
 - This is also the store-listing / data-deletion answer both Google Play and the
   App Store require for a location + UGC app, so it's not optional forever.
 

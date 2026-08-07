@@ -1,8 +1,34 @@
 # 13 — Settings: retention levers
 
-**Effort:** M · **Where:** client + small backend · **Status:** todo ·
+**Effort:** M · **Where:** client only (see below) · **Status:** **backend
+complete — nothing to build** · client todo ·
 **Blocked by:** [16 background walk engine](16-background-walk-engine.md)
 **Plan:** [2026-08-07-13-settings-retention.md](../.claude/plans/2026-08-07-13-settings-retention.md)
+
+> ## ✅ Backend complete — 2026-08-07 · **zero code**
+>
+> This ticket's backend deliverable is a decision, not an endpoint, and the
+> decision is **keep every one of these settings on the device**. Checked
+> against the current API rather than assumed, lever by lever:
+>
+> | Lever | Needs the server? | Why not |
+> |---|---|---|
+> | Quiet hum (off/rare/always) | no | Cooldown is local state; the hum is a local notification. |
+> | Only when I'm moving | no | Speed comes from the GPS watch, or `ACTIVITY_RECOGNITION` — already declared. |
+> | Quiet hours | no | Wall-clock on the handset. Sending it up would mean storing a timezone, which the codebase avoids on purpose (see the reveal-condition note in `tables.md`). |
+> | Notification radius (200 / 500 / 1000 m) | no | `GET /drops/nearby?radiusMeters=` already takes it, and `NEARBY_MAX_RADIUS_M` is 2000 — every option is inside the existing cap. |
+> | Mood subscriptions | no | `GET /drops/nearby?mood=joy,wonder` shipped with [06](06-mood-filter.md). |
+> | Echo reminders | no | `GET /drops/echoes` shipped with [08](08-anniversary-echo.md); the on/off gate is whether the client polls it. |
+>
+> So there is nothing to add. That is the finding, not a deferral: the only
+> backend shape this ticket could take is a per-device preferences blob, and
+> storing one would mean the server learning when you sleep, how far you'll
+> walk, and which moods you can stand — six new per-device facts, in the app
+> whose neighbouring ticket ([14](14-settings-trust.md)) is about *not* holding
+> facts about people. Revisit only if push notifications ever replace local
+> ones, and treat that as its own ticket with its own privacy argument.
+>
+> Everything else in this file is still open and still client work.
 
 Today `features/settings/screens/YouScreen.tsx` has three rows and they are
 strictly display-only: Map style, Unlock radius (fixed 50 m), Walk-by
@@ -58,10 +84,11 @@ dead. Gate the hum on an actual movement signal:
 
 ## Backend work
 
-Minimal, only if push (rather than local) notifications ever land: a per-device
-preferences blob, or just keep everything client-side. Recommendation: keep it
-client-side. Fewer stored per-device facts is better for the privacy posture, and
-the hum is a local notification driven by the local GPS watch anyway.
+**None — settled 2026-08-07.** Verified lever by lever against the live API in
+the box at the top of this file: every setting here is local state or a query
+parameter that already exists. Fewer stored per-device facts is better for the
+privacy posture, and the hum is a local notification driven by the local GPS
+watch anyway. Revisit only if push replaces local notifications.
 
 ## Risks / notes
 
