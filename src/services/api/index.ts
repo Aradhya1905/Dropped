@@ -14,6 +14,8 @@ import { getDeviceId } from '../storage';
 import {
   MOODS,
   type Coordinate,
+  type EchoInterval,
+  type EchoKind,
   type ExpiresInDays,
   type Mood,
   type Whisper,
@@ -149,6 +151,18 @@ export interface ApiDropPreview {
 }
 
 /**
+ * One anniversary from `GET /drops/echoes` — a place this device stood a round
+ * interval ago. The nested secret is sealed unless the device revealed it (or
+ * wrote it), exactly like every other response that carries one.
+ */
+export interface ApiEcho {
+  secret: ApiSecret;
+  interval: EchoInterval;
+  kind: EchoKind;
+  stoodAt: number;
+}
+
+/**
  * A reply pinned under a drop. The server never serializes authorship — this
  * shape has no `deviceId`, hashed or otherwise. `mine` is the server's answer
  * to "did the requesting device write this?", which is all the UI needs to
@@ -243,6 +257,23 @@ export const fetchNearbyDrops = (
  */
 export const fetchDropPreview = (id: string) =>
   api.get<ApiDropPreview>(`/drops/${id}/preview`).then(r => r.data);
+
+/**
+ * Anniversaries near a point, for this device only — "a year ago you stood
+ * here".
+ *
+ * Called from a location watch, so the *caller* owns the discipline that keeps
+ * it cheap: once per day per ~250 m (see `utils/echo.echoCheckDue`). The server
+ * caps and rate-limits it, but a client that polls it per GPS fix is a battery
+ * bug either way. `radiusMeters` is omitted by default so the server's own
+ * "near enough to be a memory" radius applies.
+ */
+export const fetchEchoes = (lat: number, lng: number, radiusMeters?: number) =>
+  api
+    .get<{ echoes: ApiEcho[] }>('/drops/echoes', {
+      params: { lat, lng, ...(radiusMeters ? { radiusMeters } : {}) },
+    })
+    .then(r => r.data.echoes);
 
 /** Server-proxied walking route from `from` → `to` (for the Walk screen path). */
 export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>

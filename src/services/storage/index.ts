@@ -8,6 +8,7 @@ import { createMMKV } from 'react-native-mmkv';
 import { getNativeUniqueId, nativeIdToUuidV4 } from '../device';
 import { MOODS, type Mood } from '../../types';
 import {
+  DEFAULT_ECHOES_ENABLED,
   DEFAULT_HAPTICS_ENABLED,
   DEFAULT_MAP_STYLE,
   DEFAULT_MOOD_FILTER,
@@ -15,12 +16,19 @@ import {
   EMPTY_STEP_STATE,
   FOG_CELL_CAP,
   StorageKeys,
+  type EchoCache,
   type MapStyle,
   type NotificationMode,
   type StepState,
 } from './keys';
 
-export type { MapStyle, NotificationMode, StepState } from './keys';
+export type {
+  EchoCache,
+  EchoMemo,
+  MapStyle,
+  NotificationMode,
+  StepState,
+} from './keys';
 export { FOG_CELL_CAP } from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
@@ -187,6 +195,72 @@ export function getMoodFilter(): Mood[] {
 
 export function setMoodFilter(moods: Mood[]): void {
   setJSON(StorageKeys.moodFilter, moods);
+}
+
+// --- anniversary echoes ------------------------------------------------------
+
+/**
+ * Whether "a year ago you stood here" may appear at all. **Off by default** —
+ * see `DEFAULT_ECHOES_ENABLED` for why that isn't negotiable.
+ */
+export function getEchoesEnabled(): boolean {
+  return mmkv.getBoolean(StorageKeys.echoesEnabled) ?? DEFAULT_ECHOES_ENABLED;
+}
+
+/** Turning echoes off forgets the cached ones too — off should mean gone. */
+export function setEchoesEnabled(on: boolean): void {
+  mmkv.set(StorageKeys.echoesEnabled, on);
+  if (!on) {
+    mmkv.remove(StorageKeys.echoCache);
+  }
+}
+
+/**
+ * Drops the user has asked never to be reminded about again.
+ *
+ * Kept **on the device**, not on the server: a mute is a personal feeling about
+ * one memory, and the fewer per-device facts this app stores about who felt
+ * what, the smaller the thing anyone could ever be compelled to hand over. The
+ * cost is that muting doesn't follow you to a new phone, which is the right
+ * trade for a feature whose whole risk is emotional.
+ */
+export function getMutedEchoIds(): string[] {
+  return getJSON<string[]>(StorageKeys.mutedEchoIds, []);
+}
+
+export function setEchoMuted(secretId: string, muted: boolean): void {
+  const current = getMutedEchoIds();
+  const next = muted
+    ? current.includes(secretId)
+      ? current
+      : [...current, secretId]
+    : current.filter(id => id !== secretId);
+  setJSON(StorageKeys.mutedEchoIds, next);
+}
+
+export function isEchoMuted(secretId: string): boolean {
+  return getMutedEchoIds().includes(secretId);
+}
+
+/**
+ * The last echo check — the polling guard and the cold-start cache in one.
+ * `null` means the app has never asked (or the user just turned echoes off).
+ */
+export function getEchoCache(): EchoCache | null {
+  const cached = getJSON<EchoCache | null>(StorageKeys.echoCache, null);
+  if (!cached || typeof cached.day !== 'string' || !Array.isArray(cached.memos)) {
+    return null;
+  }
+  return cached;
+}
+
+export function setEchoCache(cache: EchoCache): void {
+  setJSON(StorageKeys.echoCache, cache);
+}
+
+/** Forget where and when we last asked (settings wipe / rollback). */
+export function clearEchoCache(): void {
+  mmkv.remove(StorageKeys.echoCache);
 }
 
 // --- steps (locally counted, see pedometer service) --------------------------

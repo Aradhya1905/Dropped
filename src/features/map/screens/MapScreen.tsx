@@ -29,7 +29,9 @@ import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { MOODS } from '../../../types';
 import { MoodChips } from '../../drop/components';
 import { EMPTY_NEARBY, useDeviceLocation, useMoodFilter, useNearbyDrops } from '../hooks';
+import { EchoCard, useEchoes } from '../../echo';
 import { useDropsStore } from '../../../store/dropsStore';
+import { agoLabel } from '../../../utils/format';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
 import { MapLoader } from '../components/MapLoader';
@@ -60,7 +62,13 @@ export function MapScreen({ navigation }: Props) {
   );
   const { secrets: drops, hiddenByFilter } = nearby;
   const upsertDrop = useDropsStore(s => s.upsertDrop);
+  const knownDrops = useDropsStore(s => s.drops);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
+
+  // Anniversaries near this spot. Off unless the user asked for them, and the
+  // hook rides the same location watch as everything else on this screen — it
+  // only reaches the network once a day per 250 m.
+  const { echoes, mute: muteEcho } = useEchoes(coord);
 
   // Sync fetched secrets into Zustand so SecretDetailScreen can read them.
   useEffect(() => {
@@ -141,11 +149,27 @@ export function MapScreen({ navigation }: Props) {
   // Nearest drop within 50 m drives the RangeCard.
   const nearestInRange = drops.find(s => isWithin(coord, s.drop.coordinate));
 
+  // One card at a time, and something you can open right now always beats a
+  // memory: the echo only appears when nothing is in range.
+  const echo = nearestInRange ? undefined : echoes[0];
+
+  /**
+   * Open what the echo is about. A secret this device has already revealed is
+   * in the store with its body, so it opens straight to the reading screen;
+   * anything else goes to the sealed detail screen and still costs the walk.
+   * After a restart the store is empty, which lands everything on the sealed
+   * screen — the honest answer, since the body genuinely isn't on the device.
+   */
+  const openEcho = (secretId: string) => {
+    const known = knownDrops.find(d => d.id === secretId);
+    navigation.navigate(known?.body ? 'Secret' : 'SecretDetail', { secretId });
+  };
+
   // FAB vertical anchors. With the RangeCard docked the drop seal should
   // half-overlap the card's top-right corner (per design 04), with the recenter
   // FAB stacked just above it. Card bottom = insets.bottom + 12, height ~96, so
   // its top edge sits at insets.bottom + 108; the 58px drop seal straddles it.
-  const dropFabBottom = nearestInRange ? insets.bottom + 49 : 100;
+  const dropFabBottom = nearestInRange || echo ? insets.bottom + 49 : 100;
   const recenterFabBottom = dropFabBottom + 70;
 
   return (
@@ -233,13 +257,20 @@ export function MapScreen({ navigation }: Props) {
         <RangeCard
           kicker="you're within range —"
           title="A secret was dropped here"
-          meta={`Tap to break the seal · ${_yearsAgo(
+          meta={`Tap to break the seal · ${agoLabel(
             nearestInRange.drop.createdAt,
           )}`}
           onPress={() =>
             navigation.navigate('Opening', { secretId: nearestInRange.id })
           }
           style={[styles.rangeCard, { bottom: insets.bottom - 35 }]}
+        />
+      ) : echo ? (
+        <EchoCard
+          echo={echo}
+          onPress={() => openEcho(echo.secretId)}
+          onMute={() => muteEcho(echo.secretId)}
+          style={[styles.rangeCard, { bottom: insets.bottom + 12 }]}
         />
       ) : null}
 
@@ -252,12 +283,6 @@ export function MapScreen({ navigation }: Props) {
       />
     </View>
   );
-}
-
-function _yearsAgo(ms: number): string {
-  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
-  if (years < 1) return 'just now';
-  return `${years} year${years === 1 ? '' : 's'} ago`;
 }
 
 const styles = StyleSheet.create({

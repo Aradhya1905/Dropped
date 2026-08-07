@@ -2,8 +2,8 @@
  * 11 You — "hello, stranger." The anonymous passport, setting stubs, and the
  * handwritten house rules.
  */
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -12,13 +12,20 @@ import {
   MapTexture,
   PaperScreen,
 } from '../../../design-system/components';
-import { ClockIcon, HumIcon, LayersIcon } from '../../../design-system/icons';
+import {
+  BookmarkIcon,
+  ClockIcon,
+  HumIcon,
+  LayersIcon,
+} from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { Passport } from '../components/Passport';
 import {
   getDeviceId,
+  getEchoesEnabled,
   getMapStyle,
   getNotificationMode,
+  setEchoesEnabled,
 } from '../../../services/storage';
 import { mapStyleLabel } from '../../../services/maps';
 import { useDeviceInfo } from '../hooks';
@@ -37,6 +44,17 @@ export function YouScreen() {
   // Re-read persisted settings whenever this tab regains focus, so a style
   // change made on the Map tab shows here without a remount.
   useIsFocused();
+
+  // Anniversary echoes — the one setting on this screen that does something,
+  // because the feature it gates is off until someone asks for it. Held in
+  // state as well as MMKV so the row flips under the finger.
+  const [echoes, setEchoes] = useState(getEchoesEnabled);
+  const toggleEchoes = () => {
+    const next = !echoes;
+    setEchoesEnabled(next);
+    setEchoes(next);
+  };
+
   const settings = [
     {
       icon: <LayersIcon size={22} color={colors.accentDeep} />,
@@ -78,6 +96,36 @@ export function YouScreen() {
               <Text style={styles.setVal}>{s.value}</Text>
             </View>
           ))}
+
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: echoes }}
+            accessibilityLabel="Anniversary echoes"
+            onPress={toggleEchoes}
+            style={({ pressed }) => [styles.setRow, pressed && styles.pressed]}
+          >
+            <View style={styles.setIco}>
+              <BookmarkIcon
+                size={22}
+                color={echoes ? colors.accentDeep : colors.inkSoft}
+              />
+            </View>
+            <View style={styles.setLblBlock}>
+              <Text style={styles.setLbl}>Anniversary echoes</Text>
+              {/*
+                Said plainly before it's turned on, not after: this app is
+                where people leave the things they don't say, and being told
+                about one of them a year later should be a choice made with
+                open eyes.
+              */}
+              <Text style={styles.setNote}>
+                Quietly tells you when you pass somewhere you stood a year ago.
+              </Text>
+            </View>
+            <Text style={[styles.setVal, !echoes && styles.setValOff]}>
+              {echoes ? 'On' : 'Off'}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.rulesBlock}>
@@ -126,12 +174,23 @@ const styles = StyleSheet.create({
   },
   setIco: { width: 22, height: 22 },
   setLbl: { flex: 1, fontFamily: fonts.serif, fontSize: 16, color: colors.ink },
+  setLblBlock: { flex: 1 },
+  setNote: {
+    fontFamily: fonts.sans,
+    fontSize: 11.5,
+    lineHeight: 11.5 * 1.4,
+    color: colors.inkSoft,
+    marginTop: 2,
+    paddingRight: 8,
+  },
   setVal: {
     fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 11 * 0.04,
     color: colors.accentDeep,
   },
+  setValOff: { color: colors.inkFaint },
+  pressed: { opacity: 0.85 },
   rulesBlock: { marginTop: 22, marginHorizontal: 2 },
   rulesKick: {
     fontFamily: fonts.mono,

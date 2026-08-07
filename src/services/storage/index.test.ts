@@ -5,15 +5,23 @@ import {
   clearWalkedCells,
   FOG_CELL_CAP,
   getDeviceId,
+  getEchoCache,
+  getEchoesEnabled,
+  getMutedEchoIds,
   getOnboardingComplete,
   getMoodFilter,
   getSavedIds,
   getWalkedCells,
+  isEchoMuted,
   isSaved,
   removeSavedId,
+  setEchoCache,
+  setEchoesEnabled,
+  setEchoMuted,
   setMoodFilter,
   setOnboardingComplete,
 } from './index';
+import { echoCheckDue } from '../../utils/echo';
 
 // Stub the device adapter so storage doesn't reach for the native unique id.
 jest.mock('../device', () => ({
@@ -109,6 +117,81 @@ describe('storage mood filter', () => {
   it('survives a persisted value that is not a list at all', () => {
     setMoodFilter('joy' as never);
     expect(getMoodFilter()).toEqual([]);
+  });
+});
+
+describe('storage anniversary echoes', () => {
+  const memo = {
+    secretId: 's1',
+    interval: '1yr' as const,
+    kind: 'found' as const,
+    stoodAt: 1_700_000_000_000,
+    placeLabel: 'The bridge',
+    mood: 'ache',
+  };
+
+  it('is off until asked for', () => {
+    // Not a preference like map style — an unrequested reminder about
+    // something painful is the risk this whole feature carries.
+    expect(getEchoesEnabled()).toBe(false);
+    setEchoesEnabled(true);
+    expect(getEchoesEnabled()).toBe(true);
+  });
+
+  it('forgets the cached echoes when switched off', () => {
+    setEchoesEnabled(true);
+    setEchoCache({ day: '2026-08-07', lat: 12.97, lng: 77.59, memos: [memo] });
+    setEchoesEnabled(false);
+    expect(getEchoCache()).toBeNull();
+  });
+
+  it('round-trips a mute, and forgets it again', () => {
+    expect(isEchoMuted('s1')).toBe(false);
+    setEchoMuted('s1', true);
+    setEchoMuted('s1', true); // dedupe
+    expect(getMutedEchoIds()).toEqual(['s1']);
+    setEchoMuted('s1', false);
+    expect(isEchoMuted('s1')).toBe(false);
+  });
+
+  it('excludes a muted drop from a list of echoes', () => {
+    setEchoMuted('s1', true);
+    const muted = getMutedEchoIds();
+    expect([memo, { ...memo, secretId: 's2' }].filter(m => !muted.includes(m.secretId)))
+      .toEqual([{ ...memo, secretId: 's2' }]);
+  });
+
+  it('caches the place, the anniversary and the mood — never the body', () => {
+    // The confession itself must not be written to disk on a device that only
+    // walked past it. This assertion is the guard on that.
+    setEchoCache({ day: '2026-08-07', lat: 12.97, lng: 77.59, memos: [memo] });
+    const cached = getEchoCache()!;
+    expect(cached.memos).toEqual([memo]);
+    for (const m of cached.memos) {
+      expect(m).not.toHaveProperty('body');
+    }
+  });
+
+  it('ignores a persisted cache that is not the shape we wrote', () => {
+    setEchoCache({ day: 7 } as never);
+    expect(getEchoCache()).toBeNull();
+  });
+
+  it('is due again the next day, and after a 250 m move — but not a 50 m one', () => {
+    // The endpoint-hammering guard, end to end: the checkpoint the app persists
+    // and the gate that reads it.
+    const here = { lat: 12.9716, lng: 77.5946 };
+    setEchoCache({ day: '2026-08-07', lat: here.lat, lng: here.lng, memos: [] });
+    const last = getEchoCache()!;
+
+    expect(echoCheckDue(last, here, '2026-08-07')).toBe(false);
+    expect(
+      echoCheckDue(last, { lat: here.lat + 0.0005, lng: here.lng }, '2026-08-07'),
+    ).toBe(false); // ~55 m — a walk around the block
+    expect(
+      echoCheckDue(last, { lat: here.lat + 0.004, lng: here.lng }, '2026-08-07'),
+    ).toBe(true); // ~440 m
+    expect(echoCheckDue(last, here, '2026-08-08')).toBe(true);
   });
 });
 

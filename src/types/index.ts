@@ -106,6 +106,35 @@ export interface DropPreview {
   expiresAt?: number;
 }
 
+/**
+ * The round intervals an anniversary echo celebrates — six months, a year, two
+ * years. The server owns the ±3 day tolerance around each; the client only ever
+ * renders the label it was handed (see `utils/format.echoAgo`).
+ */
+export type EchoInterval = '6mo' | '1yr' | '2yr';
+
+/**
+ * How you came to be standing here before:
+ * - `dropped` — you left the secret;
+ * - `found`   — you walked here and revealed someone else's.
+ */
+export type EchoKind = 'dropped' | 'found';
+
+/**
+ * One anniversary near where you're standing.
+ *
+ * `secret` obeys every rule an ordinary secret does — sealed unless you have
+ * revealed it (or wrote it). An echo tells you that *you were here*; it is
+ * never a way to read something you haven't walked to.
+ */
+export interface Echo {
+  secret: Secret;
+  interval: EchoInterval;
+  kind: EchoKind;
+  /** ms epoch of the drop / reveal being remembered. */
+  stoodAt: number;
+}
+
 /** The lifespans an author may pick in the composer. `undefined` = forever. */
 export type ExpiresInDays = 7 | 30;
 

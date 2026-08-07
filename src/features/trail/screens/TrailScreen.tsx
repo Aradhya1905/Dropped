@@ -5,35 +5,50 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 
+import type { RootStackParamList } from '../../../app/navigation/types';
 import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
+import { EchoCard, useEchoes } from '../../echo';
+import { useDeviceLocation } from '../../../services/location/LocationContext';
+import { useDropsStore } from '../../../store/dropsStore';
 import { FogHeader } from '../components/FogHeader';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
 import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
 import { fadesInLabel, isExpired } from '../../../utils/expiry';
+import { relTime } from '../../../utils/format';
 import type { Secret } from '../../../types';
 
 const FASTENERS = ['tape', 'pin', 'tapeRight'] as const;
 const ROTATIONS = [-1, 0.8, -0.6];
 
-function _relTime(ms: number): string {
-  const diff = Date.now() - ms;
-  const days = Math.floor(diff / (24 * 3600 * 1000));
-  if (days < 1) return 'today';
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}y ago`;
-}
-
 export function TrailScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<'found' | 'saved' | 'dropped'>('found');
+
+  // The scrapbook is where a memory belongs, so this is the other half of the
+  // Map's echo card — same hook, same once-a-day-per-250 m discipline, same
+  // silence when the user hasn't opted in.
+  const { coord } = useDeviceLocation();
+  const { echoes, mute: muteEcho } = useEchoes(coord);
+  const knownDrops = useDropsStore(s => s.drops);
+
+  /**
+   * Open what an echo is about: straight to the secret when this device has
+   * already revealed it (its body is in the store), otherwise to the sealed
+   * screen — an anniversary is never a shortcut past the 50 m walk.
+   */
+  const openEcho = (secretId: string) => {
+    const known = knownDrops.find(d => d.id === secretId);
+    navigation.navigate(known?.body ? 'Secret' : 'SecretDetail', { secretId });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -84,6 +99,25 @@ export function TrailScreen() {
 
         <FogHeader />
 
+        {/*
+          Above the tabs, below the fog: these are places, not entries — they
+          belong with the map of where you've been rather than inside a list of
+          what you collected. Capped at two so the scrapbook never turns into a
+          wall of anniversaries.
+        */}
+        {echoes.length > 0 && (
+          <View style={styles.echoes}>
+            {echoes.slice(0, 2).map(echo => (
+              <EchoCard
+                key={echo.secretId}
+                echo={echo}
+                onPress={() => openEcho(echo.secretId)}
+                onMute={() => muteEcho(echo.secretId)}
+              />
+            ))}
+          </View>
+        )}
+
         <View style={styles.tabs}>
           {tabs.map(t => {
             const on = t.key === tab;
@@ -128,8 +162,8 @@ export function TrailScreen() {
                   footLeft={s.drop.placeLabel ?? ''}
                   footRight={
                     fades != null
-                      ? `${fades} · ${_relTime(s.createdAt)}`
-                      : `unlocked · ${_relTime(s.createdAt)}`
+                      ? `${fades} · ${relTime(s.createdAt)}`
+                      : `unlocked · ${relTime(s.createdAt)}`
                   }
                 />
               );
@@ -153,6 +187,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   titleEm: { fontFamily: fonts.serifItalic, color: colors.accentDeep },
+  echoes: { marginTop: 14, marginHorizontal: 2, gap: 10 },
   tabs: { flexDirection: 'row', gap: 8, marginTop: 14, marginHorizontal: 2 },
   tab: {
     flex: 1,

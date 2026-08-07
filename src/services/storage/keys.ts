@@ -10,6 +10,9 @@ export const StorageKeys = {
   stepState: 'steps.state',
   walkedCells: 'trail.walkedCells',
   moodFilter: 'map.moodFilter',
+  echoesEnabled: 'settings.echoes',
+  mutedEchoIds: 'echo.muted',
+  echoCache: 'echo.cache',
 } as const;
 
 /**
@@ -59,3 +62,46 @@ export const DEFAULT_HAPTICS_ENABLED = true;
  * everyone who ever touched the filter.
  */
 export const DEFAULT_MOOD_FILTER: readonly [] = [];
+
+/**
+ * Anniversary echoes are **off until asked for**.
+ *
+ * This is a confessions app. An unrequested "a year ago you stood here" about
+ * something painful is not a delightful surprise, and the person it lands on
+ * had no chance to decline it. Every other setting here may default to the
+ * pleasant option; this one may not.
+ */
+export const DEFAULT_ECHOES_ENABLED = false;
+
+/**
+ * One remembered anniversary, as it survives an app restart.
+ *
+ * **Note what isn't here: the secret's body.** The app caches only enough to
+ * draw a card — which place, which anniversary, which drop — so the confession
+ * itself never gets written to disk on a device that merely walked past it. The
+ * text is re-fetched (and re-gated) when the card is opened.
+ */
+export interface EchoMemo {
+  secretId: string;
+  interval: '6mo' | '1yr' | '2yr';
+  kind: 'dropped' | 'found';
+  /** ms epoch of the remembered drop / reveal. */
+  stoodAt: number;
+  placeLabel?: string;
+  mood: string;
+}
+
+/**
+ * The last echo check: where, when, and what came back.
+ *
+ * Doubles as the polling guard (`utils/echo.echoCheckDue` reads `day`/`lat`/
+ * `lng`) and as the cache that lets a cold start show yesterday's card without
+ * a request.
+ */
+export interface EchoCache {
+  /** Local calendar day, `YYYY-MM-DD`. */
+  day: string;
+  lat: number;
+  lng: number;
+  memos: EchoMemo[];
+}

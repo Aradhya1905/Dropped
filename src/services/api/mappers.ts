@@ -1,5 +1,5 @@
-import type { DropPreview, Reply, Secret } from '../../types';
-import type { ApiDropPreview, ApiReply, ApiSecret } from './index';
+import type { DropPreview, Echo, Reply, Secret } from '../../types';
+import type { ApiDropPreview, ApiEcho, ApiReply, ApiSecret } from './index';
 
 export function apiSecretToSecret(s: ApiSecret): Secret {
   return {
@@ -50,6 +50,16 @@ export function apiDropPreviewToDropPreview(p: ApiDropPreview): DropPreview {
     createdAt: p.createdAt,
     revealCount: p.revealCount,
     expiresAt: p.expiresAt,
+  };
+}
+
+/** An anniversary, with its secret run through the same mapper as every other. */
+export function apiEchoToEcho(e: ApiEcho): Echo {
+  return {
+    secret: apiSecretToSecret(e.secret),
+    interval: e.interval,
+    kind: e.kind,
+    stoodAt: e.stoodAt,
   };
 }
 

@@ -37,6 +37,7 @@ import {
 } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
+import { agoLabel } from '../../../utils/format';
 import { ReplyStrips } from '../components';
 import { useSave, useHeart, useReport, useReplies, useCreateReply } from '../hooks';
 
@@ -117,7 +118,7 @@ export function SecretScreen({ navigation, route }: Props) {
             <View style={styles.dash} />
             <View style={styles.footGrid}>
               <View>
-                <Text style={styles.dropped}>— {secret ? _yearsAgo(secret.drop.createdAt) : ''}</Text>
+                <Text style={styles.dropped}>— {secret ? `dropped ${agoLabel(secret.drop.createdAt)}` : ''}</Text>
                 <Text style={styles.byline}>by someone who{'\n'}stood right here</Text>
               </View>
               <View style={styles.stood}>
@@ -212,12 +213,6 @@ function _coordLabel(c: { lat: number; lng: number }): string {
   const fmt = (n: number, pos: string, neg: string) =>
     `${Math.abs(n).toFixed(4)}° ${n >= 0 ? pos : neg}`;
   return `${fmt(c.lat, 'N', 'S')} · ${fmt(c.lng, 'E', 'W')}`;
-}
-
-function _yearsAgo(ms: number): string {
-  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
-  if (years < 1) return 'just now';
-  return `dropped ${years} year${years === 1 ? '' : 's'} ago`;
 }
 
 const styles = StyleSheet.create({

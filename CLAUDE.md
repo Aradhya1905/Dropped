@@ -62,9 +62,10 @@ To add a weight later: drop the `.ttf` in `assets/fonts/`, re-run `npx react-nat
 - `design-system/` — UI kit: `tokens/` (colors, type, spacing, radii, shadows),
   `components/` (PaperScreen, MapTexture, WaxSeal, AppButton, Sheet, TabBar,
   FadeUp/FloatBob/PulseRing, …), `icons/` (18 stroke icons from the design)
-- `features/` — one folder per domain (`onboarding map nearby drop reveal trail settings`);
+- `features/` — one folder per domain (`onboarding map nearby drop reveal trail settings echo`);
   each has `screens/ components/ hooks/ api/ types.ts`. `trail/` was added for
-  the design's Trail tab (found/saved/dropped scrapbook).
+  the design's Trail tab (found/saved/dropped scrapbook); `echo/` is the
+  anniversary echo (no screens — one card lent to Map and Trail).
 - `services/` — vendor integrations behind adapters (`api storage maps location haptics notifications analytics`)
 - `store/` — global Zustand stores
 - `utils/` — `geo.ts` (haversine, isWithin), format, validators

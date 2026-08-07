@@ -1,6 +1,7 @@
 # 08 — Anniversary echo
 
-**Effort:** M · **Where:** backend + client · **Status:** todo
+**Effort:** M · **Where:** backend + client · **Status:** **built** (in-app half;
+device QA owed. The ambient "finds you mid-walk" half still waits on [16](16-background-walk-engine.md).)
 **Plan:** [2026-08-07-08-anniversary-echo.md](../.claude/plans/2026-08-07-08-anniversary-echo.md)
 
 ## What

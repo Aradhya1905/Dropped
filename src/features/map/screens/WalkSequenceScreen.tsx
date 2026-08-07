@@ -46,6 +46,7 @@ import {
   haversineMeters,
   samplePathSteps,
 } from '../../../utils/geo';
+import { agoLabel } from '../../../utils/format';
 import type { Coordinate } from '../../../types';
 import { REVEAL_RADIUS_M } from '../../../types';
 
@@ -393,26 +394,20 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
         <FindCard
           kicker="you crossed the line —"
           title="A secret is within 50 m"
-          meta={`walk to the pin · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
+          meta={`walk to the pin · ${secret ? agoLabel(secret.drop.createdAt) : ''}`}
           style={styles.findCard}
         />
       ) : (
         <FindCard
           kicker="you made it —"
           title="A secret was dropped here"
-          meta={`right where you're standing · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
+          meta={`right where you're standing · ${secret ? agoLabel(secret.drop.createdAt) : ''}`}
           onBreakSeal={() => navigation.navigate('Opening', { secretId })}
           style={styles.findCard}
         />
       )}
     </View>
   );
-}
-
-function _yearsAgo(ms: number): string {
-  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
-  if (years < 1) return 'just now';
-  return `${years} year${years === 1 ? '' : 's'} ago`;
 }
 
 const styles = StyleSheet.create({
