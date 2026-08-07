@@ -1,6 +1,6 @@
 # 10 — City constellation
 
-**Effort:** M · **Where:** mostly client · **Status:** todo
+**Effort:** M · **Where:** mostly client · **Status:** built (device QA owed)
 **Plan:** [2026-08-07-10-city-constellation.md](../.claude/plans/2026-08-07-10-city-constellation.md)
 
 ## What

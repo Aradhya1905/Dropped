@@ -4044,6 +4044,7 @@ __metadata:
     react-native-reanimated: "npm:^4.4.0"
     react-native-safe-area-context: "npm:^5.5.2"
     react-native-screens: "npm:^4.25.2"
+    react-native-share: "npm:^12.3.1"
     react-native-svg: "npm:^15.12.1"
     react-native-vision-camera: "npm:5.0.11"
     react-native-worklets: "npm:^0.9.1"
@@ -9258,6 +9259,13 @@ __metadata:
     react: "*"
     react-native: ">=0.82.0"
   checksum: 10c0/b1f155830e57c36e8ca60831f4b22079cd311f0e36f7c4465ff4094f9dec18e66cef2321a4ff8944aac51ead437720585080f1f4b2956106099a9ea7d9745d00
+  languageName: node
+  linkType: hard
+
+"react-native-share@npm:^12.3.1":
+  version: 12.3.1
+  resolution: "react-native-share@npm:12.3.1"
+  checksum: 10c0/4ee8a64e5a992ecf16bcf59a4d1384b3310d590d5fb0e7b07f60073635cc9de8fd3adf31bcbd93500252690bdf59a45ca6d01f3a834b32842768e1a02e5e5524
   languageName: node
   linkType: hard
 

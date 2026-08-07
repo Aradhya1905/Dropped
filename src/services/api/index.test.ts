@@ -208,6 +208,35 @@ describe('reply mapping', () => {
     expect(apiSecretToSecret(legacy).shareable).toBe(true);
   });
 
+  it('carries drop.city through apiSecretToSecret', () => {
+    // The field the whole city constellation groups on. It reaches the client
+    // only because `toDrop()` maps it — it existed as a column for a while
+    // without ever being on the wire.
+    const placed = {
+      ...apiSecret,
+      drop: { ...apiSecret.drop, city: 'Bengaluru' },
+    };
+    expect(apiSecretToSecret(placed).drop.city).toBe('Bengaluru');
+  });
+
+  it('leaves city undefined when the server omits it', () => {
+    // A drop whose author never resolved a city belongs to no constellation,
+    // which is a different thing from belonging to one called "".
+    expect(apiSecretToSecret(apiSecret).drop.city).toBeUndefined();
+  });
+
+  it('carries stoodAt through on a trail row', () => {
+    // When *you* stood there, which is what the constellation's line follows.
+    const trail = { ...apiSecret, stoodAt: 1_700_000_000_000 };
+    expect(apiSecretToSecret(trail).stoodAt).toBe(1_700_000_000_000);
+  });
+
+  it('leaves stoodAt undefined off the trail', () => {
+    // Every other response omits it, and a server predating the constellation
+    // omits it everywhere — the caller falls back to the drop's own date.
+    expect(apiSecretToSecret(apiSecret).stoodAt).toBeUndefined();
+  });
+
   it('never carries author identity on a reply', () => {
     const wire: ApiReply = {
       id: 'r1',

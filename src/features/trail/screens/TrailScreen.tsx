@@ -15,6 +15,7 @@ import { colors, fonts } from '../../../design-system/tokens';
 import { EchoCard, useEchoes } from '../../echo';
 import { useDeviceLocation } from '../../../services/location/LocationContext';
 import { useDropsStore } from '../../../store/dropsStore';
+import { ConstellationCard } from '../components/ConstellationCard';
 import { FogHeader } from '../components/FogHeader';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
@@ -98,6 +99,10 @@ export function TrailScreen() {
         />
 
         <FogHeader />
+
+        {/* The keepsake version of the same idea, right under the fog: one
+            drawing per city, made only of places you actually stood in. */}
+        <ConstellationCard />
 
         {/*
           Above the tabs, below the fog: these are places, not entries — they

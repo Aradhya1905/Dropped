@@ -16,6 +16,15 @@ export interface Drop {
   coordinate: Coordinate;
   /** Optional human label, e.g. "Blue Tokai, Indiranagar". */
   placeLabel?: string;
+  /**
+   * The city it was left in, e.g. "Bengaluru". Absent when the author's device
+   * never resolved one — every drop predating the column, and any drop made
+   * without reverse geocoding.
+   *
+   * Coarser than {@link placeLabel} and therefore the safer of the two: it is
+   * what groups a trail into one constellation per city.
+   */
+  city?: string;
   /** ms epoch. */
   createdAt: number;
 }
@@ -104,6 +113,15 @@ export interface Secret {
    * wasted. It is a hint, never a gate — the gate is the server's.
    */
   revealCondition?: RevealCondition;
+  /**
+   * ms epoch of when **you** came to stand here — your reveal, your save, or,
+   * for your own drops, the drop itself. Present only on trail lists, where
+   * every row is your own history; absent everywhere else, and absent from
+   * servers predating the city constellation.
+   *
+   * Not to be confused with `stoodHere`, which counts *other* people.
+   */
+  stoodAt?: number;
 }
 
 /**

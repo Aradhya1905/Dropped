@@ -7,7 +7,8 @@
  * ├─ Main → MainTabs: Map · Trail · You       (design tabbar)
  * │    └─ MapTab → MapStack: MapHome → Walk   (04 → 04a/b/c beats)
  * ├─ SecretDetail (05) · Opening (06) → Secret (07)
- * └─ Composer (08) → Dropped (09)
+ * ├─ Composer (08) → Dropped (09)
+ * └─ Constellation                            (the Trail tab's keepsake)
  */
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
@@ -36,4 +37,6 @@ export type RootStackParamList = {
   Secret: { secretId: string };
   Composer: undefined;
   Dropped: { secretId: string };
+  /** The city constellation (10). `city` preselects one; omitted = the latest. */
+  Constellation: { city?: string } | undefined;
 };

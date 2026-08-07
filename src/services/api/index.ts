@@ -125,6 +125,8 @@ export interface ApiDrop {
   id: string;
   coordinate: Coordinate;
   placeLabel?: string;
+  /** City the drop was left in. Absent from servers predating the constellation. */
+  city?: string;
   createdAt: number;
 }
 
@@ -156,6 +158,20 @@ export interface ApiSecret {
    * server predating 09 sends for every drop.
    */
   revealCondition?: RevealCondition;
+}
+
+/**
+ * A secret on a trail list: an `ApiSecret` plus when *this* device came to
+ * stand there — its reveal, its save, or, for its own drops, the drop itself.
+ *
+ * Only the trail sends it, because only there is every row this device's own
+ * history. The city constellation draws its line in this order; drawing it by
+ * the drops' creation dates would draw the order the secrets were written,
+ * which is somebody else's story.
+ */
+export interface ApiTrailSecret extends ApiSecret {
+  /** ms epoch. Absent from servers predating the constellation. */
+  stoodAt?: number;
 }
 
 /**
@@ -216,6 +232,22 @@ export interface ApiDeviceInfo {
   deviceId: string;
   createdAt: number;
   dropsQuotaRemaining: number;
+}
+
+/**
+ * One city in this device's history (`GET /devices/me/cities`) — the per-city
+ * breakdown behind `ApiDeviceStats.citiesVisited`, which is only a number.
+ *
+ * Counts and dates only. The constellation's *points* come from the trail,
+ * which is already gated on this device having stood there.
+ */
+export interface ApiDeviceCity {
+  city: string;
+  foundCount: number;
+  droppedCount: number;
+  /** ms epoch of the first / most recent thing this device did in that city. */
+  firstAt: number;
+  lastAt: number;
 }
 
 /** Aggregate Trail stats for this device (steps come from the device, not here). */
@@ -384,11 +416,31 @@ export const reportReply = (id: string, replyId: string, reason: string) =>
     .post<{ reported: true }>(`/drops/${id}/replies/${replyId}/report`, { reason })
     .then(r => r.data);
 
-export const fetchTrailFound = (limit = 20, offset = 0) =>
-  api.get<{ secrets: ApiSecret[]; total: number }>('/drops/trail/found', { params: { limit, offset } }).then(r => r.data);
+/**
+ * Every city this device has found or left something in, newest activity
+ * first. The index the constellation picker is built from — one drawing per
+ * city, and this is the list of cities.
+ */
+export const fetchDeviceCities = () =>
+  api.get<{ cities: ApiDeviceCity[] }>('/devices/me/cities').then(r => r.data.cities);
 
-export const fetchTrailSaved = (limit = 20, offset = 0) =>
-  api.get<{ secrets: ApiSecret[]; total: number }>('/drops/trail/saved', { params: { limit, offset } }).then(r => r.data);
+/**
+ * The trail lists. `city` narrows to one city (case-insensitive, server-side),
+ * which is how the constellation pages through a single city's points instead
+ * of pulling the whole trail and filtering here.
+ */
+const trail = (kind: 'found' | 'saved' | 'dropped', limit: number, offset: number, city?: string) =>
+  api
+    .get<{ secrets: ApiTrailSecret[]; total: number }>(`/drops/trail/${kind}`, {
+      params: { limit, offset, ...(city ? { city } : {}) },
+    })
+    .then(r => r.data);
 
-export const fetchTrailDropped = (limit = 20, offset = 0) =>
-  api.get<{ secrets: ApiSecret[]; total: number }>('/drops/trail/dropped', { params: { limit, offset } }).then(r => r.data);
+export const fetchTrailFound = (limit = 20, offset = 0, city?: string) =>
+  trail('found', limit, offset, city);
+
+export const fetchTrailSaved = (limit = 20, offset = 0, city?: string) =>
+  trail('saved', limit, offset, city);
+
+export const fetchTrailDropped = (limit = 20, offset = 0, city?: string) =>
+  trail('dropped', limit, offset, city);

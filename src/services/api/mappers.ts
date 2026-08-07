@@ -1,5 +1,11 @@
 import type { DropPreview, Echo, Reply, Secret } from '../../types';
-import type { ApiDropPreview, ApiEcho, ApiReply, ApiSecret } from './index';
+import type {
+  ApiDropPreview,
+  ApiEcho,
+  ApiReply,
+  ApiSecret,
+  ApiTrailSecret,
+} from './index';
 
 export function apiSecretToSecret(s: ApiSecret): Secret {
   return {
@@ -9,6 +15,9 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
       id: s.drop.id,
       coordinate: s.drop.coordinate,
       placeLabel: s.drop.placeLabel,
+      // Absent stays absent: a drop whose author never resolved a city belongs
+      // to no constellation, which is different from belonging to one called "".
+      city: s.drop.city,
       createdAt: s.drop.createdAt,
     },
     createdAt: s.createdAt,
@@ -35,6 +44,9 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     // Absent = no condition beyond the 50 m rule, which is both the default and
     // what a server predating time gates sends for every drop.
     revealCondition: s.revealCondition,
+    // Trail rows only — when *you* stood here. Absent everywhere else, and the
+    // constellation falls back to the drop's own date when it is missing.
+    stoodAt: (s as ApiTrailSecret).stoodAt,
   };
 }
 
