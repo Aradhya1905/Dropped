@@ -11,6 +11,7 @@ export const StorageKeys = {
   walkedCells: 'trail.walkedCells',
   moodFilter: 'map.moodFilter',
   echoesEnabled: 'settings.echoes',
+  accurateCompass: 'settings.accurateCompass',
   mutedEchoIds: 'echo.muted',
   echoCache: 'echo.cache',
 } as const;
@@ -72,6 +73,16 @@ export const DEFAULT_MOOD_FILTER: readonly [] = [];
  * pleasant option; this one may not.
  */
 export const DEFAULT_ECHOES_ENABLED = false;
+
+/**
+ * The compass lies by default — a needle that only firms up as you close is the
+ * feature, not a bug (see FUN_TODOs/12-lying-compass.md).
+ *
+ * The toggle exists because "search for it visually" is not a game everyone can
+ * play. Turning it on returns the exact bearing at every distance, which costs
+ * that person nothing except the fiction.
+ */
+export const DEFAULT_ACCURATE_COMPASS = false;
 
 /**
  * One remembered anniversary, as it survives an app restart.

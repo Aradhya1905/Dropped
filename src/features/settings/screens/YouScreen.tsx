@@ -15,16 +15,19 @@ import {
 import {
   BookmarkIcon,
   ClockIcon,
+  HeadingIcon,
   HumIcon,
   LayersIcon,
 } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { Passport } from '../components/Passport';
 import {
+  getAccurateCompass,
   getDeviceId,
   getEchoesEnabled,
   getMapStyle,
   getNotificationMode,
+  setAccurateCompass,
   setEchoesEnabled,
 } from '../../../services/storage';
 import { mapStyleLabel } from '../../../services/maps';
@@ -53,6 +56,16 @@ export function YouScreen() {
     const next = !echoes;
     setEchoesEnabled(next);
     setEchoes(next);
+  };
+
+  // The lying compass's escape hatch. Ships with the feature, not after it:
+  // "walk around until the needle firms up" is not a game everyone can play,
+  // and this is the only way out of it.
+  const [accurate, setAccurate] = useState(getAccurateCompass);
+  const toggleAccurate = () => {
+    const next = !accurate;
+    setAccurateCompass(next);
+    setAccurate(next);
   };
 
   const settings = [
@@ -124,6 +137,31 @@ export function YouScreen() {
             </View>
             <Text style={[styles.setVal, !echoes && styles.setValOff]}>
               {echoes ? 'On' : 'Off'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: accurate }}
+            accessibilityLabel="Accurate compass"
+            onPress={toggleAccurate}
+            style={({ pressed }) => [styles.setRow, pressed && styles.pressed]}
+          >
+            <View style={styles.setIco}>
+              <HeadingIcon
+                size={22}
+                color={accurate ? colors.accentDeep : colors.inkSoft}
+              />
+            </View>
+            <View style={styles.setLblBlock}>
+              <Text style={styles.setLbl}>Accurate compass</Text>
+              <Text style={styles.setNote}>
+                The needle normally drifts until you're close. Turn this on to
+                have it point true the whole way.
+              </Text>
+            </View>
+            <Text style={[styles.setVal, !accurate && styles.setValOff]}>
+              {accurate ? 'On' : 'Off'}
             </Text>
           </Pressable>
         </View>

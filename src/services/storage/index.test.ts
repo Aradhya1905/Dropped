@@ -2,6 +2,8 @@ import {
   addSavedId,
   addWalkedCells,
   clearAll,
+  getAccurateCompass,
+  setAccurateCompass,
   clearWalkedCells,
   FOG_CELL_CAP,
   getDeviceId,
@@ -117,6 +119,16 @@ describe('storage mood filter', () => {
   it('survives a persisted value that is not a list at all', () => {
     setMoodFilter('joy' as never);
     expect(getMoodFilter()).toEqual([]);
+  });
+});
+
+describe('storage accurate compass', () => {
+  it('defaults to the lying needle and persists the opt-out', () => {
+    expect(getAccurateCompass()).toBe(false);
+    setAccurateCompass(true);
+    expect(getAccurateCompass()).toBe(true);
+    setAccurateCompass(false);
+    expect(getAccurateCompass()).toBe(false);
   });
 });
 

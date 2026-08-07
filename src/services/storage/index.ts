@@ -8,6 +8,7 @@ import { createMMKV } from 'react-native-mmkv';
 import { getNativeUniqueId, nativeIdToUuidV4 } from '../device';
 import { MOODS, type Mood } from '../../types';
 import {
+  DEFAULT_ACCURATE_COMPASS,
   DEFAULT_ECHOES_ENABLED,
   DEFAULT_HAPTICS_ENABLED,
   DEFAULT_MAP_STYLE,
@@ -195,6 +196,29 @@ export function getMoodFilter(): Mood[] {
 
 export function setMoodFilter(moods: Mood[]): void {
   setJSON(StorageKeys.moodFilter, moods);
+}
+
+/**
+ * Accessibility escape hatch for the lying compass: on, the needle points at
+ * the true bearing at every distance. Off (the default) it drifts until you're
+ * inside the whisper band. See `features/nearby/hooks/useNeedleWobble`.
+ */
+export function getAccurateCompass(): boolean {
+  return mmkv.getBoolean(StorageKeys.accurateCompass) ?? DEFAULT_ACCURATE_COMPASS;
+}
+
+export function setAccurateCompass(on: boolean): void {
+  mmkv.set(StorageKeys.accurateCompass, on);
+}
+
+/**
+ * Notify when the accurate-compass flag flips, so a needle already on screen
+ * steadies (or starts drifting) without waiting for the screen to remount.
+ */
+export function onAccurateCompassChange(listener: () => void): { remove: () => void } {
+  return mmkv.addOnValueChangedListener(key => {
+    if (key === StorageKeys.accurateCompass) listener();
+  });
 }
 
 // --- anniversary echoes ------------------------------------------------------
