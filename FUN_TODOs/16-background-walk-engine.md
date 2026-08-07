@@ -1,6 +1,6 @@
 # 16 — Background walk engine (prerequisite)
 
-**Effort:** L · **Where:** client + native · **Status:** todo · **Blocks:** [02](02-warmth-haptics.md), [08](08-anniversary-echo.md), [13](13-settings-retention.md)
+**Effort:** L · **Where:** client + native · **Status:** **built** (device QA owed; do not ship before [14](14-settings-trust.md)) · **Blocks:** [02](02-warmth-haptics.md), [08](08-anniversary-echo.md), [13](13-settings-retention.md)
 **Plan:** [2026-08-07-16-background-walk-engine.md](../.claude/plans/2026-08-07-16-background-walk-engine.md)
 
 ## Why this file exists

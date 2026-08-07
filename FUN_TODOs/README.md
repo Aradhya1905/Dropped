@@ -33,17 +33,24 @@ all wired end to end.
 | [13](13-settings-retention.md) | Settings: retention levers | **client only** | M | **built** (backend none needed — verified; device QA owed, needs 16) | [plan](../.claude/plans/2026-08-07-13-settings-retention.md) |
 | [14](14-settings-trust.md) | Settings: trust & privacy | client + backend | M | **built** (device QA + policy/contact URLs owed) | [plan](../.claude/plans/2026-08-07-14-settings-trust.md) |
 | [15](15-settings-polish.md) | Settings: polish & accessibility | client only | S | todo | [plan](../.claude/plans/2026-08-07-15-settings-polish.md) |
-| [16](16-background-walk-engine.md) | Background walk engine (prerequisite) | client + native | L | todo | [plan](../.claude/plans/2026-08-07-16-background-walk-engine.md) |
+| [16](16-background-walk-engine.md) | Background walk engine (prerequisite) | client + native | L | **built** (device QA owed; hold for 14) | [plan](../.claude/plans/2026-08-07-16-background-walk-engine.md) |
 
 Effort: **S** ≈ a day, **M** ≈ a few days, **L** ≈ a week+.
 
 ## Read 16 before 02 / 08 / 13
 
-`services/notifications` has a working notifee adapter and **zero call sites**;
-the GPS watch only runs while the app is foregrounded. So the app cannot notice
-anything while it's in your pocket — three ideas here quietly assume it can.
-[16](16-background-walk-engine.md) is that missing piece, and each of 02/08/13
-now says which half of itself works without it.
+`services/notifications` had a working notifee adapter and **zero call sites**;
+the GPS watch only ran while the app was foregrounded. So the app could not
+notice anything while it was in your pocket — three ideas here quietly assumed
+it could. [16](16-background-walk-engine.md) is that missing piece.
+
+It is now built: one shared GPS watch (`services/location/backgroundWatch`), one
+producer (`services/notifications/producer`), one composition root
+(`services/walkEngine`) that is the app's **only** scheduler of notifications.
+13's gate and 14's privacy-zone check plug into it through
+`setNotificationGate` / `setPrivacyZoneCheck` — the engine holds no policy of
+its own. It ships **off**, behind an in-context ask on the map, and must not be
+released before [14](14-settings-trust.md)'s mitigations.
 
 ## Suggested order
 

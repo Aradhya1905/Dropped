@@ -40,8 +40,6 @@ import {
   setOnlyWhenMoving,
   setQuietHours,
   setSubscribedMoods,
-} from './index';
-import {
   addReport,
   forgetWalkedCellsInside,
   getPrivacyZones,
@@ -49,8 +47,14 @@ import {
   hasReported,
   rotateDeviceId,
   setPrivacyZones,
+  clearProducerState,
+  getBackgroundWalkEnabled,
+  getProducerState,
+  setBackgroundWalkEnabled,
+  setProducerState,
 } from './index';
 import type { PrivacyZone } from '../location/privacyZones';
+import { EMPTY_PRODUCER_STATE, type ProducerState } from '../notifications/producer';
 import { echoCheckDue } from '../../utils/echo';
 import { cellIdFor } from '../../utils/geo';
 
@@ -455,5 +459,62 @@ describe('storage device id rotation (the panic wipe)', () => {
     expect(rotated).not.toBe(before);
     expect(rotated).toMatch(/^[0-9a-f-]{36}$/);
     expect(getDeviceId()).toBe(rotated);
+  });
+});
+
+describe('storage background walk engine', () => {
+  beforeEach(() => clearAll());
+
+  it('keeps background walking off until it is asked for', () => {
+    expect(getBackgroundWalkEnabled()).toBe(false);
+    setBackgroundWalkEnabled(true);
+    expect(getBackgroundWalkEnabled()).toBe(true);
+  });
+
+  it('forgets the producer state when background walking is turned off', () => {
+    setProducerState({
+      lastFiredAt: 1000,
+      firedDropIds: ['a'],
+      lastCheckCoord: { lat: 1, lng: 2 },
+    });
+    setBackgroundWalkEnabled(false);
+    expect(getProducerState()).toEqual(EMPTY_PRODUCER_STATE);
+  });
+
+  it('round-trips the producer state, empty fired list included', () => {
+    const state: ProducerState = {
+      lastFiredAt: 1_700_000_000_000,
+      firedDropIds: [],
+      lastCheckCoord: { lat: 12.9716, lng: 77.5946 },
+    };
+    setProducerState(state);
+    expect(getProducerState()).toEqual(state);
+  });
+
+  it('starts from a safe default when nothing is stored', () => {
+    expect(getProducerState()).toEqual(EMPTY_PRODUCER_STATE);
+  });
+
+  it('resets a corrupt state instead of throwing', () => {
+    // This is parsed on a background thread, where a throw is invisible.
+    setProducerState('not a state' as unknown as ProducerState);
+    expect(getProducerState()).toEqual(EMPTY_PRODUCER_STATE);
+
+    setProducerState({
+      lastFiredAt: 'soon',
+      firedDropIds: [1, 'a', null],
+      lastCheckCoord: { lat: 'here' },
+    } as unknown as ProducerState);
+    expect(getProducerState()).toEqual({
+      lastFiredAt: null,
+      firedDropIds: ['a'],
+      lastCheckCoord: null,
+    });
+  });
+
+  it('clears', () => {
+    setProducerState({ lastFiredAt: 1, firedDropIds: ['a'], lastCheckCoord: null });
+    clearProducerState();
+    expect(getProducerState()).toEqual(EMPTY_PRODUCER_STATE);
   });
 });

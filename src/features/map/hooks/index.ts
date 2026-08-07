@@ -21,3 +21,5 @@ export {
   type WarmthBand,
   type UseWarmthResult,
 } from './useWarmth';
+export { useBackgroundWalk } from './useBackgroundWalk';
+export type { UseBackgroundWalkResult } from './useBackgroundWalk';

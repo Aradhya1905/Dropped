@@ -11,4 +11,12 @@ export const noopAdapter: NotificationAdapter = {
   },
   async notifyNearbySecret(): Promise<void> {},
   async cancelAll(): Promise<void> {},
+  async startWalkService(): Promise<void> {},
+  async stopWalkService(): Promise<void> {},
+  onNotificationPress(): () => void {
+    return () => {};
+  },
+  async getInitialSecretId(): Promise<string | null> {
+    return null;
+  },
 };
