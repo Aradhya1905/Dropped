@@ -8,6 +8,8 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 import Svg, { Defs, FeGaussianBlur, Filter, G, Path, Rect } from 'react-native-svg';
 
+import { useLoopsActive, useReducedMotion } from '../tokens/motion';
+
 const BLOCKS: Array<{ x: number; y: number; w: number; h: number }> = [
   { x: 34, y: 92, w: 120, h: 96 },
   { x: 172, y: 120, w: 96, h: 120 },
@@ -37,8 +39,18 @@ const STREETS_THIN = [
 const RIVER = 'M-20 760 C 80 700, 120 640, 230 600 S 420 520 460 470';
 
 export function MapTexture({ dense = false, blur = false }: { dense?: boolean; blur?: boolean }) {
-  const t = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  const loopsActive = useLoopsActive();
+  // Mid-drift, not one end of it: the texture is centred on this value, so a
+  // stopped background sits where it belongs instead of visibly offset.
+  const t = useRef(new Animated.Value(reduced ? 0.5 : 0)).current;
+
   useEffect(() => {
+    if (reduced) {
+      t.setValue(0.5);
+      return;
+    }
+    if (!loopsActive) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(t, {
@@ -57,7 +69,7 @@ export function MapTexture({ dense = false, blur = false }: { dense?: boolean; b
     );
     loop.start();
     return () => loop.stop();
-  }, [t]);
+  }, [t, reduced, loopsActive]);
 
   const street = dense ? 'rgba(33,29,23,0.16)' : 'rgba(33,29,23,0.13)';
   const streetThin = dense ? 'rgba(33,29,23,0.1)' : 'rgba(33,29,23,0.08)';

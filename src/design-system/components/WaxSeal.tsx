@@ -14,6 +14,7 @@ import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg'
 
 import type { Mood } from '../../types';
 import { colors, fonts, moodColors, shadows } from '../tokens';
+import { useLoopsActive, useReducedMotion } from '../tokens/motion';
 
 let sealGradientSeq = 0;
 
@@ -46,8 +47,18 @@ export interface WaxSealProps {
   children?: React.ReactNode;
   /** When set, the seal becomes a button (the stamp FABs). */
   onPress?: () => void;
+  /** What that button announces. Required whenever `onPress` is. */
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }
+
+/**
+ * A seal that does something must say what. The union makes that a type error
+ * rather than a TalkBack finding.
+ */
+export type WaxSealComponentProps =
+  | (WaxSealProps & { onPress: () => void; accessibilityLabel: string })
+  | (WaxSealProps & { onPress?: undefined });
 
 export function WaxSeal({
   size = 46,
@@ -60,13 +71,18 @@ export function WaxSeal({
   cityLabel,
   children,
   onPress,
+  accessibilityLabel,
   style,
-}: WaxSealProps) {
+}: WaxSealComponentProps) {
   const gradId = useRef(`waxGrad${sealGradientSeq++}`).current;
   const t = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  const loopsActive = useLoopsActive();
 
   useEffect(() => {
-    if (!pulse) {
+    // `t` rests at 0 (full size), so reduced motion needs no static value here —
+    // the seal simply never squashes.
+    if (!pulse || reduced || !loopsActive) {
       return;
     }
     // stampPulse: rest …88%, dip to .92 at 94%, back — over 3.4s
@@ -79,7 +95,7 @@ export function WaxSeal({
     );
     loop.start();
     return () => loop.stop();
-  }, [pulse, t]);
+  }, [pulse, t, reduced, loopsActive]);
 
   const wax = mood ? moodColors[mood].wax : { light: colors.accent, deep: colors.accentDeep };
   const r = size / 2;
@@ -158,7 +174,17 @@ export function WaxSeal({
     return seal;
   }
   return (
-    <Pressable onPress={onPress} hitSlop={6} style={({ pressed }) => [pressed && styles.pressed, style]}>
+    <Pressable
+      onPress={onPress}
+      hitSlop={6}
+      accessibilityRole="button"
+      // A pressable seal has no text of its own — every one of them is a wax
+      // circle with an embossed glyph inside, which TalkBack reads as nothing
+      // at all. The prop is required by the type so a new stamp FAB can't ship
+      // silent.
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [pressed && styles.pressed, style]}
+    >
       {seal}
     </Pressable>
   );

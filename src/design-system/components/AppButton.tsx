@@ -71,6 +71,7 @@ export function AppButton({
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        accessibilityRole="button"
         style={[
           styles.base,
           isPrimary && styles.primary,

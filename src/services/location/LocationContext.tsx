@@ -11,7 +11,7 @@ import {
   type PermissionStatus,
 } from './index';
 import { useReverseGeocode } from '../maps';
-import { addWalkedCells } from '../storage';
+import { addWalkedCells, onBatteryModeChange } from '../storage';
 import { cellIdFor } from '../../utils/geo';
 
 /**
@@ -148,6 +148,17 @@ function useLocationImpl(): UseDeviceLocationResult {
     });
     return () => sub.remove();
   }, [flushCells]);
+
+  // Battery mode changes the watch's accuracy class and distance filter, and
+  // the SDK fixes both at `watchPosition` time — so applying a flip means
+  // tearing the watch down and starting a fresh one. Only while we actually
+  // have a watch running: restarting one that was never started would prompt.
+  useEffect(() => {
+    const sub = onBatteryModeChange(() => {
+      if (mountedRef.current && stopWatchRef.current) startWatch();
+    });
+    return () => sub.remove();
+  }, [startWatch]);
 
   // Onboarding grants OS permission but lives on a different screen; once we're
   // back in the app, start the live watch immediately if permission is already

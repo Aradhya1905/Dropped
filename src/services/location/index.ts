@@ -17,6 +17,7 @@ import Geolocation, {
 import type { Coordinate } from '../../types';
 import { haversineMeters, isWithin } from '../../utils/geo';
 import { REVEAL_RADIUS_M } from '../../types';
+import { getBatteryMode } from '../storage';
 
 /** Normalized permission outcome across iOS/Android. */
 export type PermissionStatus = 'granted' | 'denied' | 'blocked';
@@ -25,6 +26,38 @@ const GEO_OPTIONS = {
   enableHighAccuracy: true,
   accuracy: { android: 'high', ios: 'best' },
 } as const;
+
+/**
+ * Battery mode: the same watch, asked for less.
+ *
+ * Not "GPS off" — fog of war and warmth haptics both ride this stream and the
+ * app stops meaning anything without it. What changes is how often the radio
+ * wakes up: a coarser accuracy class and a 25 m movement threshold instead of
+ * 5 m, so a walk still records but standing still costs almost nothing. The
+ * visible cost is a dot that catches up in longer steps.
+ */
+const BATTERY_GEO_OPTIONS = {
+  enableHighAccuracy: false,
+  accuracy: { android: 'balanced', ios: 'hundredMeters' },
+} as const;
+
+/** Metres of movement before the OS bothers to tell us, per mode. */
+const DISTANCE_FILTER_M = 5;
+const BATTERY_DISTANCE_FILTER_M = 25;
+
+/**
+ * The GPS cadence a watch would start with right now. Exported so the setting's
+ * effect is assertable without a GPS mock.
+ */
+export function watchOptions(batteryMode: boolean = getBatteryMode()): {
+  enableHighAccuracy: boolean;
+  accuracy: { android: string; ios: string };
+  distanceFilter: number;
+} {
+  return batteryMode
+    ? { ...BATTERY_GEO_OPTIONS, distanceFilter: BATTERY_DISTANCE_FILTER_M }
+    : { ...GEO_OPTIONS, distanceFilter: DISTANCE_FILTER_M };
+}
 
 /**
  * Reject fixes coarser than this (meters). A cold GPS often emits an early
@@ -179,7 +212,10 @@ export function watch(
       // else: coarse early fix, still within grace — wait for a better one.
     },
     err => onError?.(err),
-    { ...GEO_OPTIONS, distanceFilter: 5 },
+    // Read once, here: the SDK bakes these in at `watchPosition` time, so a
+    // later flip of battery mode can only take effect by restarting the watch
+    // (which `LocationContext` does, via `onBatteryModeChange`).
+    watchOptions() as never,
   );
   return () => Geolocation.clearWatch(id);
 }

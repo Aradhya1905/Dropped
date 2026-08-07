@@ -21,10 +21,70 @@
 const NOTO_GLYPHS =
   'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf';
 
+/**
+ * Every colour this style paints, in one object per cut.
+ *
+ * The night cut is **not** a generic dark basemap: it's the same paper, ink and
+ * sage after dark. Protomaps' stock `dark` style is cool grey-blue and reads as
+ * a different app — which is the whole reason this variant exists rather than
+ * just pointing `droppedNight` at their CDN. Ground and ink swap roles; sage
+ * stays sage, because it is the one colour the app is built around.
+ *
+ * Fills are pre-blended over the ground to opaque, same discipline as the day
+ * cut: overlapping translucent polygons show triangulation seams.
+ */
+interface StylePalette {
+  ground: string;
+  water: string;
+  waterEdge: string;
+  green: string;
+  building: string;
+  buildingEdge: string;
+  roadCasing: string;
+  roadMajor: string;
+  roadMinor: string;
+  path: string;
+  placeLabel: string;
+  roadLabel: string;
+  halo: string;
+}
+
+const DAY: StylePalette = {
+  ground: '#F1EBDE', // paper
+  water: '#C6CDBC', // accent @0.35 over paper
+  waterEdge: 'rgba(86,110,91,0.4)', // accentDeep, faint
+  green: '#DBDCCC', // accentTint @0.18 over paper
+  building: '#E7E1D4', // ink @0.05 over paper
+  buildingEdge: '#E2DBCB',
+  roadCasing: 'rgba(33,29,23,0.10)',
+  roadMajor: '#E8E0D0', // paperDeep
+  roadMinor: 'rgba(33,29,23,0.07)',
+  path: 'rgba(33,29,23,0.10)',
+  placeLabel: '#A79D8D', // inkFaint
+  roadLabel: '#6E655A', // inkSoft
+  halo: 'rgba(241,235,222,0.88)', // paper
+};
+
+const NIGHT: StylePalette = {
+  ground: '#171410', // ink, taken darker — still warm, never blue-black
+  water: '#1E2620', // sage sunk into the dark ground
+  waterEdge: 'rgba(118,149,124,0.34)', // accent, faint — shorelines still read
+  green: '#1C2119',
+  building: '#221E18', // paper @0.04 over the night ground
+  buildingEdge: '#2A251D',
+  roadCasing: 'rgba(241,235,222,0.06)',
+  roadMajor: '#2E2921', // the night's paperDeep — roads stay the lighter figure
+  roadMinor: 'rgba(241,235,222,0.055)',
+  path: 'rgba(241,235,222,0.09)',
+  placeLabel: '#8C8375',
+  roadLabel: '#A79D8D',
+  halo: 'rgba(23,20,16,0.9)',
+};
+
 export function droppedMapStyle(
   apiKey?: string,
   glyphsUrl?: string,
-  options?: { labels?: boolean },
+  options?: { labels?: boolean; dark?: boolean },
 ): object {
   const tilesUrl = apiKey
     ? `https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=${apiKey}`
@@ -41,6 +101,7 @@ export function droppedMapStyle(
   const labelName = ['coalesce', ['get', 'name:en'], ['get', 'name']];
   // Omit label (symbol) layers entirely for the label-free "Quiet" style.
   const showLabels = options?.labels !== false;
+  const c = options?.dark ? NIGHT : DAY;
 
   const style = {
     version: 8,
@@ -62,13 +123,12 @@ export function droppedMapStyle(
       {
         id: 'background',
         type: 'background',
-        paint: { 'background-color': '#F1EBDE' }, // paper
+        paint: { 'background-color': c.ground },
       },
 
       // --- Water ---
       // Protomaps v4 schema: the feature-type attribute is `kind` (not the old
-      // `pmap:kind`). Fills are pre-blended over paper (#F1EBDE) to opaque so
-      // overlapping translucent polygons can't show triangulation seams.
+      // `pmap:kind`).
       {
         id: 'water',
         type: 'fill',
@@ -78,7 +138,7 @@ export function droppedMapStyle(
         // those LineStrings produces degenerate triangle slivers across the map
         // (the "irregular lines"). Restrict the fill to polygon water bodies only.
         filter: ['==', '$type', 'Polygon'],
-        paint: { 'fill-color': '#C6CDBC' }, // accent @0.35 over paper
+        paint: { 'fill-color': c.water },
       },
       {
         id: 'water-outline',
@@ -87,7 +147,7 @@ export function droppedMapStyle(
         'source-layer': 'water',
         filter: ['==', '$type', 'Polygon'], // shorelines only, not streams
         paint: {
-          'line-color': 'rgba(86,110,91,0.4)', // accentDeep, faint
+          'line-color': c.waterEdge,
           'line-width': 0.8,
         },
       },
@@ -99,7 +159,7 @@ export function droppedMapStyle(
         source: 'protomaps',
         'source-layer': 'landcover',
         filter: ['in', 'kind', 'forest', 'grassland', 'scrub'],
-        paint: { 'fill-color': '#DBDCCC' }, // accentTint @0.18 over paper
+        paint: { 'fill-color': c.green },
       },
 
       // --- Parks / green areas ---
@@ -125,7 +185,7 @@ export function droppedMapStyle(
           'scrub',
           'cemetery',
         ],
-        paint: { 'fill-color': '#DBDCCC' }, // accentTint @0.18 over paper
+        paint: { 'fill-color': c.green },
       },
 
       // --- Buildings ---
@@ -136,8 +196,8 @@ export function droppedMapStyle(
         'source-layer': 'buildings',
         filter: ['in', 'kind', 'building', 'building_part'], // skip address points
         paint: {
-          'fill-color': '#E7E1D4', // ink @0.05 over paper
-          'fill-outline-color': '#E2DBCB',
+          'fill-color': c.building,
+          'fill-outline-color': c.buildingEdge,
         },
       },
 
@@ -150,7 +210,7 @@ export function droppedMapStyle(
         filter: ['in', 'kind', 'highway', 'major_road'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-          'line-color': 'rgba(33,29,23,0.10)',
+          'line-color': c.roadCasing,
           'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2.5, 16, 8],
         },
       },
@@ -162,7 +222,7 @@ export function droppedMapStyle(
         filter: ['in', 'kind', 'highway', 'major_road'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-          'line-color': '#E8E0D0', // paperDeep
+          'line-color': c.roadMajor,
           'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 16, 6],
         },
       },
@@ -176,7 +236,7 @@ export function droppedMapStyle(
         filter: ['in', 'kind', 'minor_road'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-          'line-color': 'rgba(33,29,23,0.07)',
+          'line-color': c.roadMinor,
           'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 16, 3],
         },
       },
@@ -190,7 +250,7 @@ export function droppedMapStyle(
         filter: ['in', 'kind', 'path'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-          'line-color': 'rgba(33,29,23,0.10)',
+          'line-color': c.path,
           'line-width': 0.8,
           'line-dasharray': [2, 2],
         },
@@ -212,8 +272,8 @@ export function droppedMapStyle(
           'text-max-width': 6,
         },
         paint: {
-          'text-color': '#A79D8D', // inkFaint
-          'text-halo-color': 'rgba(241,235,222,0.85)', // paper
+          'text-color': c.placeLabel,
+          'text-halo-color': c.halo,
           'text-halo-width': 1.5,
         },
       },
@@ -233,8 +293,8 @@ export function droppedMapStyle(
           'text-max-angle': 30,
         },
         paint: {
-          'text-color': '#6E655A', // inkSoft
-          'text-halo-color': 'rgba(241,235,222,0.9)',
+          'text-color': c.roadLabel,
+          'text-halo-color': c.halo,
           'text-halo-width': 1.2,
         },
       },

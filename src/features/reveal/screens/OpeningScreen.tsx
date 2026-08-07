@@ -5,6 +5,7 @@
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
@@ -32,13 +33,29 @@ export function OpeningScreen({ navigation, route }: Props) {
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   const { reveal, coord, isPending } = useReveal();
 
+  // Read through a ref so the in-flight handler below sees the *current* focus
+  // state rather than the one captured when it started.
+  const isFocused = useIsFocused();
+  const focusedRef = React.useRef(isFocused);
+  focusedRef.current = isFocused;
+
   const handlePress = async () => {
     if (!coord || isPending) return;
     try {
       await reveal({ id: secretId });
+      // Android back during "opening…" leaves this screen while the request is
+      // still in flight. `replace` acts on whatever is now on top, so firing it
+      // here would swap the screen the user deliberately went back to — the
+      // walk they were in the middle of — for the secret they just declined to
+      // open. The reveal itself already succeeded server-side and the drop is
+      // unsealed for good, so it costs them nothing to open it later.
+      if (!focusedRef.current) return;
       navigation.replace('Secret', { secretId });
     } catch (err) {
       const apiErr = err as ApiError;
+      // Same reason as the success path: an alert about a drop the user has
+      // already walked away from is a jump-scare on whatever screen they're on.
+      if (!focusedRef.current) return;
       if (apiErr?.status !== 403) return;
 
       // Two different 403s, and they must not read alike. The server checks

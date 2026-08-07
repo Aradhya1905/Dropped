@@ -17,6 +17,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 
 import { colors, fonts } from '../../../design-system/tokens';
+import { useLoopsActive, useReducedMotion } from '../../../design-system/tokens/motion';
 
 const SIZE = 178;
 
@@ -29,6 +30,8 @@ interface CompassProps {
 
 export function Compass({ rotation, tweenMs = 300 }: CompassProps) {
   const animated = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  const loopsActive = useLoopsActive();
   /**
    * The value the needle is heading for, in *unwrapped* degrees: it accumulates
    * past 360 (and below 0) so that turning from 359° to 1° is a +2° move rather
@@ -45,7 +48,10 @@ export function Compass({ rotation, tweenMs = 300 }: CompassProps) {
     if (rotation == null) {
       // Fallback: gentle ambient sway
       targetDeg.current = null;
-      animated.setValue(0);
+      // Rest is the mid-point of the sway (`0.5` → 0°), so a stopped needle
+      // points north rather than parked at one end of its swing.
+      animated.setValue(reduced ? 0.5 : 0);
+      if (reduced || !loopsActive) return;
       const loop = Animated.loop(
         Animated.sequence([
           Animated.timing(animated, {
@@ -83,13 +89,23 @@ export function Compass({ rotation, tweenMs = 300 }: CompassProps) {
     if (delta < -180) delta += 360;
     targetDeg.current += delta;
 
-    Animated.timing(animated, {
+    // Reduced motion: the needle still tells the truth, it just stops sweeping
+    // to it. Snapping keeps the bearing — which is the information — and drops
+    // only the travel, which is the decoration.
+    if (reduced) {
+      animated.setValue(targetDeg.current);
+      return;
+    }
+
+    const anim = Animated.timing(animated, {
       toValue: targetDeg.current,
       duration: tweenRef.current,
       easing: Easing.out(Easing.ease),
       useNativeDriver: true,
-    }).start();
-  }, [rotation, animated]);
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [rotation, animated, reduced, loopsActive]);
 
   const needleRotate =
     rotation == null

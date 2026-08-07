@@ -9,7 +9,7 @@
  *
  * API key: set PROTOMAPS_API_KEY in `.env` (loaded via react-native-config).
  */
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Config from 'react-native-config';
 import { StyleSheet, type NativeSyntheticEvent } from 'react-native';
 import {
@@ -21,18 +21,24 @@ import {
 } from '@maplibre/maplibre-react-native';
 
 import type { Coordinate } from '../../types';
-import { getMapStyle, setMapStyle as persistMapStyle } from '../storage';
+import { getMapStyle, type MapStyle, setMapStyle as persistMapStyle } from '../storage';
 import { droppedMapStyle } from './droppedStyle';
 import { FogLayer, type BoundsSubscribe } from './FogLayer';
 import type { FogView } from './fog';
+import { AUTO_RECHECK_MS, resolveMapStyle, type ResolvedMapStyle } from './nightStyle';
 import type { MapAdapter, MapMarker } from './types';
 
-export type MapStyleKey = 'dropped' | 'quiet' | 'dark' | 'grayscale';
+/** A concrete cut the map can render. `auto` is deliberately not one of these. */
+export type MapStyleKey = ResolvedMapStyle;
+
+/** What the user picked — a cut, or the `auto` mode. */
+export type MapStyleChoice = MapStyle;
 
 export interface MapStyleOption {
-  key: MapStyleKey;
+  key: MapStyleChoice;
   label: string;
-  source: object | string;
+  /** Absent for `auto`, which has no source of its own — it resolves to one. */
+  source?: object | string;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,15 +58,33 @@ const PROTOMAPS_API_KEY = Config.PROTOMAPS_API_KEY;
  */
 const MAP_GLYPHS_URL = Config.MAP_GLYPHS_URL;
 
+/**
+ * The concrete cuts, in picker order.
+ *
+ * `droppedNight` is the app's own style after dark — see `droppedStyle`'s NIGHT
+ * palette for why it exists alongside Protomaps' stock `dark`, which is a
+ * perfectly good map of a different app.
+ */
+const STYLE_SOURCES: Record<MapStyleKey, object | string> = {
+  dropped: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL),
+  quiet: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL, { labels: false }),
+  droppedNight: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL, { dark: true }),
+  dark: `https://api.protomaps.com/styles/v5/dark/en.json?key=${PROTOMAPS_API_KEY}`,
+  grayscale: `https://api.protomaps.com/styles/v5/grayscale/en.json?key=${PROTOMAPS_API_KEY}`,
+};
+
 const STYLE_OPTIONS: MapStyleOption[] = [
-  { key: 'dropped', label: 'Dropped', source: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL) },
-  { key: 'quiet', label: 'Quiet', source: droppedMapStyle(PROTOMAPS_API_KEY, MAP_GLYPHS_URL, { labels: false }) },
-  { key: 'dark', label: 'Dark', source: `https://api.protomaps.com/styles/v5/dark/en.json?key=${PROTOMAPS_API_KEY}` },
-  { key: 'grayscale', label: 'Grayscale', source: `https://api.protomaps.com/styles/v5/grayscale/en.json?key=${PROTOMAPS_API_KEY}` },
+  { key: 'dropped', label: 'Dropped', source: STYLE_SOURCES.dropped },
+  { key: 'quiet', label: 'Quiet', source: STYLE_SOURCES.quiet },
+  { key: 'droppedNight', label: 'Dropped after dark', source: STYLE_SOURCES.droppedNight },
+  // No source: `auto` is a mode that resolves to one of the above at render.
+  { key: 'auto', label: 'Follow the sun' },
+  { key: 'dark', label: 'Dark', source: STYLE_SOURCES.dark },
+  { key: 'grayscale', label: 'Grayscale', source: STYLE_SOURCES.grayscale },
 ];
 
-/** Display label for a style key (e.g. for the You-screen settings row). */
-export function mapStyleLabel(key: MapStyleKey): string {
+/** Display label for a style choice (e.g. for the You-screen settings row). */
+export function mapStyleLabel(key: MapStyleChoice): string {
   return STYLE_OPTIONS.find(s => s.key === key)?.label ?? STYLE_OPTIONS[0].label;
 }
 
@@ -96,8 +120,11 @@ export interface MaplibreAdapterResult {
   adapter: MapAdapter;
   markers: MapMarker[];
   MaplibreView: React.ComponentType<{ style?: object; children?: React.ReactNode }>;
-  activeStyleKey: MapStyleKey;
-  setMapStyle: (key: MapStyleKey) => void;
+  /** What the user picked — `auto` included, so the picker can tick that row. */
+  activeStyleKey: MapStyleChoice;
+  /** What `auto` currently resolves to. Equal to `activeStyleKey` otherwise. */
+  renderedStyleKey: MapStyleKey;
+  setMapStyle: (key: MapStyleChoice) => void;
   styleOptions: MapStyleOption[];
 }
 
@@ -122,12 +149,18 @@ export function useMaplibreAdapter(
   const initialZoomRef = useRef<number>(initialZoom);
   initialZoomRef.current = initialZoom;
   const [markers, setMarkers] = useState<MapMarker[]>([]);
-  // Restore the persisted choice so the map and the You screen agree across
-  // mounts (default is STYLE_OPTIONS[0] — 'dropped').
-  const [activeStyle, setActiveStyle] = useState<object | string>(() => {
-    const saved = getMapStyle();
-    return (STYLE_OPTIONS.find(s => s.key === saved) ?? STYLE_OPTIONS[0]).source;
-  });
+  // Restore the persisted *choice* so the map and the You screen agree across
+  // mounts. `auto` is kept as `auto` here and resolved below — see nightStyle.
+  const [styleChoice, setStyleChoice] = useState<MapStyleChoice>(getMapStyle);
+  // Bumped on a timer while `auto` is selected, so an app left open through
+  // sunset changes with the sky instead of at the next remount.
+  const [sunTick, setSunTick] = useState(0);
+
+  useEffect(() => {
+    if (styleChoice !== 'auto') return;
+    const id = setInterval(() => setSunTick(n => n + 1), AUTO_RECHECK_MS);
+    return () => clearInterval(id);
+  }, [styleChoice]);
 
   const flyTo = useCallback((coordinate: Coordinate, zoom?: number) => {
     cameraRef.current?.flyTo({
@@ -175,13 +208,27 @@ export function useMaplibreAdapter(
     return centerRef.current;
   }, []);
 
-  const setMapStyle = useCallback((key: MapStyleKey) => {
-    const opt = STYLE_OPTIONS.find(s => s.key === key);
-    if (opt) {
-      setActiveStyle(opt.source);
-      persistMapStyle(key);
-    }
+  const setMapStyle = useCallback((key: MapStyleChoice) => {
+    if (!STYLE_OPTIONS.some(s => s.key === key)) return;
+    setStyleChoice(key);
+    // Persist the choice verbatim — `auto` stays `auto`. See nightStyle for why
+    // resolving before writing would quietly destroy the preference.
+    persistMapStyle(key);
   }, []);
+
+  // Resolved at render, against the map's own centre: a couple of hundred
+  // kilometres of error moves sunset by minutes, so the tracked centre is a
+  // perfectly good stand-in for the device's position and costs no extra
+  // permission or subscription.
+  const renderedStyleKey = useMemo<MapStyleKey>(
+    () => resolveMapStyle(styleChoice, centerRef.current),
+    // `sunTick` is the dependency that matters — it is what re-runs this after
+    // the clock has moved. eslint can't see that, hence the explicit list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [styleChoice, sunTick],
+  );
+
+  const activeStyle = STYLE_SOURCES[renderedStyleKey];
 
   // Viewport bounds are pushed to subscribers (the fog layer) through a ref
   // rather than state: putting them in state would change `MaplibreView`'s memo
@@ -253,10 +300,15 @@ export function useMaplibreAdapter(
     [flyTo, fitBounds, setMarkersImpl, getCenter],
   );
 
-  const activeStyleKey: MapStyleKey =
-    STYLE_OPTIONS.find(s => s.source === activeStyle)?.key ?? 'dropped';
-
-  return { adapter, markers, MaplibreView, activeStyleKey, setMapStyle, styleOptions: STYLE_OPTIONS };
+  return {
+    adapter,
+    markers,
+    MaplibreView,
+    activeStyleKey: styleChoice,
+    renderedStyleKey,
+    setMapStyle,
+    styleOptions: STYLE_OPTIONS,
+  };
 }
 
 // ---------------------------------------------------------------------------

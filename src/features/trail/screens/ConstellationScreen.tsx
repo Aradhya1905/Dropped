@@ -9,14 +9,7 @@
  * of publishing it.**
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -27,6 +20,7 @@ import {
   FunKicker,
   MapTexture,
   PaperScreen,
+  QueryState,
 } from '../../../design-system/components';
 import { colors, fonts, radii, shadows } from '../../../design-system/tokens';
 import { shareImage } from '../../../services/share';
@@ -95,13 +89,13 @@ export function ConstellationScreen({ navigation, route }: Props) {
           <CloseX onPress={() => navigation.goBack()} />
         </View>
 
-        {cities.isLoading ? (
-          <ActivityIndicator color={colors.accent} style={styles.loader} />
-        ) : empty ? (
-          <Text style={styles.empty}>
-            No cities yet.{'\n'}Walk to a secret and this fills in.
-          </Text>
-        ) : (
+        <QueryState
+          isLoading={cities.isLoading}
+          error={cities.error}
+          onRetry={cities.refetch}
+          isEmpty={empty}
+          emptyLabel={'No cities yet.\nWalk to a secret and this fills in.'}
+        >
           <>
             {(cities.data?.length ?? 0) > 1 && (
               <ScrollView
@@ -116,6 +110,9 @@ export function ConstellationScreen({ navigation, route }: Props) {
                     <Pressable
                       key={c.city}
                       onPress={() => setSelected(c.city)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: on }}
+                      accessibilityLabel={c.city}
                       style={[styles.chip, on && styles.chipOn]}
                     >
                       <Text style={[styles.chipText, on && styles.chipTextOn]}>
@@ -128,16 +125,18 @@ export function ConstellationScreen({ navigation, route }: Props) {
             )}
 
             <View style={styles.frame}>
-              {points.isLoading ? (
-                <ActivityIndicator color={colors.accent} style={styles.loader} />
-              ) : (
+              <QueryState
+                isLoading={points.isLoading}
+                error={points.error}
+                onRetry={points.refetch}
+              >
                 <Constellation
                   ref={drawing}
                   points={points.data ?? []}
                   city={selected ?? ''}
                   showLabels={showLabels}
                 />
-              )}
+              </QueryState>
             </View>
 
             {current && (
@@ -173,7 +172,7 @@ export function ConstellationScreen({ navigation, route }: Props) {
               Places and dates only. No secret ever leaves on this image.
             </Text>
           </>
-        )}
+        </QueryState>
       </View>
     </PaperScreen>
   );

@@ -20,6 +20,7 @@ import {
   LayersIcon,
 } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
+import { AccessibilitySettings } from '../components/AccessibilitySettings';
 import { Passport } from '../components/Passport';
 import {
   getAccurateCompass,
@@ -42,7 +43,12 @@ const RULES = [
 
 export function YouScreen() {
   const insets = useSafeAreaInsets();
-  const { data: deviceInfo } = useDeviceInfo();
+  // The passport is the one thing here that needs the network. It degrades
+  // rather than blocking: the device id is local, so the card still renders and
+  // only the quota line goes quiet — but the failure is said out loud below
+  // instead of showing a confident blank where a number belongs.
+  const { data: deviceInfo, error: deviceError, refetch: refetchDevice } =
+    useDeviceInfo();
   const deviceId = getDeviceId().slice(0, 8).toUpperCase();
   // Re-read persisted settings whenever this tab regains focus, so a style
   // change made on the Map tab shows here without a remount.
@@ -100,6 +106,20 @@ export function YouScreen() {
           deviceId={deviceId}
           quotaRemaining={deviceInfo?.dropsQuotaRemaining}
         />
+
+        {deviceError != null && (
+          <Pressable
+            onPress={() => refetchDevice()}
+            accessibilityRole="button"
+            accessibilityLabel="Couldn't load your passport. Tap to try again."
+            style={({ pressed }) => [styles.passportError, pressed && styles.pressed]}
+          >
+            <Text style={styles.passportErrorText}>
+              couldn't reach the world · how many drops you have left is unknown
+              · tap to retry
+            </Text>
+          </Pressable>
+        )}
 
         <View style={styles.setList}>
           {settings.map(s => (
@@ -166,6 +186,10 @@ export function YouScreen() {
           </Pressable>
         </View>
 
+        {/* Accessibility & polish (FUN_TODOs/15) — one line on purpose; see
+            the component for why it owns its own rows. */}
+        <AccessibilitySettings />
+
         <View style={styles.rulesBlock}>
           <Text style={styles.rulesKick}>house rules — handwritten</Text>
           <View style={styles.rules}>
@@ -229,6 +253,24 @@ const styles = StyleSheet.create({
   },
   setValOff: { color: colors.inkFaint },
   pressed: { opacity: 0.85 },
+  passportError: {
+    marginTop: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paperCard,
+  },
+  passportErrorText: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 9 * 0.12,
+    textTransform: 'uppercase',
+    lineHeight: 9 * 1.7,
+    color: colors.inkSoft,
+    textAlign: 'center',
+  },
   rulesBlock: { marginTop: 22, marginHorizontal: 2 },
   rulesKick: {
     fontFamily: fonts.mono,

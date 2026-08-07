@@ -12,6 +12,12 @@
  */
 import { Platform, StyleSheet } from 'react-native';
 
+import {
+  getTextScale,
+  MAX_FONT_MULTIPLIER,
+  TEXT_SCALE_MULTIPLIER,
+} from '../../services/storage';
+
 /** android = filename (no ext), ios = PostScript name. */
 const f = (android: string, ios: string): string =>
   Platform.select({ android, ios, default: android }) as string;
@@ -46,11 +52,52 @@ export const fonts = {
 
 export type FontToken = keyof typeof fonts;
 
+// ---------------------------------------------------------------------------
+// Text size
+// ---------------------------------------------------------------------------
+
+/**
+ * Two independent things scale this app's type, and they compose:
+ *
+ * 1. **OS Dynamic Type.** React Native scales every `<Text>` by the system font
+ *    scale automatically — no code required, and none of it is opted out of
+ *    here. That is the accessibility contract, and it applies to every screen
+ *    including ones nobody thought about.
+ * 2. **The in-app boost** below, for someone who wants larger text in *this*
+ *    app without enlarging their whole phone.
+ *
+ * The in-app half is folded into the tokens at import, the same way the colour
+ * set is — see `colors.ts` for the full reasoning. It therefore applies on next
+ * launch, and only to sizes taken from `textStyles` / `fontSize`; a screen with
+ * a literal `fontSize: 16` still follows the OS scale, which is the half that
+ * matters. Converting those literals is ordinary follow-up work, not a
+ * correctness gap.
+ */
+export const textScale: number = TEXT_SCALE_MULTIPLIER[getTextScale()];
+
+/** Apply the in-app boost to a design size, rounded to a half-pixel. */
+export const scaled = (size: number): number =>
+  textScale === 1 ? size : Math.round(size * textScale * 2) / 2;
+
+/**
+ * Props for text that sits in a layout that cannot reflow — the passport, the
+ * wax seals, mono captions inside fixed-width chips.
+ *
+ * `maxFontSizeMultiplier` **caps** scaling, it does not disable it: the text
+ * still grows with the OS setting, it just stops before it leaves its card.
+ * Never reach for `allowFontScaling={false}` instead — that is opting a user
+ * out of the setting entirely, and it is the wrong trade every time.
+ */
+export const cappedTextProps = {
+  maxFontSizeMultiplier: MAX_FONT_MULTIPLIER,
+} as const;
+
 // Type-scale presets: size + family only (no color, no per-use spacing).
 // One source of truth for the type scale — change a size/family here and every
 // screen that spreads the preset follows. Naming: text{size}{WeightSuffix}.
 // Usage: { ...textStyles.text14SemiBold, color: colors.ink, letterSpacing: -0.2 }
-export const textStyles = StyleSheet.create({
+// Sizes here are the *design* sizes; the in-app boost is applied below.
+const RAW_TEXT_STYLES = {
   // Regular (sans)
   text10: { fontSize: 10, fontFamily: fonts.sans },
   text11: { fontSize: 11, fontFamily: fonts.sans },
@@ -117,16 +164,25 @@ export const textStyles = StyleSheet.create({
   // Serif Italic
   text30SerifItalic: { fontSize: 30, fontFamily: fonts.serifItalic },
   text32SerifItalic: { fontSize: 32, fontFamily: fonts.serifItalic },
-});
+};
+
+export const textStyles = StyleSheet.create(
+  Object.fromEntries(
+    Object.entries(RAW_TEXT_STYLES).map(([name, style]) => [
+      name,
+      { ...style, fontSize: scaled(style.fontSize) },
+    ]),
+  ) as typeof RAW_TEXT_STYLES,
+);
 
 // Raw scale tokens — kept for cases that need a size/spacing without a preset.
 export const fontSize = {
-  xs: 12,
-  sm: 14,
-  md: 16,
-  lg: 20,
-  xl: 28,
-  display: 48, // "Dropped" wordmark
+  xs: scaled(12),
+  sm: scaled(14),
+  md: scaled(16),
+  lg: scaled(20),
+  xl: scaled(28),
+  display: scaled(48), // "Dropped" wordmark
 } as const;
 
 export const lineHeight = {
@@ -146,4 +202,7 @@ export const typography = {
   fontSize,
   lineHeight,
   letterSpacing,
+  textScale,
+  scaled,
+  cappedTextProps,
 } as const;

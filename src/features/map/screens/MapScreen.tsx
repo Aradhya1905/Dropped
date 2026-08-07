@@ -56,10 +56,12 @@ export function MapScreen({ navigation }: Props) {
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
     useMaplibreAdapter(coord ?? undefined, { fog: true });
   const { moods, toggle: toggleMood, clear: clearMoods, filtering } = useMoodFilter();
-  const { data: nearby = EMPTY_NEARBY, refetch: refetchDrops } = useNearbyDrops(
-    coord,
-    moods,
-  );
+  const {
+    data: nearby = EMPTY_NEARBY,
+    refetch: refetchDrops,
+    error: nearbyError,
+    isLoading: nearbyLoading,
+  } = useNearbyDrops(coord, moods);
   const { secrets: drops, hiddenByFilter } = nearby;
   const upsertDrop = useDropsStore(s => s.upsertDrop);
   const knownDrops = useDropsStore(s => s.drops);
@@ -201,7 +203,36 @@ export function MapScreen({ navigation }: Props) {
         <LayersIcon size={21} />
       </Pressable>
 
-      <View style={[styles.filterBar, { top: insets.top + 62 }]}>
+      {/*
+        A map with no pins and a map we couldn't ask about look identical, and
+        in this app that difference is everything: one says "nothing happened
+        here", the other says "we don't know". Never let the second render as
+        the first. Small and dismissible-by-retry rather than a full takeover —
+        the map, the fog and your own dot are all still true offline.
+      */}
+      {nearbyError != null && !nearbyLoading && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Couldn't load nearby secrets. Tap to try again."
+          onPress={() => refetchDrops()}
+          style={({ pressed }) => [
+            styles.offlineBanner,
+            { top: insets.top + 62 },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.offlineText}>
+            can't reach the world · pins may be missing · tap to retry
+          </Text>
+        </Pressable>
+      )}
+
+      <View
+        style={[
+          styles.filterBar,
+          { top: insets.top + (nearbyError != null && !nearbyLoading ? 96 : 62) },
+        ]}
+      >
         <MoodChips
           compact
           tintDots
@@ -216,7 +247,12 @@ export function MapScreen({ navigation }: Props) {
           it puts everything back.
         */}
         {filtering ? (
-          <Pressable onPress={clearMoods} style={styles.hiddenLine}>
+          <Pressable
+            onPress={clearMoods}
+            accessibilityRole="button"
+            accessibilityLabel="Clear the mood filter"
+            style={styles.hiddenLine}
+          >
             <Text style={styles.hiddenText}>
               {drops.length === 0
                 ? `nothing ${moods.join(' or ')} near you · tap to clear`
@@ -248,6 +284,7 @@ export function MapScreen({ navigation }: Props) {
       <WaxSeal
         size={58}
         shadow="sealLarge"
+        accessibilityLabel="Drop a secret here"
         onPress={() => navigation.navigate('Composer')}
         style={[styles.dropFab, { bottom: dropFabBottom }]}
       >
@@ -290,6 +327,26 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   locChip: { position: 'absolute', left: 16, zIndex: 20 },
   filterBar: { position: 'absolute', left: 16, right: 16, zIndex: 20 },
+  offlineBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 22,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: colors.paperCard,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  offlineText: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 9 * 0.14,
+    textTransform: 'uppercase',
+    color: colors.inkSoft,
+    textAlign: 'center',
+  },
   hiddenLine: { marginTop: 8, alignSelf: 'flex-start' },
   hiddenText: {
     fontFamily: fonts.mono,

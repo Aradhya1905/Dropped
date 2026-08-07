@@ -8,6 +8,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { colors } from '../../../design-system/tokens';
+import { useLoopsActive, useReducedMotion } from '../../../design-system/tokens/motion';
 
 const SIZE = 26;
 
@@ -23,8 +24,20 @@ function Half() {
 export function SealBreakMini({ scale = 1 }: { scale?: number }) {
   // 0 → closed, 1 → cracked. Timeline (of 6s): rest to 55%, crack by 72%,
   // hold to 90%, snap shut by 100%.
-  const t = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  const loopsActive = useLoopsActive();
+  // Stopped, the seal rests **cracked open** (t = 1), not closed: this drawing
+  // exists to say "arriving breaks the seal", and a shut seal illustrates the
+  // opposite. The point survives losing the animation; it doesn't survive
+  // freezing on the wrong frame.
+  const t = useRef(new Animated.Value(reduced ? 1 : 0)).current;
+
   useEffect(() => {
+    if (reduced) {
+      t.setValue(1);
+      return;
+    }
+    if (!loopsActive) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(3300),
@@ -45,7 +58,7 @@ export function SealBreakMini({ scale = 1 }: { scale?: number }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [t]);
+  }, [t, reduced, loopsActive]);
 
   const glowOpacity = t.interpolate({ inputRange: [0, 1], outputRange: [0, 0.5] });
 
