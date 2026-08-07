@@ -2,6 +2,7 @@ import {
   distanceTo,
   getCurrent,
   isWithinDrop,
+  shouldRecordCell,
   shouldRecordFix,
   watch,
 } from './index';
@@ -106,5 +107,38 @@ describe('location distance helpers delegate to geo', () => {
     expect(isWithinDrop(drop, drop)).toBe(true);
     expect(isWithinDrop(drop, far)).toBe(false);
     expect(isWithinDrop(drop, far, 200)).toBe(true);
+  });
+});
+
+describe('shouldRecordCell — the capture-layer gate', () => {
+  const home = { lat: 12.9716, lng: 77.5946 };
+  const zones = [{ id: 'z1', centre: home, radiusM: 150, label: 'Home' }];
+  const precise = 8;
+
+  it('records a precise fix when there are no zones at all', () => {
+    expect(shouldRecordCell({ coordinate: home, accuracy: precise }, 25, [])).toBe(
+      true,
+    );
+  });
+
+  it('records nothing inside a zone, however good the fix is', () => {
+    // The whole feature: not recorded-then-hidden, not recorded-then-deleted.
+    expect(
+      shouldRecordCell({ coordinate: home, accuracy: 1 }, 25, zones),
+    ).toBe(false);
+  });
+
+  it('resumes the moment you walk out of the zone', () => {
+    const away = { lat: home.lat + 0.005, lng: home.lng }; // ~550 m north
+    expect(shouldRecordCell({ coordinate: away, accuracy: precise }, 25, zones)).toBe(
+      true,
+    );
+  });
+
+  it('still rejects a coarse fix outside every zone', () => {
+    const away = { lat: home.lat + 0.005, lng: home.lng };
+    expect(shouldRecordCell({ coordinate: away, accuracy: 90 }, 25, zones)).toBe(
+      false,
+    );
   });
 });

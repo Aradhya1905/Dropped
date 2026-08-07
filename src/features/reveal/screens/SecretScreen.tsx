@@ -6,7 +6,7 @@
  * The replies stay readable at this coordinate even after the secret reseals —
  * a place accruing history is the whole point of them.
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -50,7 +50,44 @@ export function SecretScreen({ navigation, route }: Props) {
 
   const save = useSave(secretId);
   const heart = useHeart(secretId);
-  const { report, reported } = useReport(secretId);
+  const report = useReport(secretId, secret?.drop.placeLabel);
+
+  // The report action is a row under the card, not only a long-press: the one
+  // thing a person wants when they've just read something cruel is an obvious
+  // way to act on it, and a hidden gesture is the same as no gesture.
+  const askToReport = () => {
+    if (report.reported || report.isPending) return;
+    Alert.alert(
+      'Report this secret?',
+      'A moderator reads it. Enough reports and it stops being shown to anyone. You stay anonymous either way.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Report',
+          style: 'destructive',
+          onPress: () => report.report('inappropriate'),
+        },
+      ],
+    );
+  };
+
+  // The confirmation. Not a toast that might be missed — the report is the
+  // whole reason this screen is still open.
+  useEffect(() => {
+    if (!report.justReported) return;
+    Alert.alert(
+      'Reported',
+      "It's been sent for review, and it's on your list under You › Your data. Thank you for flagging it.",
+      [{ text: 'OK', onPress: report.acknowledge }],
+    );
+  }, [report.justReported, report.acknowledge]);
+
+  useEffect(() => {
+    if (!report.error) return;
+    Alert.alert('Could not report', `${report.error} Try again in a moment.`, [
+      { text: 'OK', onPress: report.acknowledge },
+    ]);
+  }, [report.error, report.acknowledge]);
 
   const replies = useReplies(secretId);
   const compose = useCreateReply(secretId);
@@ -82,16 +119,7 @@ export function SecretScreen({ navigation, route }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-        <Pressable
-          onLongPress={() => {
-            if (reported) return;
-            Alert.alert('Report this secret?', 'It will be reviewed and may be removed.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Report', style: 'destructive', onPress: () => report('inappropriate') },
-            ]);
-          }}
-          style={styles.card}
-        >
+        <Pressable onLongPress={askToReport} style={styles.card}>
           <Tape width={74} height={22} rotate={-2.5} style={styles.tape} />
           <View style={styles.cardHead}>
             <View>
@@ -151,6 +179,27 @@ export function SecretScreen({ navigation, route }: Props) {
             isSubmitting={compose.isPending}
             submitError={compose.error?.message ?? null}
           />
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              report.reported ? 'Already reported' : 'Report this secret'
+            }
+            accessibilityState={{ disabled: report.reported }}
+            onPress={askToReport}
+            disabled={report.reported || report.isPending}
+            style={({ pressed }) => [styles.reportRow, pressed && styles.pressed]}
+          >
+            <Text
+              style={[styles.reportText, report.reported && styles.reportTextDone]}
+            >
+              {report.reported
+                ? 'You reported this — it’s with a moderator'
+                : report.isPending
+                  ? 'Sending…'
+                  : 'Report this'}
+            </Text>
+          </Pressable>
         </ScrollView>
 
         <View style={styles.actions}>
@@ -334,6 +383,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.inkFaint,
   },
+  // Quiet on purpose: findable in one look, never competing with save/heart.
+  reportRow: { alignSelf: 'center', paddingVertical: 14, paddingHorizontal: 18 },
+  reportText: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 9 * 0.18,
+    textTransform: 'uppercase',
+    color: colors.inkFaint,
+  },
+  reportTextDone: { color: colors.accentDeep },
   actions: { flexDirection: 'row', gap: 12, marginTop: 18 },
   saveBtn: {
     flex: 1,

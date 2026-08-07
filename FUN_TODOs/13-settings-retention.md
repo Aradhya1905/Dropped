@@ -1,9 +1,38 @@
 # 13 — Settings: retention levers
 
-**Effort:** M · **Where:** client only (see below) · **Status:** **backend
-complete — nothing to build** · client todo ·
-**Blocked by:** [16 background walk engine](16-background-walk-engine.md)
+**Effort:** M · **Where:** client only (see below) · **Status:** **built** —
+backend complete (nothing to build), client complete; device QA owed ·
+**Blocked by:** [16 background walk engine](16-background-walk-engine.md) — for
+QA and for the levers to control anything that fires while the app is closed
 **Plan:** [2026-08-07-13-settings-retention.md](../.claude/plans/2026-08-07-13-settings-retention.md)
+
+> ## ✅ Client complete — 2026-08-07
+>
+> Every lever below is now a real control on the You screen, and — this is the
+> part that mattered — the gate they feed shipped **with** them:
+> `services/notifications/gate.ts` decides, `hum.ts` is the only function in the
+> app that can reach the notification adapter, and it asks the gate first. The
+> rule "one place that checks the gates, not a check per call site" was free to
+> enforce because it was written before the first call site exists.
+>
+> | Lever | Default | Row |
+> |---|---|---|
+> | Quiet hum | `rare` | picker (off · rare · always) |
+> | Only when I'm moving | **on** | toggle |
+> | Quiet hours | 22:00–08:00 | picker (three windows · off) |
+> | Tell me within | 500 m | picker (200 · 500 · 1 km) |
+> | Moods worth waking for | all four | mood chips |
+> | Anniversary echoes | **off** | toggle (already shipped with [08](08-anniversary-echo.md)) |
+>
+> Two departures from the plan: quiet hours are **presets rather than a time
+> picker** (no date-picker dependency, and fewer taps between someone and "stop
+> waking me up"), and **`always` carries a 10-minute floor** — a dense street
+> holds a dozen drops inside 500 m, and ten pings in a minute is how a user
+> learns to swipe this app away.
+>
+> Unlock radius stayed display-only, as required, and the section carries an
+> honest line saying the hum only listens while the app is open until
+> [16](16-background-walk-engine.md) lands. Device QA is owed and needs 16.
 
 > ## ✅ Backend complete — 2026-08-07 · **zero code**
 >
@@ -38,10 +67,13 @@ someone still has the app in three months.
 
 ## Read this first: there is no hum yet
 
-`services/notifications` exports a working notifee adapter and has **zero call
-sites** anywhere in `src/features` or `src/app`. `getNotificationMode()` persists
-a value no consumer reads, and the GPS watch only runs while the app is
-foregrounded. So every row below is a lever on a machine that isn't built.
+`services/notifications` exports a working notifee adapter and still has **zero
+call sites** anywhere in `src/features` or `src/app`, and the GPS watch only runs
+while the app is foregrounded. The levers and the gate now exist and are wired to
+each other — `humNearbySecret` reads every one of them — but nothing calls
+`humNearbySecret` yet, because the thing that would is
+[16](16-background-walk-engine.md). Until it lands, the hum can only fire while
+the app is open, and the You screen says so.
 
 Order of operations: build the producer ([16](16-background-walk-engine.md)),
 then these levers. Adding the settings first ships a screen full of switches that
@@ -71,16 +103,19 @@ dead. Gate the hum on an actual movement signal:
 | **Mood subscriptions** | multi-select of moods | Needs [06 mood filter](06-mood-filter.md). Lets someone stay subscribed to lighter content instead of muting everything. |
 | **Echo reminders** | on/off | Gate for [08 anniversary echo](08-anniversary-echo.md). Opt-in, not opt-out. |
 
-## Client work
+## Client work — ✅ done 2026-08-07
 
-- `services/storage/keys.ts` + `services/storage` for persistence — the pattern
-  is already there (`getMapStyle`, `getNotificationMode`).
-- Real controls on `YouScreen.tsx`. Right now the rows render as static
-  label/value pairs; they need to become actual toggles/pickers in a `Sheet`.
-- All of it must be read by `services/notifications` (notifee adapter exists)
-  before any local notification is scheduled — one place that checks the gates,
-  not a check per call site. Since there are no call sites today, this is easy to
-  get right: write the gate *before* the first one exists.
+- ✅ `services/storage/keys.ts` + `services/storage` persist all five new levers,
+  following the existing `getMapStyle` pattern. The pre-13 `'hum'` value maps
+  onto `'always'` on read, so nobody's old switch is silently forgotten.
+- ✅ Real controls on `YouScreen.tsx` — rows are `Pressable` and open an
+  `OptionSheet` (new, generic; same paper shape as the map's `LayerSheet`).
+  Unlock radius and map style stay untappable.
+- ✅ One gate, written before the first call site: `notifications/gate.ts`
+  decides and returns a *reason*; `notifications/hum.ts` is the only function
+  that reaches the adapter. Nothing else may schedule a notification.
+
+Still owed: **device QA**, which needs [16](16-background-walk-engine.md).
 
 ## Backend work
 

@@ -1,6 +1,12 @@
 import { AxiosError } from 'axios';
 
-import { api, type ApiError, type ApiReply, type ApiSecret } from './index';
+import {
+  api,
+  eraseDevice,
+  type ApiError,
+  type ApiReply,
+  type ApiSecret,
+} from './index';
 import { apiReplyToReply, apiSecretToSecret } from './mappers';
 
 jest.mock('../storage', () => ({
@@ -30,6 +36,33 @@ describe('api request', () => {
     };
     await api.get('/whatever');
     expect(seen).toBe('device-abc');
+  });
+});
+
+describe('eraseDevice', () => {
+  it('sends DELETE /devices/me with no body and returns the receipt', async () => {
+    let seen: { method?: string; url?: string; data?: unknown } = {};
+    const receipt = {
+      deleted: { reveals: 4, saves: 2, hearts: 7, reports: 1, stepDays: 30 },
+      anonymised: { drops: 3, replies: 5 },
+    };
+    api.defaults.adapter = async config => {
+      seen = { method: config.method, url: config.url, data: config.data };
+      return {
+        data: receipt,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await expect(eraseDevice()).resolves.toEqual(receipt);
+    expect(seen.method).toBe('delete');
+    expect(seen.url).toBe('/devices/me');
+    // No body: the confirmation lives on the handset, and the route's parser
+    // must not be handed something to choke on.
+    expect(seen.data).toBeUndefined();
   });
 });
 

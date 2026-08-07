@@ -39,4 +39,7 @@ export type RootStackParamList = {
   Dropped: { secretId: string };
   /** The city constellation (10). `city` preselects one; omitted = the latest. */
   Constellation: { city?: string } | undefined;
+  /** The two trust screens reached from You › Your data (14). */
+  PrivacyZones: undefined;
+  Reports: undefined;
 };

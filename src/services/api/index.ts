@@ -228,6 +228,31 @@ export interface ApiFootRoute {
   durationSeconds: number | null;
 }
 
+/**
+ * What `DELETE /devices/me` actually did — the panic wipe's receipt.
+ *
+ * It is a receipt rather than a 204 because the confirmation has to name real
+ * numbers: `deleted` rows are gone, `anonymised` ones survive re-pointed at a
+ * shared `'__deleted__'` sentinel device. Drops and replies are deliberately in
+ * the second group — a confession somebody else already walked to and read
+ * shouldn't vanish out from under them — and the wipe's copy must say so rather
+ * than implying everything died.
+ */
+export interface ApiEraseReceipt {
+  deleted: {
+    reveals: number;
+    saves: number;
+    hearts: number;
+    reports: number;
+    /** Days of step history, not steps. */
+    stepDays: number;
+  };
+  anonymised: {
+    drops: number;
+    replies: number;
+  };
+}
+
 export interface ApiDeviceInfo {
   deviceId: string;
   createdAt: number;
@@ -270,6 +295,20 @@ export const fetchDeviceInfo = () =>
 
 export const fetchDeviceStats = () =>
   api.get<ApiDeviceStats>('/devices/me/stats').then(r => r.data);
+
+/**
+ * Erase this device: the panic wipe's server half.
+ *
+ * Sends no body — the two-step confirm lives on the handset, where the user can
+ * read what survives. **Idempotent**: a retry after a timeout answers zeroes
+ * rather than an error, so the retry path is safe to offer.
+ *
+ * The caller must not touch local storage until this resolves. A local wipe
+ * after a failed call leaves someone believing their confessions are gone while
+ * they are still on the map, which is worse than not wiping at all.
+ */
+export const eraseDevice = () =>
+  api.delete<ApiEraseReceipt>('/devices/me').then(r => r.data);
 
 /** The single steps number for the Trail receipt (scope decided server-side). */
 export const fetchDeviceSteps = () =>

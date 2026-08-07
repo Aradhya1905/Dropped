@@ -6,13 +6,14 @@ import {
   getCurrent,
   hasPermission,
   requestPermission,
-  shouldRecordFix,
+  shouldRecordCell,
   watch,
   type PermissionStatus,
 } from './index';
 import { useReverseGeocode } from '../maps';
-import { addWalkedCells } from '../storage';
-import { cellIdFor } from '../../utils/geo';
+import { addWalkedCells, getPrivacyZones, onPrivacyZonesChange } from '../storage';
+import { isInsideAnyZone, type PrivacyZone } from './privacyZones';
+import { cellCentre, cellIdFor } from '../../utils/geo';
 
 /**
  * Fog cells are only recorded from fixes at least this precise (meters). A
@@ -63,6 +64,13 @@ function useLocationImpl(): UseDeviceLocationResult {
   const cellBufferRef = useRef<string[]>([]);
   const lastFlushRef = useRef(Date.now());
 
+  // Privacy zones, held in a ref so the watch callback reads the current set
+  // without re-subscribing the GPS watch every time one is edited. Seeded
+  // synchronously: the first fix can arrive before any effect runs, and a fix
+  // recorded inside someone's home because a listener hadn't attached yet is
+  // the exact failure this feature exists to prevent.
+  const zonesRef = useRef<PrivacyZone[]>(getPrivacyZones());
+
   const flushCells = useCallback(() => {
     if (cellBufferRef.current.length === 0) return;
     addWalkedCells(cellBufferRef.current);
@@ -72,7 +80,14 @@ function useLocationImpl(): UseDeviceLocationResult {
 
   const recordCell = useCallback(
     (coordinate: Coordinate, accuracy: number) => {
-      if (!shouldRecordFix(accuracy, FOG_ACCURACY_MAX_M)) return;
+      // One question, asked once: accurate enough to paint, and not inside a
+      // privacy zone. Inside a zone nothing is written at all — not
+      // written-then-hidden, not written-then-deleted. Anything that filtered
+      // on render would still leave the walk home on disk, which is the lie
+      // this check exists to not tell.
+      if (!shouldRecordCell({ coordinate, accuracy }, FOG_ACCURACY_MAX_M, zonesRef.current)) {
+        return;
+      }
       const id = cellIdFor(coordinate);
       // Standing still re-emits the same cell — don't buffer it repeatedly.
       const buffer = cellBufferRef.current;
@@ -139,6 +154,25 @@ function useLocationImpl(): UseDeviceLocationResult {
       flushCells();
     };
   }, [flushCells]);
+
+  // A zone takes effect on the next fix, not the next launch — and it also
+  // reaches backwards into the buffer we're holding. Cells captured minutes ago
+  // and not yet flushed are exactly the ones someone is trying to erase when
+  // they draw a circle around where they're standing; the already-persisted
+  // ones are handled by `forgetWalkedCellsInside` at the same moment.
+  useEffect(() => {
+    const sub = onPrivacyZonesChange(() => {
+      const zones = getPrivacyZones();
+      zonesRef.current = zones;
+      if (zones.length > 0) {
+        cellBufferRef.current = cellBufferRef.current.filter(id => {
+          const centre = cellCentre(id);
+          return centre ? !isInsideAnyZone(centre, zones) : false;
+        });
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // The provider outlives every screen, so its unmount cleanup may never run on
   // a force-stop. Persist the buffered cells the moment we lose the foreground.

@@ -6,21 +6,35 @@
 import { createMMKV } from 'react-native-mmkv';
 
 import { getNativeUniqueId, nativeIdToUuidV4 } from '../device';
+// Pure geometry + types only. `privacyZones` must never import back into
+// storage, or the zone check and the thing it guards become a cycle.
+import { isInsideAnyZone, type PrivacyZone } from '../location/privacyZones';
 import { MOODS, type Mood } from '../../types';
+import { cellCentre } from '../../utils/geo';
 import {
+  REPORT_CAP,
   DEFAULT_ACCURATE_COMPASS,
   DEFAULT_ECHOES_ENABLED,
   DEFAULT_HAPTICS_ENABLED,
   DEFAULT_MAP_STYLE,
   DEFAULT_MOOD_FILTER,
   DEFAULT_NOTIFICATION_MODE,
+  DEFAULT_NOTIFY_RADIUS_M,
+  DEFAULT_ONLY_WHEN_MOVING,
+  DEFAULT_QUIET_HOURS,
+  DEFAULT_SUBSCRIBED_MOODS,
   EMPTY_STEP_STATE,
   FOG_CELL_CAP,
+  NOTIFICATION_MODES,
+  NOTIFY_RADIUS_OPTIONS,
   SEAL_CAP,
   StorageKeys,
   type EchoCache,
   type MapStyle,
   type NotificationMode,
+  type NotifyRadiusM,
+  type QuietHours,
+  type ReportedSecret,
   type StepState,
   type StoredSeal,
 } from './keys';
@@ -30,10 +44,21 @@ export type {
   EchoMemo,
   MapStyle,
   NotificationMode,
+  NotifyRadiusM,
+  QuietHours,
+  ReportedSecret,
   StepState,
   StoredSeal,
 } from './keys';
-export { FOG_CELL_CAP, SEAL_CAP } from './keys';
+export type { PrivacyZone } from '../location/privacyZones';
+export {
+  DEFAULT_QUIET_HOURS,
+  FOG_CELL_CAP,
+  NOTIFICATION_MODES,
+  NOTIFY_RADIUS_OPTIONS,
+  QUIET_HOURS_PRESETS,
+  SEAL_CAP,
+} from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
 
@@ -76,8 +101,18 @@ function generateDeviceId(): string {
  * stable uuid via `nativeIdToUuidV4`, so it survives an app-data-clear that wipes
  * MMKV. MMKV is only a cache/fallback: if the platform can't supply a native id
  * we fall back to the cached value, then to a freshly generated uuid.
+ *
+ * **Unless the identity has been retired.** A panic wipe writes a fresh random
+ * uuid to `deviceIdOverride`, and that outranks the native derivation — without
+ * it, "erase everything" would hand the very next request the same id the server
+ * just erased, and the wipe would be a wipe of data but not of identity.
  */
 export function getDeviceId(): string {
+  const override = mmkv.getString(StorageKeys.deviceIdOverride);
+  if (override) {
+    return override;
+  }
+
   const native = getNativeUniqueId();
   if (native && native !== 'unknown') {
     const id = nativeIdToUuidV4(native);
@@ -92,6 +127,26 @@ export function getDeviceId(): string {
     return cached;
   }
   const id = generateDeviceId();
+  mmkv.set(StorageKeys.deviceId, id);
+  return id;
+}
+
+/**
+ * Retire this device's identity and mint a new one. Called **only** by the
+ * panic wipe, and only after the server has confirmed the erasure — see
+ * `features/settings/hooks/usePanicWipe`.
+ *
+ * Write it after `clearAll()`, never before: `clearAll` removes the override
+ * along with everything else.
+ *
+ * Honest about its limit: the override lives in MMKV, so clearing the app's data
+ * afterwards drops back to the `ANDROID_ID`-derived id. That id's rows are gone
+ * from the server either way — what comes back is an empty device with an old
+ * name, not the erased history.
+ */
+export function rotateDeviceId(): string {
+  const id = generateDeviceId();
+  mmkv.set(StorageKeys.deviceIdOverride, id);
   mmkv.set(StorageKeys.deviceId, id);
   return id;
 }
@@ -157,15 +212,120 @@ export function setMapStyle(style: MapStyle): void {
   mmkv.set(StorageKeys.mapStyle, style);
 }
 
+/**
+ * How often the walk-by hum may fire.
+ *
+ * Reads defensively rather than casting: the key predates the three-way mode
+ * and holds `'hum'` on any device that turned the old switch on, which becomes
+ * `'always'` — the setting they asked for. Anything else unrecognized falls
+ * back to the default instead of persisting a value the gate can't judge.
+ */
 export function getNotificationMode(): NotificationMode {
-  return (
-    (mmkv.getString(StorageKeys.notificationMode) as NotificationMode) ??
-    DEFAULT_NOTIFICATION_MODE
-  );
+  const stored = mmkv.getString(StorageKeys.notificationMode);
+  if (stored === 'hum') {
+    return 'always';
+  }
+  return (NOTIFICATION_MODES as readonly string[]).includes(stored ?? '')
+    ? (stored as NotificationMode)
+    : DEFAULT_NOTIFICATION_MODE;
 }
 
 export function setNotificationMode(mode: NotificationMode): void {
   mmkv.set(StorageKeys.notificationMode, mode);
+}
+
+/**
+ * Whether the hum waits until you're actually walking. See
+ * `DEFAULT_ONLY_WHEN_MOVING` for why this defaults on.
+ */
+export function getOnlyWhenMoving(): boolean {
+  return mmkv.getBoolean(StorageKeys.onlyWhenMoving) ?? DEFAULT_ONLY_WHEN_MOVING;
+}
+
+export function setOnlyWhenMoving(on: boolean): void {
+  mmkv.set(StorageKeys.onlyWhenMoving, on);
+}
+
+/**
+ * The nightly silence window, or `null` if the user switched it off.
+ *
+ * A stored value that isn't two in-range minute counts is treated as "never
+ * written" and yields the default window: failing open here would mean humming
+ * at 3 a.m., which is the one failure this setting exists to prevent.
+ */
+export function getQuietHours(): QuietHours | null {
+  const raw = mmkv.getString(StorageKeys.quietHours);
+  if (raw == null) {
+    return DEFAULT_QUIET_HOURS;
+  }
+  if (raw === 'null') {
+    return null;
+  }
+  const parsed = getJSON<unknown>(StorageKeys.quietHours, null);
+  if (
+    !parsed ||
+    typeof parsed !== 'object' ||
+    !isMinuteOfDay((parsed as QuietHours).startMin) ||
+    !isMinuteOfDay((parsed as QuietHours).endMin)
+  ) {
+    return DEFAULT_QUIET_HOURS;
+  }
+  const { startMin, endMin } = parsed as QuietHours;
+  return { startMin, endMin };
+}
+
+function isMinuteOfDay(v: unknown): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1440;
+}
+
+export function setQuietHours(hours: QuietHours | null): void {
+  setJSON(StorageKeys.quietHours, hours);
+}
+
+/** How far off a drop may be and still hum. Separate from the 50 m reveal. */
+export function getNotifyRadiusM(): NotifyRadiusM {
+  const stored = mmkv.getNumber(StorageKeys.notifyRadius);
+  return (NOTIFY_RADIUS_OPTIONS as readonly number[]).includes(stored ?? NaN)
+    ? (stored as NotifyRadiusM)
+    : DEFAULT_NOTIFY_RADIUS_M;
+}
+
+export function setNotifyRadiusM(meters: NotifyRadiusM): void {
+  mmkv.set(StorageKeys.notifyRadius, meters);
+}
+
+/**
+ * Moods worth interrupting for. `[]` is a real, reachable state — someone who
+ * unticked all four has muted the hum by mood, and the gate says so — so only a
+ * value that isn't a list at all falls back to "all".
+ */
+export function getSubscribedMoods(): Mood[] {
+  const raw = mmkv.getString(StorageKeys.subscribedMoods);
+  if (raw == null) {
+    return [...DEFAULT_SUBSCRIBED_MOODS];
+  }
+  const stored = getJSON<unknown>(StorageKeys.subscribedMoods, null);
+  if (!Array.isArray(stored)) {
+    return [...DEFAULT_SUBSCRIBED_MOODS];
+  }
+  return stored.filter((m): m is Mood => (MOODS as readonly string[]).includes(m));
+}
+
+export function setSubscribedMoods(moods: Mood[]): void {
+  setJSON(StorageKeys.subscribedMoods, moods);
+}
+
+/**
+ * When the last walk-by hum actually fired (ms epoch), or `null` if none ever
+ * has. Owned by `services/notifications/hum` — the cooldown is only meaningful
+ * next to the gate that reads it.
+ */
+export function getHumLastFiredAt(): number | null {
+  return mmkv.getNumber(StorageKeys.humLastFiredAt) ?? null;
+}
+
+export function setHumLastFiredAt(at: number): void {
+  mmkv.set(StorageKeys.humLastFiredAt, at);
 }
 
 /**
@@ -418,6 +578,110 @@ export function getSealCities(): string[] {
 /** Forget the collection (settings wipe / rollback). */
 export function clearSeals(): void {
   mmkv.remove(StorageKeys.seals);
+}
+
+// --- privacy zones -----------------------------------------------------------
+
+/**
+ * The circles the app is not allowed to look inside (home, work, school).
+ *
+ * **Local only, permanently.** Nothing in `services/api` reads this function,
+ * and nothing ever should: a zone is a precise statement of where someone lives,
+ * so the only copy that can't leak is the one that was never sent. Enforcement
+ * lives at each capture site — see `services/location/privacyZones`.
+ *
+ * Malformed rows are dropped on read rather than trusted: a zone with a bad
+ * radius would silently stop covering anything, which is the one failure mode
+ * this feature can't have.
+ */
+export function getPrivacyZones(): PrivacyZone[] {
+  const stored = getJSON<unknown>(StorageKeys.privacyZones, []);
+  if (!Array.isArray(stored)) {
+    return [];
+  }
+  return stored.filter((z): z is PrivacyZone => {
+    const zone = z as PrivacyZone | null;
+    return (
+      !!zone &&
+      typeof zone.id === 'string' &&
+      !!zone.centre &&
+      typeof zone.centre.lat === 'number' &&
+      typeof zone.centre.lng === 'number' &&
+      typeof zone.radiusM === 'number' &&
+      Number.isFinite(zone.radiusM) &&
+      zone.radiusM > 0
+    );
+  });
+}
+
+export function setPrivacyZones(zones: PrivacyZone[]): void {
+  setJSON(StorageKeys.privacyZones, zones);
+}
+
+/**
+ * Notify when the zones change, so a location watch already running picks up a
+ * new zone on the next fix instead of at the next app start. The gap between
+ * "I drew a circle over my house" and "the app stopped recording it" has to be
+ * zero fixes, not one session.
+ */
+export function onPrivacyZonesChange(listener: () => void): { remove: () => void } {
+  return mmkv.addOnValueChangedListener(key => {
+    if (key === StorageKeys.privacyZones) listener();
+  });
+}
+
+/**
+ * Forget every already-walked cell whose centre falls inside a zone.
+ *
+ * Called when a zone is created: a zone that only applies going forward would
+ * leave this morning's walk home painted on the map, and the person drawing the
+ * circle plainly meant *that* street. Returns how many cells were forgotten so
+ * the UI can say so.
+ */
+export function forgetWalkedCellsInside(zones: PrivacyZone[]): number {
+  if (zones.length === 0) return 0;
+  const cells = [...getWalkedCells()];
+  const kept = cells.filter(id => {
+    const centre = cellCentre(id);
+    return centre ? !isInsideAnyZone(centre, zones) : false;
+  });
+  const forgotten = cells.length - kept.length;
+  if (forgotten > 0) {
+    mmkv.set(StorageKeys.walkedCells, kept.join('\n'));
+  }
+  return forgotten;
+}
+
+// --- reports this device has made --------------------------------------------
+
+/**
+ * What you've reported, so the app can say "you reported this" instead of
+ * offering the button again — and so there is a list to show.
+ *
+ * Local, like the echo mutes and for the same reason: the server already knows
+ * a report happened, and it doesn't need to also serve back a per-device dossier
+ * of what one anonymous person found intolerable.
+ */
+export function getReports(): ReportedSecret[] {
+  const stored = getJSON<unknown>(StorageKeys.reports, []);
+  if (!Array.isArray(stored)) {
+    return [];
+  }
+  return stored.filter(
+    (r): r is ReportedSecret =>
+      !!r && typeof (r as ReportedSecret).id === 'string',
+  );
+}
+
+export function hasReported(secretId: string): boolean {
+  return getReports().some(r => r.id === secretId);
+}
+
+/** Newest first, deduped by secret id, capped. */
+export function addReport(entry: ReportedSecret): void {
+  const existing = getReports().filter(r => r.id !== entry.id);
+  const next = [entry, ...existing].slice(0, REPORT_CAP);
+  setJSON(StorageKeys.reports, next);
 }
 
 /** Test/escape hatch: wipe everything. */

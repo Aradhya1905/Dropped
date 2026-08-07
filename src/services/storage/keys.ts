@@ -1,6 +1,9 @@
+import { MOODS, type Mood } from '../../types';
+
 /** MMKV key names. Kept in one place so persisted keys never drift. */
 export const StorageKeys = {
   deviceId: 'device.id',
+  deviceIdOverride: 'device.idOverride',
   onboardingComplete: 'onboarding.complete',
   savedSecretIds: 'secrets.saved',
   seenSecretIds: 'secrets.seen',
@@ -15,6 +18,13 @@ export const StorageKeys = {
   mutedEchoIds: 'echo.muted',
   echoCache: 'echo.cache',
   seals: 'trail.seals',
+  privacyZones: 'privacy.zones',
+  reports: 'reports.mine',
+  onlyWhenMoving: 'settings.onlyWhenMoving',
+  quietHours: 'settings.quietHours',
+  notifyRadius: 'settings.notifyRadius',
+  subscribedMoods: 'settings.subscribedMoods',
+  humLastFiredAt: 'notify.lastFiredAt',
 } as const;
 
 /**
@@ -44,11 +54,96 @@ export const EMPTY_STEP_STATE: StepState = { pending: {} };
  */
 export type MapStyle = 'dropped' | 'quiet' | 'dark' | 'grayscale';
 
-/** Quiet-hum notification setting from the You screen. */
-export type NotificationMode = 'off' | 'hum';
+/**
+ * Quiet-hum notification setting from the You screen.
+ *
+ * - `off`    — never hum.
+ * - `rare`   — at most one hum every {@link RARE_COOLDOWN_MS}.
+ * - `always` — hum whenever the other gates pass, still throttled by
+ *   {@link ALWAYS_COOLDOWN_MS} so a street full of drops is one ping, not ten.
+ *
+ * The pre-13 value `'hum'` maps onto `'always'` on read — see
+ * `getNotificationMode`.
+ */
+export type NotificationMode = 'off' | 'rare' | 'always';
+
+export const NOTIFICATION_MODES: readonly NotificationMode[] = [
+  'off',
+  'rare',
+  'always',
+];
 
 export const DEFAULT_MAP_STYLE: MapStyle = 'dropped';
-export const DEFAULT_NOTIFICATION_MODE: NotificationMode = 'off';
+
+/**
+ * `rare`, not `off` and not `always`.
+ *
+ * A walking app whose notifications are off is a dead app, so the default can't
+ * be silence — but the way people end up turning notifications off is a stream
+ * of them, so it can't be `always` either. One hum every few hours is the only
+ * default that survives both failure modes.
+ */
+export const DEFAULT_NOTIFICATION_MODE: NotificationMode = 'rare';
+
+/**
+ * A nightly silence window as minutes past local midnight, e.g.
+ * `{ startMin: 1320, endMin: 480 }` = 22:00–08:00. Wraps midnight whenever
+ * `startMin > endMin`; `null` means the user turned quiet hours off.
+ *
+ * Local-clock only. Sending this to the server would mean storing a timezone —
+ * i.e. teaching the backend when each device sleeps — which is exactly the kind
+ * of per-device fact this app declines to hold.
+ */
+export interface QuietHours {
+  startMin: number;
+  endMin: number;
+}
+
+export const DEFAULT_QUIET_HOURS: QuietHours = {
+  startMin: 22 * 60,
+  endMin: 8 * 60,
+};
+
+/**
+ * The quiet-hours windows offered on the You screen. Presets rather than a time
+ * picker: the app has no date-picker dependency, and every extra tap between a
+ * user and "stop waking me up" is a reason to uninstall instead.
+ */
+export const QUIET_HOURS_PRESETS: readonly (QuietHours | null)[] = [
+  DEFAULT_QUIET_HOURS,
+  { startMin: 21 * 60, endMin: 9 * 60 },
+  { startMin: 23 * 60, endMin: 7 * 60 },
+  null,
+];
+
+/**
+ * "Only hum while I'm actually walking." **On by default** — a notification
+ * that fires while you're sitting at your desk is the single reason people turn
+ * a walking app's notifications off, and most users will never find this row.
+ */
+export const DEFAULT_ONLY_WHEN_MOVING = true;
+
+/**
+ * How far away a drop may be and still earn a hum. **Not** the reveal radius,
+ * which stays {@link REVEAL_RADIUS_M} (50 m) product-wide; this is "how far off
+ * do you want to be told". Every option sits inside the backend's
+ * `NEARBY_MAX_RADIUS_M` of 2000.
+ */
+export type NotifyRadiusM = 200 | 500 | 1000;
+
+export const NOTIFY_RADIUS_OPTIONS: readonly NotifyRadiusM[] = [200, 500, 1000];
+
+export const DEFAULT_NOTIFY_RADIUS_M: NotifyRadiusM = 500;
+
+/**
+ * Moods worth being interrupted for. Defaults to all four: the point of this
+ * lever is that someone who can't take `ache` today can drop that one mood
+ * instead of muting the app, so it starts wide and narrows by choice.
+ *
+ * Stored as the *subscribed* moods, so a fifth mood added later arrives
+ * subscribed rather than silently muted for everyone who ever opened the sheet.
+ */
+export const DEFAULT_SUBSCRIBED_MOODS: readonly Mood[] = MOODS;
 
 /**
  * Warmth haptics on the walk are on by default — they're the point of the
@@ -148,3 +243,26 @@ export interface EchoCache {
   lng: number;
   memos: EchoMemo[];
 }
+
+/**
+ * One report this device filed, kept locally so the app can say "you reported
+ * this" and show a list of what you've flagged.
+ *
+ * **Note what isn't here: the secret's body, or the reason text.** A local
+ * dossier of the worst things someone has read is not a keepsake — the row
+ * exists to stop the button being offered twice and to prove the report went
+ * somewhere. The verdict lives on the server; this is only a receipt.
+ */
+export interface ReportedSecret {
+  id: string;
+  /** ms epoch of the report. */
+  at: number;
+  /** Where it was, if the app knew — never the words. */
+  placeLabel?: string;
+}
+
+/**
+ * Cap on remembered reports. Anyone past 200 is not going to scroll them, and
+ * the list is a receipt, not an archive.
+ */
+export const REPORT_CAP = 200;

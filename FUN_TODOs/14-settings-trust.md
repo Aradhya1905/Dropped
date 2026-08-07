@@ -1,8 +1,19 @@
 # 14 — Settings: trust & privacy
 
-**Effort:** M · **Where:** client + backend · **Status:** **backend complete** ·
-client todo
+**Effort:** M · **Where:** client + backend · **Status:** **built** (device QA
+owed; the policy/contact URLs are still unset)
 **Plan:** [2026-08-07-14-settings-trust.md](../.claude/plans/2026-08-07-14-settings-trust.md)
+
+> ## ✅ Client complete — 2026-08-07
+>
+> Privacy zones enforce at the capture layer (fog writer, hum gate, echo poll,
+> drop refusal), the panic wipe touches nothing local until `DELETE /devices/me`
+> answers 200, and reporting is visible and confirms. See the plan's *What
+> landed on the client* for the file-by-file account.
+>
+> **Owed:** the device QA pass below, and real values in
+> `src/features/settings/legal.ts` — `PRIVACY_POLICY_URL` and
+> `DATA_CONTACT_EMAIL` are `null`, so those two rows don't render.
 
 > ## ✅ Backend complete — 2026-08-07
 >

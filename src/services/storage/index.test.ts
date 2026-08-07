@@ -13,10 +13,16 @@ import {
   getSeals,
   getEchoCache,
   getEchoesEnabled,
+  getHumLastFiredAt,
   getMutedEchoIds,
+  getNotificationMode,
+  getNotifyRadiusM,
   getOnboardingComplete,
+  getOnlyWhenMoving,
   getMoodFilter,
+  getQuietHours,
   getSavedIds,
+  getSubscribedMoods,
   getWalkedCells,
   isEchoMuted,
   isSaved,
@@ -26,10 +32,27 @@ import {
   setEchoCache,
   setEchoesEnabled,
   setEchoMuted,
+  setHumLastFiredAt,
   setMoodFilter,
+  setNotificationMode,
+  setNotifyRadiusM,
   setOnboardingComplete,
+  setOnlyWhenMoving,
+  setQuietHours,
+  setSubscribedMoods,
 } from './index';
+import {
+  addReport,
+  forgetWalkedCellsInside,
+  getPrivacyZones,
+  getReports,
+  hasReported,
+  rotateDeviceId,
+  setPrivacyZones,
+} from './index';
+import type { PrivacyZone } from '../location/privacyZones';
 import { echoCheckDue } from '../../utils/echo';
+import { cellIdFor } from '../../utils/geo';
 
 // Stub the device adapter so storage doesn't reach for the native unique id.
 jest.mock('../device', () => ({
@@ -48,6 +71,10 @@ jest.mock('react-native-mmkv', () => {
     getBoolean: (k: string) => {
       const v = store.get(k);
       return typeof v === 'boolean' ? v : undefined;
+    },
+    getNumber: (k: string) => {
+      const v = store.get(k);
+      return typeof v === 'number' ? v : undefined;
     },
     set: (k: string, v: string | boolean | number) => {
       store.set(k, v);
@@ -271,6 +298,84 @@ describe('storage wax seals', () => {
   });
 });
 
+describe('storage retention levers', () => {
+  // The defaults *are* the feature: every one of these is a way to mute the app
+  // into uselessness, and almost nobody will ever open this screen.
+  it('ships the deliberate defaults', () => {
+    expect(getNotificationMode()).toBe('rare');
+    expect(getOnlyWhenMoving()).toBe(true);
+    expect(getQuietHours()).toEqual({ startMin: 22 * 60, endMin: 8 * 60 });
+    expect(getNotifyRadiusM()).toBe(500);
+    expect(getSubscribedMoods()).toEqual(['joy', 'ache', 'trouble', 'wonder']);
+    expect(getEchoesEnabled()).toBe(false);
+    expect(getHumLastFiredAt()).toBeNull();
+  });
+
+  it('round-trips the hum mode', () => {
+    setNotificationMode('always');
+    expect(getNotificationMode()).toBe('always');
+    setNotificationMode('off');
+    expect(getNotificationMode()).toBe('off');
+  });
+
+  it('carries the pre-13 "hum" value over to "always"', () => {
+    // The old two-way switch persisted 'hum'. Someone who turned it on asked
+    // to be told about drops; the new name for that is 'always'.
+    setNotificationMode('hum' as never);
+    expect(getNotificationMode()).toBe('always');
+  });
+
+  it('falls back to the default on a value the gate could not judge', () => {
+    setNotificationMode('sometimes' as never);
+    expect(getNotificationMode()).toBe('rare');
+  });
+
+  it('round-trips only-when-moving', () => {
+    setOnlyWhenMoving(false);
+    expect(getOnlyWhenMoving()).toBe(false);
+    setOnlyWhenMoving(true);
+    expect(getOnlyWhenMoving()).toBe(true);
+  });
+
+  it('round-trips quiet hours, including switching them off', () => {
+    setQuietHours({ startMin: 21 * 60, endMin: 9 * 60 });
+    expect(getQuietHours()).toEqual({ startMin: 21 * 60, endMin: 9 * 60 });
+    setQuietHours(null);
+    expect(getQuietHours()).toBeNull();
+  });
+
+  it('restores the default window rather than trusting a corrupt one', () => {
+    // Failing open here would mean humming at 3 a.m., which is the one thing
+    // this setting exists to prevent.
+    setQuietHours({ startMin: 99 * 60, endMin: -1 } as never);
+    expect(getQuietHours()).toEqual({ startMin: 22 * 60, endMin: 8 * 60 });
+  });
+
+  it('round-trips the notification radius and rejects one it does not offer', () => {
+    setNotifyRadiusM(200);
+    expect(getNotifyRadiusM()).toBe(200);
+    setNotifyRadiusM(9_000 as never);
+    expect(getNotifyRadiusM()).toBe(500);
+  });
+
+  it('keeps an empty mood subscription — muting by mood is a real choice', () => {
+    setSubscribedMoods([]);
+    expect(getSubscribedMoods()).toEqual([]);
+  });
+
+  it('drops a mood it no longer recognizes, and falls back if it is not a list', () => {
+    setSubscribedMoods(['joy', 'dread' as never]);
+    expect(getSubscribedMoods()).toEqual(['joy']);
+    setSubscribedMoods('joy' as never);
+    expect(getSubscribedMoods()).toEqual(['joy', 'ache', 'trouble', 'wonder']);
+  });
+
+  it('remembers when the last hum actually fired', () => {
+    setHumLastFiredAt(1_700_000_000_000);
+    expect(getHumLastFiredAt()).toBe(1_700_000_000_000);
+  });
+});
+
 describe('storage saved ids', () => {
   it('round-trips add / remove without duplicates', () => {
     expect(getSavedIds()).toEqual([]);
@@ -282,5 +387,73 @@ describe('storage saved ids', () => {
     removeSavedId('s1');
     expect(getSavedIds()).toEqual(['s2']);
     expect(isSaved('s1')).toBe(false);
+  });
+});
+
+describe('storage privacy zones', () => {
+  const HOME: PrivacyZone = {
+    id: 'z1',
+    centre: { lat: 12.9716, lng: 77.5946 },
+    radiusM: 150,
+    label: 'Home',
+  };
+
+  it('round-trips a zone and is gone after a wipe', () => {
+    expect(getPrivacyZones()).toEqual([]);
+    setPrivacyZones([HOME]);
+    expect(getPrivacyZones()).toEqual([HOME]);
+    clearAll();
+    expect(getPrivacyZones()).toEqual([]);
+  });
+
+  it('drops a malformed zone rather than trusting a radius it cannot use', () => {
+    setPrivacyZones([
+      HOME,
+      { id: 'bad', centre: { lat: 1, lng: 1 }, radiusM: 0 },
+      { id: 'worse' } as never,
+    ]);
+    expect(getPrivacyZones()).toEqual([HOME]);
+  });
+
+  it('forgets already-walked cells inside a new zone, and keeps the rest', () => {
+    const inside = cellIdFor(HOME.centre);
+    const outside = cellIdFor({ lat: HOME.centre.lat + 0.02, lng: HOME.centre.lng });
+    addWalkedCells([inside, outside]);
+
+    expect(forgetWalkedCellsInside([HOME])).toBe(1);
+    expect(getWalkedCells()).toEqual(new Set([outside]));
+  });
+
+  it('forgets nothing when there are no zones', () => {
+    addWalkedCells(['1:2']);
+    expect(forgetWalkedCellsInside([])).toBe(0);
+    expect(getWalkedCells()).toEqual(new Set(['1:2']));
+  });
+});
+
+describe('storage reports', () => {
+  it('remembers a report, newest first, deduped by secret', () => {
+    expect(getReports()).toEqual([]);
+    addReport({ id: 's1', at: 1_000 });
+    addReport({ id: 's2', at: 2_000, placeLabel: 'Cubbon Park' });
+    addReport({ id: 's1', at: 3_000 });
+
+    expect(getReports().map(r => r.id)).toEqual(['s1', 's2']);
+    expect(getReports()[0].at).toBe(3_000);
+    expect(hasReported('s1')).toBe(true);
+    expect(hasReported('nope')).toBe(false);
+  });
+});
+
+describe('storage device id rotation (the panic wipe)', () => {
+  it('mints a different id and keeps answering with it', () => {
+    const before = getDeviceId();
+    const rotated = rotateDeviceId();
+
+    // Without the override the native id would derive the same uuid forever,
+    // and "erase everything" would hand the next request the erased identity.
+    expect(rotated).not.toBe(before);
+    expect(rotated).toMatch(/^[0-9a-f-]{36}$/);
+    expect(getDeviceId()).toBe(rotated);
   });
 });

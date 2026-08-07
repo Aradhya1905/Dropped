@@ -32,6 +32,8 @@ import { LifespanChips } from '../components/LifespanChips';
 import { MoodChips } from '../components/MoodChips';
 import { ShareableToggle } from '../components/ShareableToggle';
 import { WriteCard } from '../components/WriteCard';
+import { zoneAt } from '../../../services/location';
+import { getPrivacyZones } from '../../../services/storage';
 import { useDeviceLocation } from '../../map/hooks';
 import { useCreateDrop } from '../hooks';
 
@@ -57,13 +59,18 @@ export function ComposerScreen({ navigation }: Props) {
   const { coord, shortAddress, city, status, refresh } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
 
+  // A drop inside a privacy zone would put its coordinate on a public map — the
+  // one thing the zone was drawn to prevent. Read live rather than held in
+  // state: the zones can only change on another screen, and this is cheap.
+  const zone = coord ? zoneAt(coord, getPrivacyZones()) : null;
+
   // This screen has its own location hook instance; warm it so we get a fix
   // (and the Drop button enables) even if the user jumped straight here.
   useEffect(() => {
     if (status === 'unknown') refresh();
   }, [status, refresh]);
 
-  const canDrop = !!coord && body.trim().length > 0 && !isPending;
+  const canDrop = !!coord && body.trim().length > 0 && !isPending && !zone;
 
   // The button has always promised "forever" — keep it honest once that's a
   // choice, so the commitment being made is on the button you press. A gate
@@ -77,6 +84,13 @@ export function ComposerScreen({ navigation }: Props) {
       : `Drop here · ${lifespanLabel} · ${
           revealCondition === 'night' ? 'after dark' : 'daylight'
         }`;
+  // The refusal says which circle and offers the way out, because a disabled
+  // button that won't explain itself reads as a bug, not as a promise kept.
+  const buttonLabel = zone
+    ? `Inside ${zone.label ?? 'a private circle'}`
+    : isPending
+      ? 'Dropping…'
+      : dropLabel;
 
   const handleDrop = async () => {
     if (!canDrop) return;
@@ -159,8 +173,22 @@ export function ComposerScreen({ navigation }: Props) {
 
           <ShareableToggle value={shareable} onChange={setShareable} />
 
+          {zone && (
+            <View style={styles.zoneNote}>
+              <Text style={styles.zoneNoteTitle}>
+                You're standing in {zone.label ?? 'a private circle'}.
+              </Text>
+              <Text style={styles.zoneNoteBody}>
+                Nothing gets dropped inside your private circles — a drop here
+                would be a pin on a public map at the place you asked the app to
+                forget. Walk out of it, or edit your circles under You › Your
+                data.
+              </Text>
+            </View>
+          )}
+
           <AppButton
-            label={isPending ? 'Dropping…' : dropLabel}
+            label={buttonLabel}
             iconLeft={
               <SealPinIcon
                 size={18}
@@ -240,4 +268,25 @@ const styles = StyleSheet.create({
   },
   dropBtn: { marginTop: 18 },
   dropBtnDim: { opacity: 0.5 },
+  zoneNote: {
+    marginTop: 18,
+    backgroundColor: colors.accentTint,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: 'rgba(118,149,124,0.3)',
+    paddingVertical: 13,
+    paddingHorizontal: 15,
+  },
+  zoneNoteTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  zoneNoteBody: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    lineHeight: 12 * 1.5,
+    color: colors.inkSoft,
+    marginTop: 5,
+  },
 });

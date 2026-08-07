@@ -91,6 +91,15 @@ RootStack: Welcome → HowItWorks → Location → Main
 
 - Features **never** import a vendor SDK directly — go through a `services/*` adapter.
   (React Navigation and react-native-svg count as app infrastructure, not vendor SDKs.)
+- **Privacy zones bind every new location feature.** Anything that records a
+  coordinate, sends one to the server, or acts on where the user is must first
+  ask `isInsideAnyZone` (`services/location/privacyZones`) and do nothing inside
+  a zone. Enforce at the *capture* layer, never at render — filtering on display
+  while still recording is the one failure this feature can't have. Current call
+  sites: the fog-cell writer (`LocationContext`), the hum gate
+  (`notifications/gate` → `privacy-zone` verdict), the echo poll (`useEchoes`),
+  and the drop refusal (`ComposerScreen`). Zone coordinates never leave the
+  device.
 - `design-reference/` is a read-only design export (HTML). Don't edit it. The 14
   screens live in `project/dropped-screens.js` (markup), `dropped.css` (visual
   spec) and `dropped.js` (shared SVGs) — treat those as the source of truth for

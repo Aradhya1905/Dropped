@@ -110,6 +110,19 @@ export function cellBounds(id: string): [Coordinate, Coordinate] | null {
 }
 
 /**
+ * The middle of a cell, for asking a question about *where* a remembered cell
+ * is — chiefly "does this one fall inside a privacy zone?". Returns `null` for
+ * a malformed id, which callers should treat as "not a real cell" rather than
+ * as "outside".
+ */
+export function cellCentre(id: string): Coordinate | null {
+  const bounds = cellBounds(id);
+  if (!bounds) return null;
+  const [sw, ne] = bounds;
+  return { lat: (sw.lat + ne.lat) / 2, lng: (sw.lng + ne.lng) / 2 };
+}
+
+/**
  * Resample a polyline so points sit roughly `everyMeters` apart along it —
  * used to space footstep marks evenly down the walking route regardless of how
  * densely the provider returned the geometry. Always keeps the first vertex.

@@ -15,6 +15,7 @@ import Geolocation, {
 } from 'react-native-geolocation-service';
 
 import type { Coordinate } from '../../types';
+import { isInsideAnyZone, type PrivacyZone } from './privacyZones';
 import { haversineMeters, isWithin } from '../../utils/geo';
 import { REVEAL_RADIUS_M } from '../../types';
 
@@ -71,6 +72,27 @@ const toFix = (p: GeoPosition): Fix => ({
  */
 export function shouldRecordFix(accuracy: number, max: number): boolean {
   return Number.isFinite(accuracy) && accuracy <= max;
+}
+
+/**
+ * The complete capture-layer verdict for one fix: precise enough to paint, and
+ * outside every privacy zone.
+ *
+ * Both halves live in one function because the fog writer must ask one
+ * question. A caller that remembered the accuracy filter and forgot the zone
+ * check would keep recording someone's home while looking entirely correct —
+ * see FUN_TODOs/14 — so there is no arrangement of these two tests that a call
+ * site is allowed to reassemble for itself.
+ */
+export function shouldRecordCell(
+  fix: Fix,
+  maxAccuracyM: number,
+  zones: PrivacyZone[],
+): boolean {
+  return (
+    shouldRecordFix(fix.accuracy, maxAccuracyM) &&
+    !isInsideAnyZone(fix.coordinate, zones)
+  );
 }
 
 /**
@@ -199,3 +221,31 @@ export function isWithinDrop(
 ): boolean {
   return isWithin(from, drop, meters);
 }
+
+// --- movement (is the walker actually walking, or sitting at a desk?) --------
+
+export {
+  isSustainedMovement,
+  DEFAULT_MIN_SPEED_MS,
+  DEFAULT_WINDOW_MS,
+} from './movement';
+export type { TimedFix, MovementOptions } from './movement';
+
+// --- privacy zones -----------------------------------------------------------
+
+/**
+ * Re-exported so features ask one module "where am I, and am I allowed to look
+ * here?". `services/storage` deliberately imports `./privacyZones` directly
+ * instead of this barrel — going through here would drag the GPS SDK into
+ * storage's import graph (and its tests).
+ */
+export {
+  DEFAULT_ZONE_RADIUS_M,
+  MAX_PRIVACY_ZONES,
+  ZONE_LABEL_SUGGESTIONS,
+  ZONE_RADIUS_OPTIONS,
+  isInsideAnyZone,
+  nextZoneLabel,
+  zoneAt,
+  type PrivacyZone,
+} from './privacyZones';

@@ -14,6 +14,10 @@ import {
   WelcomeScreen,
 } from '../../features/onboarding/screens';
 import { OpeningScreen, SecretScreen } from '../../features/reveal/screens';
+import {
+  PrivacyZonesScreen,
+  ReportsScreen,
+} from '../../features/settings/screens';
 import { ConstellationScreen } from '../../features/trail/screens';
 import { MainTabs } from './MainTabs';
 import type { RootStackParamList } from './types';
@@ -37,6 +41,8 @@ export function RootNavigator() {
       <Stack.Screen name="Composer" component={ComposerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Dropped" component={DroppedScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="Constellation" component={ConstellationScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="PrivacyZones" component={PrivacyZonesScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="Reports" component={ReportsScreen} options={{ animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );
 }

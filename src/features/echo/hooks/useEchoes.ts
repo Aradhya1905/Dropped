@@ -23,8 +23,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { Coordinate, Mood } from '../../../types';
 import { MOODS } from '../../../types';
 import { apiSecretToSecret } from '../../../services/api/mappers';
+import { isInsideAnyZone } from '../../../services/location';
 import {
   getEchoCache,
+  getPrivacyZones,
   getEchoesEnabled,
   getMutedEchoIds,
   setEchoCache,
@@ -84,6 +86,12 @@ export function useEchoes(coord: Coordinate | null): UseEchoesResult {
 
   useEffect(() => {
     if (!enabled || coord == null || askingRef.current) return;
+
+    // Inside a privacy zone the app asks nothing. This request carries a precise
+    // coordinate to the server, and the whole promise of a zone is that the one
+    // place you sleep is never in a payload — so the gate belongs here, before
+    // the checkpoint moves, not in what gets rendered afterwards.
+    if (isInsideAnyZone(coord, getPrivacyZones())) return;
 
     const day = dayKey();
     if (!echoCheckDue(getEchoCache(), coord, day)) return;
