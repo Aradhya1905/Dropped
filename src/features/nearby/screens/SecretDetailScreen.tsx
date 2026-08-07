@@ -27,7 +27,7 @@ import {
 import { PinIcon, WalkIcon } from '../../../design-system/icons';
 import { colors, fonts, moodColor, shadows } from '../../../design-system/tokens';
 import { Compass } from '../components/Compass';
-import { useSpotPreview } from '../hooks';
+import { useNeedleWobble, useSpotPreview } from '../hooks';
 import { previewToSealedSecret } from '../types';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useDeviceLocation, useNearbyDrops } from '../../map/hooks';
@@ -109,10 +109,20 @@ export function SecretDetailScreen({ navigation, route }: Props) {
 
   // Needle rotation: bearing to drop relative to device heading (so needle
   // points at the drop no matter which way the phone faces).
-  const needleRotation =
+  const trueNeedleRotation =
     dropBearing != null && deviceHeading != null
       ? ((dropBearing - deviceHeading + 360) % 360)
       : dropBearing;
+
+  // …and then the compass lies about it, until you're close enough that it
+  // doesn't. Drift is additive, so wrapping the post-heading bearing gives the
+  // same needle as wrapping the raw one. The distance readout below is left
+  // alone on purpose — see `useNeedleWobble`.
+  const {
+    rotation: needleRotation,
+    tweenMs: needleTween,
+    honest: needleHonest,
+  } = useNeedleWobble(trueNeedleRotation, distM, secretId);
 
   // Text label points the way to walk: absolute bearing user → drop (pure GPS,
   // independent of which way the phone faces). The needle above still uses
@@ -199,7 +209,7 @@ export function SecretDetailScreen({ navigation, route }: Props) {
             <CloseX onPress={() => navigation.goBack()} />
           </View>
 
-          <Compass rotation={needleRotation} />
+          <Compass rotation={needleRotation} tweenMs={needleTween} />
 
           <View style={styles.dist}>
             <Text style={styles.distBig}>
@@ -220,6 +230,17 @@ export function SecretDetailScreen({ navigation, route }: Props) {
           {approx && (
             <Text style={styles.approxNote}>
               shared with you · exact spot sharpens as you get close
+            </Text>
+          )}
+          {/*
+            Said out loud, in the flow, not only in settings: the needle is
+            wrong on purpose out here. Someone who can't play "search for it"
+            needs to know there's a switch before they walk in circles — the
+            distance above them stays honest either way.
+          */}
+          {!needleHonest && (
+            <Text style={styles.needleNote}>
+              the needle wanders this far out · it steadies as you close
             </Text>
           )}
 
@@ -347,6 +368,17 @@ const styles = StyleSheet.create({
     letterSpacing: 8.5 * 0.2,
     textTransform: 'uppercase',
     color: colors.accentDeep,
+    marginTop: 5,
+  },
+  // Sibling of `approxNote`, one step quieter: it's a property of the
+  // instrument, not a warning about the data.
+  needleNote: {
+    textAlign: 'center',
+    fontFamily: fonts.mono,
+    fontSize: 8.5,
+    letterSpacing: 8.5 * 0.2,
+    textTransform: 'uppercase',
+    color: colors.inkFaint,
     marginTop: 5,
   },
   goneBody: { marginTop: 'auto', marginBottom: 'auto', alignItems: 'center' },

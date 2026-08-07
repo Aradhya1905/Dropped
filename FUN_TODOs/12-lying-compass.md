@@ -1,6 +1,6 @@
 # 12 — Lying compass
 
-**Effort:** S · **Where:** client only · **Status:** todo
+**Effort:** S · **Where:** client only · **Status:** built (device QA owed)
 **Plan:** [2026-08-07-12-lying-compass.md](../.claude/plans/2026-08-07-12-lying-compass.md)
 
 ## What

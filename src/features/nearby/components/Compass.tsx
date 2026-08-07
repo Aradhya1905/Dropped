@@ -2,6 +2,15 @@
  * Hand-drawn compass: dotted dials, cardinal labels, and a sage needle.
  * Pass `rotation` (degrees, 0 = north) to point needle at a real bearing.
  * Omit `rotation` for the ambient sway fallback (no heading data yet).
+ *
+ * Far from a drop the bearing handed in is deliberately a lie that drifts every
+ * few seconds (`hooks/useNeedleWobble`) — this component doesn't know or care,
+ * it just tweens to whatever it's given. `tweenMs` is how the caller asks for a
+ * heavy needle at long range and a crisp one up close.
+ *
+ * **One `Animated.Value` drives the transform, always.** The sway branch and the
+ * bearing branch share it; a second value over the same `transform: [{ rotate }]`
+ * is how this gets janky.
  */
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
@@ -14,15 +23,29 @@ const SIZE = 178;
 interface CompassProps {
   /** Bearing from user → drop in degrees (0–360). Needle points here. */
   rotation?: number | null;
+  /** How long to take getting there. Longer = heavier needle. */
+  tweenMs?: number;
 }
 
-export function Compass({ rotation }: CompassProps) {
+export function Compass({ rotation, tweenMs = 300 }: CompassProps) {
   const animated = useRef(new Animated.Value(0)).current;
-  const lastRotation = useRef(rotation ?? 0);
+  /**
+   * The value the needle is heading for, in *unwrapped* degrees: it accumulates
+   * past 360 (and below 0) so that turning from 359° to 1° is a +2° move rather
+   * than a −358° spin. `null` while the sway branch owns the value, since that
+   * branch drives it in 0…1 instead.
+   */
+  const targetDeg = useRef<number | null>(null);
+  // Read through a ref so changing the duration doesn't restart the animation
+  // mid-swing — only a new bearing may do that.
+  const tweenRef = useRef(tweenMs);
+  tweenRef.current = tweenMs;
 
   useEffect(() => {
     if (rotation == null) {
       // Fallback: gentle ambient sway
+      targetDeg.current = null;
+      animated.setValue(0);
       const loop = Animated.loop(
         Animated.sequence([
           Animated.timing(animated, {
@@ -43,15 +66,26 @@ export function Compass({ rotation }: CompassProps) {
       return () => loop.stop();
     }
 
-    // Animate to new bearing, taking the shortest arc
-    let delta = rotation - lastRotation.current;
+    // First bearing after the sway (or on mount): snap, don't sweep in from
+    // north — nobody asked to watch the needle travel to where it always was.
+    if (targetDeg.current == null) {
+      targetDeg.current = rotation;
+      animated.setValue(rotation);
+      return;
+    }
+
+    // Animate to the new bearing, taking the shortest arc: compare against the
+    // current target wrapped back into 0–360, then apply the delta to the
+    // unwrapped target so the tween itself never crosses the 0/360 seam.
+    const wrapped = ((targetDeg.current % 360) + 360) % 360;
+    let delta = rotation - wrapped;
     if (delta > 180) delta -= 360;
     if (delta < -180) delta += 360;
-    lastRotation.current = rotation;
+    targetDeg.current += delta;
 
     Animated.timing(animated, {
-      toValue: rotation,
-      duration: 300,
+      toValue: targetDeg.current,
+      duration: tweenRef.current,
       easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     }).start();
