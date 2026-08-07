@@ -2,15 +2,20 @@
  * 10 Your trail — the collected scrapbook: torn-receipt stats,
  * found/saved/dropped tabs, and the feed of secrets you've stood inside.
  */
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
-import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
+import {
+  FunKicker,
+  MapTexture,
+  PaperScreen,
+  QueryState,
+} from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
 import { EchoCard, useEchoes } from '../../echo';
 import { useDeviceLocation } from '../../../services/location/LocationContext';
@@ -20,6 +25,11 @@ import { FogHeader } from '../components/FogHeader';
 import { Receipt } from '../components/Receipt';
 import { SealGrid } from '../components/SealGrid';
 import { TrailCard } from '../components/TrailCard';
+import {
+  TrailPostcard,
+  type TrailPostcardHandle,
+} from '../components/TrailPostcard';
+import { shareImage } from '../../../services/share';
 import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
 import { fadesInLabel, isExpired } from '../../../utils/expiry';
 import { relTime } from '../../../utils/format';
@@ -27,6 +37,13 @@ import type { Secret } from '../../../types';
 
 const FASTENERS = ['tape', 'pin', 'tapeRight'] as const;
 const ROTATIONS = [-1, 0.8, -0.6];
+
+/** Empty says something different on each tab; "nothing yet" says nothing. */
+const EMPTY_LABELS: Record<'found' | 'saved' | 'dropped', string> = {
+  found: "Nothing found yet.\nThey only open when you're standing on them.",
+  saved: "Nothing kept yet.\nSave one and it stays yours.",
+  dropped: "You haven't left anything anywhere yet.",
+};
 
 export function TrailScreen() {
   const insets = useSafeAreaInsets();
@@ -81,6 +98,45 @@ export function TrailScreen() {
   // The heading is explicitly "this month" — use the month-scoped found count.
   const foundCount = stats.data?.foundThisMonth ?? 0;
 
+  const receiptCells = [
+    { value: (steps ?? 0).toLocaleString(), label: 'steps' },
+    { value: String(stats.data?.citiesVisited ?? 0), label: 'cities' },
+    { value: String(stats.data?.streakDays ?? 0), unit: 'd', label: 'streak' },
+    {
+      value: String(stats.data?.droppedTotal ?? dropped.data?.total ?? 0),
+      label: 'dropped',
+    },
+  ];
+
+  // --- postcard export -------------------------------------------------------
+  const postcard = useRef<TrailPostcardHandle>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const sharePostcard = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const png = await postcard.current?.capture();
+      if (!png) {
+        Alert.alert(
+          'Could not make the card',
+          'Something went wrong drawing it. Try again in a moment.',
+        );
+        return;
+      }
+      await shareImage({
+        base64Png: png,
+        filename: `dropped-trail-${tab}`,
+        title: 'My trail',
+        // No secret body, and no count of anything anyone else wrote — the
+        // sentence says as little as the card does.
+        message: 'Places I walked to.',
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <PaperScreen>
       <MapTexture dense blur />
@@ -94,14 +150,7 @@ export function TrailScreen() {
           </Text>
         </View>
 
-        <Receipt
-          cells={[
-            { value: (steps ?? 0).toLocaleString(), label: 'steps' },
-            { value: String(stats.data?.citiesVisited ?? 0), label: 'cities' },
-            { value: String(stats.data?.streakDays ?? 0), unit: 'd', label: 'streak' },
-            { value: String(stats.data?.droppedTotal ?? dropped.data?.total ?? 0), label: 'dropped' },
-          ]}
-        />
+        <Receipt cells={receiptCells} />
 
         <FogHeader />
 
@@ -135,6 +184,9 @@ export function TrailScreen() {
               <Pressable
                 key={t.key}
                 onPress={() => setTab(t.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${t.label}, ${t.count}`}
                 style={[styles.tab, on && styles.tabOn]}
               >
                 <Text style={[styles.tabText, on && styles.tabTextOn]}>{t.label}</Text>
@@ -146,7 +198,14 @@ export function TrailScreen() {
 
         <View style={styles.views}>
           {(['cards', 'seals'] as const).map(v => (
-            <Pressable key={v} onPress={() => setView(v)} hitSlop={8}>
+            <Pressable
+              key={v}
+              onPress={() => setView(v)}
+              hitSlop={8}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: v === view }}
+              accessibilityLabel={`Show ${v}`}
+            >
               <Text style={[styles.viewText, v === view && styles.viewTextOn]}>{v}</Text>
             </Pressable>
           ))}
@@ -157,9 +216,16 @@ export function TrailScreen() {
           contentContainerStyle={styles.feedContent}
           showsVerticalScrollIndicator={false}
         >
-          {isLoading ? (
-            <ActivityIndicator color={colors.accent} style={styles.loader} />
-          ) : view === 'seals' ? (
+          <QueryState
+            isLoading={isLoading}
+            error={activeQuery.error}
+            onRetry={activeQuery.refetch}
+            // The seal grid draws its own "nothing yet" inside the sheet, so
+            // only the card feed delegates the empty case here.
+            isEmpty={view === 'cards' && activeSecrets.length === 0}
+            emptyLabel={EMPTY_LABELS[tab]}
+          >
+          {view === 'seals' ? (
             <SealGrid
               secrets={activeSecrets}
               onPress={s => openSecret(s.id)}
@@ -169,8 +235,6 @@ export function TrailScreen() {
                   : 'Nothing here yet.'
               }
             />
-          ) : activeSecrets.length === 0 ? (
-            <Text style={styles.empty}>Nothing here yet.</Text>
           ) : (
             activeSecrets.map((s, i) => {
               // The server keeps expired drops in these lists on purpose: your
@@ -197,7 +261,42 @@ export function TrailScreen() {
               );
             })
           )}
+          </QueryState>
+
+          {activeSecrets.length > 0 && (
+            <Pressable
+              onPress={sharePostcard}
+              disabled={sharing}
+              accessibilityRole="button"
+              accessibilityLabel={`Share a postcard of the places you ${tab}`}
+              style={({ pressed }) => [styles.postcardBtn, pressed && styles.pressed]}
+            >
+              <Text style={styles.postcardText}>
+                {sharing ? 'Preparing…' : 'Share these places'}
+              </Text>
+            </Pressable>
+          )}
         </ScrollView>
+      </View>
+
+      {/*
+        Rendered off-screen rather than conditionally: `toDataURL` needs a
+        mounted, laid-out SVG, so a card created only on tap would have nothing
+        to capture. Zero opacity and no hit target keeps it out of the way, and
+        `accessibilityElementsHidden` keeps it out of TalkBack's path.
+      */}
+      <View
+        style={styles.offscreen}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <TrailPostcard
+          ref={postcard}
+          secrets={activeSecrets}
+          stats={receiptCells}
+          kind={tab}
+        />
       </View>
     </PaperScreen>
   );
@@ -205,6 +304,28 @@ export function TrailScreen() {
 
 const styles = StyleSheet.create({
   view: { flex: 1, paddingHorizontal: 22, zIndex: 10 },
+  postcardBtn: {
+    alignSelf: 'center',
+    marginTop: 18,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paperCard,
+  },
+  postcardText: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 10 * 0.14,
+    textTransform: 'uppercase',
+    color: colors.accentDeep,
+  },
+  pressed: { opacity: 0.85 },
+  // Off-canvas, not `display: none` — the SVG still has to lay out to be
+  // captured. Far enough left that no device shows a sliver of it.
+  offscreen: { position: 'absolute', left: -10000, top: 0, opacity: 0 },
   head: { paddingHorizontal: 4 },
   title: {
     fontFamily: fonts.serif,

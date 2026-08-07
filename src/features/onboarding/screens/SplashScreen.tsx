@@ -22,7 +22,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { consumePendingSpot } from '../../../app/navigation/linking';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { FadeUp, PaperScreen } from '../../../design-system/components';
-import { colors, fonts } from '../../../design-system/tokens';
+import { colors, fonts, isReducedMotion } from '../../../design-system/tokens';
 import { hideNativeSplash } from '../../../services/splash';
 import { getOnboardingComplete } from '../../../services/storage';
 
@@ -51,6 +51,26 @@ export function SplashScreen({ navigation }: Props) {
   useEffect(() => {
     // Fade the native paper bootsplash out now that this (also paper) is up.
     hideNativeSplash();
+
+    // Read synchronously rather than via `useReducedMotion`: this effect also
+    // owns the hand-off timer, and re-running it because a setting flipped
+    // would restart the splash hold.
+    const reduced = isReducedMotion();
+    if (reduced) {
+      // Straight to the finished frame — wordmark set, underline drawn, loader
+      // full — then hold for the same beat so the hand-off timing is unchanged.
+      for (const v of letters) v.setValue(1);
+      draw.setValue(1);
+      fill.setValue(1);
+      pulse.setValue(0);
+
+      const next = getOnboardingComplete() ? 'Main' : 'Welcome';
+      const holdTimer = setTimeout(() => {
+        if (consumePendingSpot()) return;
+        navigation.reset({ index: 0, routes: [{ name: next }] });
+      }, HOLD_MS);
+      return () => clearTimeout(holdTimer);
+    }
 
     const letterAnims = letters.map((v, i) =>
       Animated.timing(v, {

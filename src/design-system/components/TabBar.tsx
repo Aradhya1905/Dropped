@@ -6,7 +6,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fonts } from '../tokens';
+import { cappedTextProps, colors, fonts } from '../tokens';
 
 export interface TabBarItem {
   key: string;
@@ -43,7 +43,11 @@ export function TabBar({
             style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
           >
             {item.icon(color)}
-            <Text style={[styles.label, { color }]}>{item.label}</Text>
+            {/* The bar has a fixed height; capped so a large text setting
+                can't push the label out from under its icon. */}
+            <Text {...cappedTextProps} style={[styles.label, { color }]}>
+              {item.label}
+            </Text>
           </Pressable>
         );
       })}

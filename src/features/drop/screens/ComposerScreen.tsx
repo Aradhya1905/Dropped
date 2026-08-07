@@ -2,9 +2,10 @@
  * 08 Composer — "What happened here?" Pin your spot, write the confession on
  * ruled paper, pick a mood, choose how long it lasts, drop it.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
@@ -91,6 +92,32 @@ export function ComposerScreen({ navigation }: Props) {
     : isPending
       ? 'Dropping…'
       : dropLabel;
+
+  // Android's back button is one tap away from throwing away something someone
+  // just wrote down and hasn't said anywhere else. Ask first — but only when
+  // there is actually text to lose, so an empty composer still closes in one
+  // tap. `isPending` exempts the drop itself, which navigates on success.
+  const hasDraft = body.trim().length > 0 && !isPending;
+  usePreventRemove(
+    hasDraft,
+    useCallback(
+      ({ data }) => {
+        Alert.alert(
+          'Leave this here?',
+          "What you've written won't be dropped, and it isn't saved anywhere.",
+          [
+            { text: 'Keep writing', style: 'cancel' },
+            {
+              text: 'Discard',
+              style: 'destructive',
+              onPress: () => navigation.dispatch(data.action),
+            },
+          ],
+        );
+      },
+      [navigation],
+    ),
+  );
 
   const handleDrop = async () => {
     if (!canDrop) return;

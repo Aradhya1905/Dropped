@@ -15,6 +15,10 @@ export const StorageKeys = {
   moodFilter: 'map.moodFilter',
   echoesEnabled: 'settings.echoes',
   accurateCompass: 'settings.accurateCompass',
+  reducedMotion: 'settings.reducedMotion',
+  highContrast: 'settings.highContrast',
+  textScale: 'settings.textScale',
+  batteryMode: 'settings.batteryMode',
   mutedEchoIds: 'echo.muted',
   echoCache: 'echo.cache',
   seals: 'trail.seals',
@@ -54,8 +58,27 @@ export const EMPTY_STEP_STATE: StepState = { pending: {} };
  * Map visual style (the "layers" toggle on the Map screen). Mirrors the
  * adapter's `MapStyleKey` so the You screen and the map share one persisted
  * value. Keep in sync with `STYLE_OPTIONS` in `services/maps/maplibreAdapter`.
+ *
+ * `auto` is a **mode, not a style**: it resolves to `dropped` or `droppedNight`
+ * against the sun at the device's coordinate, which is why it lives in the same
+ * union — persisting the mode is what lets a manual pick override it later.
  */
-export type MapStyle = 'dropped' | 'quiet' | 'dark' | 'grayscale';
+export type MapStyle =
+  | 'dropped'
+  | 'quiet'
+  | 'droppedNight'
+  | 'dark'
+  | 'grayscale'
+  | 'auto';
+
+export const MAP_STYLES: readonly MapStyle[] = [
+  'dropped',
+  'quiet',
+  'droppedNight',
+  'dark',
+  'grayscale',
+  'auto',
+];
 
 /**
  * Quiet-hum notification setting from the You screen.
@@ -147,6 +170,51 @@ export const DEFAULT_NOTIFY_RADIUS_M: NotifyRadiusM = 500;
  * subscribed rather than silently muted for everyone who ever opened the sheet.
  */
 export const DEFAULT_SUBSCRIBED_MOODS: readonly Mood[] = MOODS;
+
+/**
+ * Reduced motion, as an **app-level addition to the OS setting** rather than a
+ * replacement for it. `useReducedMotion` ORs the two, so this flag can only ever
+ * turn motion off — someone whose phone already asks for reduced motion never
+ * has to ask twice, and nobody can accidentally re-enable ambient loops the OS
+ * was told to suppress.
+ */
+export const DEFAULT_REDUCED_MOTION = false;
+
+/**
+ * The paper/ink/sage palette is low-contrast *by design* — that softness is the
+ * app. High contrast is therefore a whole alternate token set (see
+ * `design-system/tokens/colors`), off unless asked for.
+ */
+export const DEFAULT_HIGH_CONTRAST = false;
+
+/**
+ * In-app type boost, applied **on top of** the OS Dynamic Type scale rather
+ * than instead of it: someone who has already enlarged system text keeps that
+ * and can go further here without touching OS settings.
+ */
+export type TextScale = 'system' | 'large' | 'largest';
+
+export const DEFAULT_TEXT_SCALE: TextScale = 'system';
+
+export const TEXT_SCALE_MULTIPLIER: Record<TextScale, number> = {
+  system: 1,
+  large: 1.15,
+  largest: 1.3,
+};
+
+/**
+ * Ceiling on OS × app text scaling. The paper layouts are tight — notes, seals
+ * and the passport are drawn to a fixed geometry — and past this multiplier they
+ * clip rather than reflow. Capping is the honest failure mode: text that stops
+ * growing is still readable; text that grows out of its card is not.
+ */
+export const MAX_FONT_MULTIPLIER = 1.6;
+
+/**
+ * Battery mode: a slower, coarser GPS watch. Off by default because fog of war
+ * and warmth haptics both ride the watch, and both feel broken when it lags.
+ */
+export const DEFAULT_BATTERY_MODE = false;
 
 /**
  * Warmth haptics on the walk are on by default — they're the point of the

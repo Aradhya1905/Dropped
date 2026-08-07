@@ -5,21 +5,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Grabber, Sheet } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
-import type { MapStyleKey, MapStyleOption } from '../../../services/maps';
+import type { MapStyleChoice, MapStyleOption } from '../../../services/maps';
 
 type Props = {
   visible: boolean;
-  activeKey: MapStyleKey;
+  activeKey: MapStyleChoice;
   options: MapStyleOption[];
-  onSelect: (key: MapStyleKey) => void;
+  onSelect: (key: MapStyleChoice) => void;
   onClose: () => void;
 };
 
-const SWATCH_COLORS: Record<MapStyleKey, string> = {
+const SWATCH_COLORS: Record<MapStyleChoice, string> = {
   dropped: colors.paper,
   quiet: colors.accent,
+  droppedNight: '#171410', // the night cut's ground
+  auto: colors.accentDeep,
   dark: '#1A1A1A',
   grayscale: '#C8C8C8',
+};
+
+/** Said on the row, because "Follow the sun" alone doesn't say what it does. */
+const NOTES: Partial<Record<MapStyleChoice, string>> = {
+  auto: 'Paper by day, after dark at night.',
 };
 
 export function LayerSheet({ visible, activeKey, options, onSelect, onClose }: Props) {
@@ -51,6 +58,10 @@ export function LayerSheet({ visible, activeKey, options, onSelect, onClose }: P
             return (
               <React.Fragment key={option.key}>
                 <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={option.label}
+                  accessibilityHint={NOTES[option.key]}
                   style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                   onPress={() => {
                     onSelect(option.key);
@@ -64,9 +75,14 @@ export function LayerSheet({ visible, activeKey, options, onSelect, onClose }: P
                       option.key === 'dropped' && styles.swatchBorder,
                     ]}
                   />
-                  <Text style={[styles.label, active && styles.labelActive]}>
-                    {option.label}
-                  </Text>
+                  <View style={styles.labelBlock}>
+                    <Text style={[styles.label, active && styles.labelActive]}>
+                      {option.label}
+                    </Text>
+                    {NOTES[option.key] != null && (
+                      <Text style={styles.note}>{NOTES[option.key]}</Text>
+                    )}
+                  </View>
                   {active && <View style={styles.activeDot} />}
                 </Pressable>
                 {showDivider && <View style={styles.divider} />}
@@ -124,11 +140,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
+  labelBlock: { flex: 1 },
   label: {
-    flex: 1,
     fontFamily: fonts.sansMedium,
     fontSize: 15,
     color: colors.ink,
+  },
+  note: {
+    fontFamily: fonts.sans,
+    fontSize: 11.5,
+    lineHeight: 11.5 * 1.4,
+    color: colors.inkSoft,
+    marginTop: 2,
   },
   labelActive: {
     color: colors.accentDeep,

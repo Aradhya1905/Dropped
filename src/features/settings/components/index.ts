@@ -1,3 +1,4 @@
+export { AccessibilitySettings } from './AccessibilitySettings';
 export { Passport } from './Passport';
 export { OptionSheet } from './OptionSheet';
 export type { SheetOption } from './OptionSheet';

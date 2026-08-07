@@ -97,6 +97,7 @@ export function WelcomeScreen({ navigation }: Props) {
               <WaxSeal
                 size={56}
                 pulse
+                accessibilityLabel="Drop a secret now"
                 onPress={() => {
                   setOnboardingComplete(true);
                   navigation.navigate('Composer');

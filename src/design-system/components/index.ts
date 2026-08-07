@@ -1,4 +1,4 @@
-export { FadeUp, FloatBob, PulseRing } from './anim';
+export { FadeUp, FloatBob, PulseRing, PulseRingStack } from './anim';
 export type { PulseRingProps } from './anim';
 export { PaperScreen } from './PaperScreen';
 export { MapTexture } from './MapTexture';
@@ -9,5 +9,7 @@ export { AppButton } from './AppButton';
 export type { AppButtonProps } from './AppButton';
 export { FunKicker, FunTitle, HandUnderline, MetaFoot } from './typographic';
 export { EmotionTag, CloseX, Grabber, Postmark, Sheet } from './chrome';
+export { QueryState } from './QueryState';
+export type { QueryStateProps } from './QueryState';
 export { TabBar } from './TabBar';
 export type { TabBarItem } from './TabBar';

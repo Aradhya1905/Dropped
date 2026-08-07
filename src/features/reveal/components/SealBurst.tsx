@@ -10,13 +10,36 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg';
 
 import { colors, fonts } from '../../../design-system/tokens';
+import { useLoopsActive, useReducedMotion } from '../../../design-system/tokens/motion';
 
 const STAGE = 230;
 const SEAL = 128;
 
+/**
+ * Where a stopped burst rests on its own timeline.
+ *
+ * **This is the reduced-motion reveal, and it is the point of the screen.** The
+ * frame is chosen, not defaulted: at 0.82 the seal is already broken and its
+ * halves flung aside, the folded note is out and settled, "snap!" is up, the
+ * glow is fading, and the shards have finished their arc — so nothing is caught
+ * mid-flight. Freezing at 0 would show an unbroken seal, which says the
+ * opposite of what this screen exists to say. Every interpolation below already
+ * evaluates correctly here, which is why the static path is one frozen value
+ * rather than a second copy of the artwork.
+ */
+const STATIC_FRAME = 0.82;
+
 function useBreakTimeline() {
-  const t = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  const loopsActive = useLoopsActive();
+  const t = useRef(new Animated.Value(reduced ? STATIC_FRAME : 0)).current;
+
   useEffect(() => {
+    if (reduced) {
+      t.setValue(STATIC_FRAME);
+      return;
+    }
+    if (!loopsActive) return;
     const loop = Animated.loop(
       Animated.timing(t, {
         toValue: 1,
@@ -27,7 +50,8 @@ function useBreakTimeline() {
     );
     loop.start();
     return () => loop.stop();
-  }, [t]);
+  }, [t, reduced, loopsActive]);
+
   return t;
 }
 

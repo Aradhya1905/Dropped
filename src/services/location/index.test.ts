@@ -5,7 +5,9 @@ import {
   shouldRecordCell,
   shouldRecordFix,
   watch,
+  watchOptions,
 } from './index';
+import { setBatteryMode } from '../storage';
 
 const mockGetCurrentPosition = jest.fn();
 const mockWatchPosition = jest.fn();
@@ -95,6 +97,36 @@ describe('shouldRecordFix', () => {
     expect(shouldRecordFix(40, 25)).toBe(false);
     expect(shouldRecordFix(Infinity, 25)).toBe(false);
     expect(shouldRecordFix(NaN, 25)).toBe(false);
+  });
+});
+
+describe('battery mode', () => {
+  afterEach(() => setBatteryMode(false));
+
+  it('asks the OS for less, without turning the watch off', () => {
+    const normal = watchOptions(false);
+    const saving = watchOptions(true);
+
+    expect(normal.enableHighAccuracy).toBe(true);
+    expect(saving.enableHighAccuracy).toBe(false);
+    // Coarser *and* less chatty — the point is fewer radio wake-ups, not a
+    // dead stream. Fog and warmth both ride this, so it must still emit.
+    expect(saving.distanceFilter).toBeGreaterThan(normal.distanceFilter);
+  });
+
+  it('is read from the setting when no argument is given', () => {
+    setBatteryMode(true);
+    expect(watchOptions().enableHighAccuracy).toBe(false);
+    setBatteryMode(false);
+    expect(watchOptions().enableHighAccuracy).toBe(true);
+  });
+
+  it('applies the current cadence when a watch starts', () => {
+    setBatteryMode(true);
+    watch(() => {});
+    const options = mockWatchPosition.mock.calls[0][2];
+    expect(options.enableHighAccuracy).toBe(false);
+    expect(options.distanceFilter).toBe(25);
   });
 });
 

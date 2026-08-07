@@ -4,7 +4,19 @@ import {
   clearAll,
   clearSeals,
   getAccurateCompass,
+  getBatteryMode,
+  getHighContrast,
+  getMapStyle,
+  getReducedMotion,
+  getTextScale,
   setAccurateCompass,
+  setBatteryMode,
+  setHighContrast,
+  setMapStyle,
+  setReducedMotion,
+  setTextScale,
+  type MapStyle,
+  type TextScale,
   clearWalkedCells,
   FOG_CELL_CAP,
   getDeviceId,
@@ -516,5 +528,53 @@ describe('storage background walk engine', () => {
     setProducerState({ lastFiredAt: 1, firedDropIds: ['a'], lastCheckCoord: null });
     clearProducerState();
     expect(getProducerState()).toEqual(EMPTY_PRODUCER_STATE);
+  });
+});
+
+describe('accessibility & polish settings', () => {
+  beforeEach(() => clearAll());
+
+  it('each has the documented default', () => {
+    // Every one of these defaults to the un-surprising state: nothing is
+    // suppressed, nothing is boosted, and the GPS runs at full cadence.
+    expect(getReducedMotion()).toBe(false);
+    expect(getHighContrast()).toBe(false);
+    expect(getTextScale()).toBe('system');
+    expect(getBatteryMode()).toBe(false);
+    expect(getMapStyle()).toBe('dropped');
+  });
+
+  it('each round-trips', () => {
+    setReducedMotion(true);
+    setHighContrast(true);
+    setTextScale('largest');
+    setBatteryMode(true);
+    setMapStyle('auto');
+
+    expect(getReducedMotion()).toBe(true);
+    expect(getHighContrast()).toBe(true);
+    expect(getTextScale()).toBe('largest');
+    expect(getBatteryMode()).toBe(true);
+    expect(getMapStyle()).toBe('auto');
+  });
+
+  it('persists the map style choice verbatim, mode included', () => {
+    // `auto` must survive as `auto`. Resolving it to a concrete cut before
+    // writing would turn a standing preference into a one-off choice the user
+    // never made — see services/maps/nightStyle.
+    setMapStyle('auto');
+    expect(getMapStyle()).toBe('auto');
+  });
+
+  it('falls back to the default map style when the stored one is unknown', () => {
+    // What a downgrade (or a retired style) leaves behind. MapLibre's answer to
+    // an unknown style is a blank screen, so this must never reach the map.
+    setMapStyle('a-style-from-the-future' as MapStyle);
+    expect(getMapStyle()).toBe('dropped');
+  });
+
+  it('falls back to the default text scale when the stored one is unknown', () => {
+    setTextScale('enormous' as TextScale);
+    expect(getTextScale()).toBe('system');
   });
 });

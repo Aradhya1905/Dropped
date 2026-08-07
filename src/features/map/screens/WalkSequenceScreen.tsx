@@ -28,6 +28,7 @@ import type {
 import { PulseRing } from '../../../design-system/components';
 import { HeadingIcon, LocateIcon, LockIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
+import { useLoopsActive, useReducedMotion } from '../../../design-system/tokens/motion';
 import {
   useDeviceLocation,
   useFootRoute,
@@ -76,8 +77,13 @@ const STEP_LIT_RANGE_M = WARMTH_WARM_M;
 /** The buried secret's wax pin — grows and shakes as you arrive. */
 function SecretPin({ beat }: { beat: WalkBeat }) {
   const shake = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  const loopsActive = useLoopsActive();
+
   useEffect(() => {
-    if (beat !== 'arrived') {
+    // The pin already grows on arrival (`scale` below), which is the part that
+    // carries the news. The shake is emphasis, and rests at 0.
+    if (beat !== 'arrived' || reduced || !loopsActive) {
       return;
     }
     const loop = Animated.loop(
@@ -90,7 +96,7 @@ function SecretPin({ beat }: { beat: WalkBeat }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [beat, shake]);
+  }, [beat, shake, reduced, loopsActive]);
 
   const scale = beat === 'approach' ? 0.82 : beat === 'arrived' ? 1.16 : 1;
   return (
@@ -123,8 +129,18 @@ function SecretPin({ beat }: { beat: WalkBeat }) {
 
 /** Expanding ripple where you crossed into the zone. */
 function CrossRipple() {
-  const t = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  const loopsActive = useLoopsActive();
+  // Stopped, the ripple is a single faint ring marking the crossing point —
+  // mid-expansion so it reads as a radius rather than a dot.
+  const t = useRef(new Animated.Value(reduced ? 0.5 : 0)).current;
+
   useEffect(() => {
+    if (reduced) {
+      t.setValue(0.5);
+      return;
+    }
+    if (!loopsActive) return;
     const loop = Animated.loop(
       Animated.timing(t, {
         toValue: 1,
@@ -135,7 +151,7 @@ function CrossRipple() {
     );
     loop.start();
     return () => loop.stop();
-  }, [t]);
+  }, [t, reduced, loopsActive]);
   return (
     <Animated.View
       pointerEvents="none"

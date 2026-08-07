@@ -19,21 +19,27 @@ import {
   REPORT_CAP,
   DEFAULT_ACCURATE_COMPASS,
   DEFAULT_BACKGROUND_WALK,
+  DEFAULT_BATTERY_MODE,
   DEFAULT_ECHOES_ENABLED,
   DEFAULT_HAPTICS_ENABLED,
+  DEFAULT_HIGH_CONTRAST,
   DEFAULT_MAP_STYLE,
   DEFAULT_MOOD_FILTER,
   DEFAULT_NOTIFICATION_MODE,
   DEFAULT_NOTIFY_RADIUS_M,
   DEFAULT_ONLY_WHEN_MOVING,
   DEFAULT_QUIET_HOURS,
+  DEFAULT_REDUCED_MOTION,
   DEFAULT_SUBSCRIBED_MOODS,
+  DEFAULT_TEXT_SCALE,
   EMPTY_STEP_STATE,
   FOG_CELL_CAP,
+  MAP_STYLES,
   NOTIFICATION_MODES,
   NOTIFY_RADIUS_OPTIONS,
   SEAL_CAP,
   StorageKeys,
+  TEXT_SCALE_MULTIPLIER,
   type EchoCache,
   type MapStyle,
   type NotificationMode,
@@ -42,6 +48,7 @@ import {
   type ReportedSecret,
   type StepState,
   type StoredSeal,
+  type TextScale,
 } from './keys';
 
 export type {
@@ -54,15 +61,19 @@ export type {
   ReportedSecret,
   StepState,
   StoredSeal,
+  TextScale,
 } from './keys';
 export type { PrivacyZone } from '../location/privacyZones';
 export {
   DEFAULT_QUIET_HOURS,
   FOG_CELL_CAP,
+  MAP_STYLES,
+  MAX_FONT_MULTIPLIER,
   NOTIFICATION_MODES,
   NOTIFY_RADIUS_OPTIONS,
   QUIET_HOURS_PRESETS,
   SEAL_CAP,
+  TEXT_SCALE_MULTIPLIER,
 } from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
@@ -209,8 +220,19 @@ export function hasSeen(id: string): boolean {
 
 // --- settings ----------------------------------------------------------------
 
+/**
+ * Persisted map style, validated on read.
+ *
+ * A downgrade (or a style retired from `STYLE_OPTIONS`) would otherwise leave a
+ * key here that the adapter can't resolve, and MapLibre's answer to an unknown
+ * style is a blank screen with no way for the user to tell why. Falling back is
+ * the only sane failure mode for something that renders the whole tab.
+ */
 export function getMapStyle(): MapStyle {
-  return (mmkv.getString(StorageKeys.mapStyle) as MapStyle) ?? DEFAULT_MAP_STYLE;
+  const stored = mmkv.getString(StorageKeys.mapStyle);
+  return MAP_STYLES.includes(stored as MapStyle)
+    ? (stored as MapStyle)
+    : DEFAULT_MAP_STYLE;
 }
 
 export function setMapStyle(style: MapStyle): void {
@@ -379,14 +401,94 @@ export function setAccurateCompass(on: boolean): void {
   mmkv.set(StorageKeys.accurateCompass, on);
 }
 
+/** Fire `listener` whenever one specific key is written. */
+function watchKey(watched: string, listener: () => void): { remove: () => void } {
+  return mmkv.addOnValueChangedListener(key => {
+    if (key === watched) listener();
+  });
+}
+
 /**
  * Notify when the accurate-compass flag flips, so a needle already on screen
  * steadies (or starts drifting) without waiting for the screen to remount.
  */
 export function onAccurateCompassChange(listener: () => void): { remove: () => void } {
-  return mmkv.addOnValueChangedListener(key => {
-    if (key === StorageKeys.accurateCompass) listener();
-  });
+  return watchKey(StorageKeys.accurateCompass, listener);
+}
+
+// --- accessibility -----------------------------------------------------------
+
+/**
+ * The app-level half of reduced motion. Read this through
+ * `design-system/tokens/motion.useReducedMotion`, which ORs it with the OS
+ * setting — a component that consults this alone would keep bobbing on a phone
+ * that has already asked everything to hold still.
+ */
+export function getReducedMotion(): boolean {
+  return mmkv.getBoolean(StorageKeys.reducedMotion) ?? DEFAULT_REDUCED_MOTION;
+}
+
+export function setReducedMotion(on: boolean): void {
+  mmkv.set(StorageKeys.reducedMotion, on);
+}
+
+/** Loops must stop under the finger, not on the next mount. */
+export function onReducedMotionChange(listener: () => void): { remove: () => void } {
+  return watchKey(StorageKeys.reducedMotion, listener);
+}
+
+/**
+ * High contrast swaps the whole colour token set (see
+ * `design-system/tokens/colors.activeColors`).
+ */
+export function getHighContrast(): boolean {
+  return mmkv.getBoolean(StorageKeys.highContrast) ?? DEFAULT_HIGH_CONTRAST;
+}
+
+export function setHighContrast(on: boolean): void {
+  mmkv.set(StorageKeys.highContrast, on);
+}
+
+export function onHighContrastChange(listener: () => void): { remove: () => void } {
+  return watchKey(StorageKeys.highContrast, listener);
+}
+
+/** In-app type boost, multiplied onto the OS Dynamic Type scale. */
+export function getTextScale(): TextScale {
+  const stored = mmkv.getString(StorageKeys.textScale);
+  return stored != null && stored in TEXT_SCALE_MULTIPLIER
+    ? (stored as TextScale)
+    : DEFAULT_TEXT_SCALE;
+}
+
+export function setTextScale(scale: TextScale): void {
+  mmkv.set(StorageKeys.textScale, scale);
+}
+
+export function onTextScaleChange(listener: () => void): { remove: () => void } {
+  return watchKey(StorageKeys.textScale, listener);
+}
+
+/**
+ * Battery mode — a slower, coarser GPS watch. Read by `services/location.watch`
+ * when it starts; see `onBatteryModeChange` for why a live flip has to restart
+ * the watch rather than mutate it.
+ */
+export function getBatteryMode(): boolean {
+  return mmkv.getBoolean(StorageKeys.batteryMode) ?? DEFAULT_BATTERY_MODE;
+}
+
+export function setBatteryMode(on: boolean): void {
+  mmkv.set(StorageKeys.batteryMode, on);
+}
+
+/**
+ * Notify when battery mode flips. The geolocation SDK bakes its options in at
+ * `watchPosition` time, so the only way to apply a new cadence is to tear the
+ * watch down and start a fresh one — `LocationContext` does exactly that.
+ */
+export function onBatteryModeChange(listener: () => void): { remove: () => void } {
+  return watchKey(StorageKeys.batteryMode, listener);
 }
 
 // --- anniversary echoes ------------------------------------------------------

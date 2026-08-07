@@ -5,9 +5,18 @@ export { useMaplibreAdapter, mapStyleLabel } from './maplibreAdapter';
 export type {
   MaplibreAdapterOptions,
   MaplibreAdapterResult,
+  MapStyleChoice,
   MapStyleKey,
   MapStyleOption,
 } from './maplibreAdapter';
+
+export {
+  AUTO_DAY_STYLE,
+  AUTO_NIGHT_STYLE,
+  AUTO_RECHECK_MS,
+  resolveMapStyle,
+} from './nightStyle';
+export type { ResolvedMapStyle } from './nightStyle';
 
 export { FogLayer } from './FogLayer';
 export {
