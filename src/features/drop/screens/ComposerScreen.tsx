@@ -24,6 +24,7 @@ import { PinIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { LifespanChips } from '../components/LifespanChips';
 import { MoodChips } from '../components/MoodChips';
+import { ShareableToggle } from '../components/ShareableToggle';
 import { WriteCard } from '../components/WriteCard';
 import { useDeviceLocation } from '../../map/hooks';
 import { useCreateDrop } from '../hooks';
@@ -39,6 +40,9 @@ export function ComposerScreen({ navigation }: Props) {
   const [expiresInDays, setExpiresInDays] = useState<ExpiresInDays | undefined>(
     undefined,
   );
+  // Shareable by default — matches the column default, and someone who never
+  // thinks about links gets the growth loop without a decision.
+  const [shareable, setShareable] = useState(true);
   const { coord, shortAddress, city, status, refresh } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
 
@@ -65,6 +69,8 @@ export function ComposerScreen({ navigation }: Props) {
         placeLabel: shortAddress ?? undefined,
         city: city ?? undefined,
         expiresInDays,
+        // Only sent when the author declined; absent is the server's default.
+        shareable: shareable ? undefined : false,
       });
       navigation.replace('Dropped', { secretId: secret.id });
     } catch {
@@ -125,6 +131,8 @@ export function ComposerScreen({ navigation }: Props) {
           />
 
           <LifespanChips selected={expiresInDays} onSelect={setExpiresInDays} />
+
+          <ShareableToggle value={shareable} onChange={setShareable} />
 
           <AppButton
             label={isPending ? 'Dropping…' : `Drop here · ${lifespanLabel}`}

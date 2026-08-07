@@ -14,6 +14,8 @@ interface CreateDropParams {
   city?: string;
   /** 7 or 30. Omitted = forever, the composer's default. */
   expiresInDays?: ExpiresInDays;
+  /** Author's opt-out from share links. Omitted = shareable, the default. */
+  shareable?: boolean;
 }
 
 export function useCreateDrop() {
@@ -29,6 +31,7 @@ export function useCreateDrop() {
         params.placeLabel,
         params.city,
         params.expiresInDays,
+        params.shareable,
       ).then(apiSecretToSecret),
     onSuccess: secret => {
       upsert(secret);

@@ -1,6 +1,6 @@
 # 07 — Share-a-spot deep link
 
-**Effort:** M · **Where:** backend + client · **Status:** todo
+**Effort:** M · **Where:** backend + client · **Status:** **built** (device QA owed)
 **Plan:** [2026-08-07-07-share-a-spot.md](../.claude/plans/2026-08-07-07-share-a-spot.md)
 
 ## What
@@ -48,3 +48,33 @@ go stand on it."
 - Consider whether authors should be able to opt a drop *out* of being
   shareable. A confession you meant for strangers passing by is different from
   one you're happy to have broadcast in a group chat.
+
+## What shipped
+
+Branch `feat/07-share-a-spot` in both repos. See the
+[plan](../.claude/plans/2026-08-07-07-share-a-spot.md) for the full status
+section, including where the build deviates from what was planned.
+
+- `GET /drops/:id/preview` — id, mood, place, city, revealCount, expiry, and a
+  coordinate **coarsened to 3 dp (~100 m) server-side**. No `body` field exists
+  in the response schema at all, and the row the query selects has no body
+  column in it either. IP-keyed rate limit of 20/min.
+- 404 — identical message and status — for hidden, pending, expired, opted-out,
+  and nonexistent drops.
+- The author opt-out was built: migration 0006 adds `shareable` (default true),
+  the composer has a toggle, and the share affordance hides for a drop whose
+  author declined. It gates the *link* only — an opted-out drop is still found
+  by walking past it.
+- `dropped://d/<uuid>` on Android and iOS. A cold-start link finishes onboarding
+  first, then lands on the spot with the map underneath so back doesn't strand
+  anyone.
+- Share sheets on the reveal screen and the just-dropped screen.
+
+**Deferred:** the https/App Links form (needs a real domain plus a
+non-placeholder iOS bundle id) and the server-rendered OG page. `parseSpotLink`
+already accepts the https shape, so enabling it is one constant plus the native
+entries.
+
+**Owed:** device QA (nothing has been run on a handset), and the iOS
+`openURL` forwarding in `AppDelegate.swift` is unverified — it was written on a
+Windows machine and never compiled.

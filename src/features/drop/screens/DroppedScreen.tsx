@@ -19,7 +19,8 @@ import {
   Tape,
   WaxSeal,
 } from '../../../design-system/components';
-import { SealPinIcon } from '../../../design-system/icons';
+import { shareSpot } from '../../../app/navigation/linking';
+import { SealPinIcon, ShareSpotIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
 
@@ -88,6 +89,26 @@ export function DroppedScreen({ navigation, route }: Props) {
           Anyone who walks within 50 meters can read it. Come back to see who's
           stood here.
         </Text>
+
+        {/*
+          The strongest share moment in the app: you have just left something
+          somewhere and know exactly who ought to find it. The link names the
+          place, never the words — they still have to walk here.
+
+          Absent when this author turned the link off in the composer a moment
+          ago; offering it back here would just undo their own choice.
+        */}
+        {secret?.shareable !== false && (
+          <AppButton
+            label="Tell someone to stand here"
+            variant="ghost"
+            iconLeft={<ShareSpotIcon size={18} />}
+            style={styles.share}
+            onPress={() => {
+              shareSpot(secretId, secret?.drop.placeLabel);
+            }}
+          />
+        )}
 
         <View style={styles.actions}>
           <AppButton
@@ -196,9 +217,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
   },
+  share: { marginTop: 14, alignSelf: 'stretch' },
   actions: {
     marginTop: 'auto',
-    paddingTop: 22,
+    paddingTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

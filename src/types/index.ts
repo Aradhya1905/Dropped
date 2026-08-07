@@ -69,6 +69,41 @@ export interface Secret {
    * the whisper band. Absent = you're too far to hear anything.
    */
   whisper?: Whisper;
+  /**
+   * Whether a share link may point at this drop — the author's opt-out.
+   *
+   * Surfaced to every reader, not just the author: a link to an opted-out drop
+   * 404s, so offering a share sheet for one would hand someone a dead link.
+   * The opt-out covers the *link* only; the drop is still found by walking to
+   * it, which is the premise of the app.
+   */
+  shareable: boolean;
+}
+
+/**
+ * What a shared link tells you about a place before you have walked to it.
+ *
+ * This is what `GET /drops/:id/preview` returns to someone holding a
+ * `dropped://d/<id>` link. Note what a `Secret` has that this does not: no
+ * `body` (that still costs a walk), and no `saved`/`hearted`/`sealed` — a
+ * preview has no relationship to your device yet.
+ *
+ * **`coordinate` is coarsened to ~100 m by the server.** Distances computed
+ * against it are approximate by design, and the UI must not present them as
+ * exact — an exact coordinate attached to a confession, forwarded into a group
+ * chat, is the worst privacy failure this app has.
+ */
+export interface DropPreview {
+  id: string;
+  coordinate: Coordinate;
+  placeLabel?: string;
+  city?: string;
+  mood: Mood;
+  /** ms epoch. */
+  createdAt: number;
+  revealCount: number;
+  /** ms epoch when the drop fades. Absent = forever. */
+  expiresAt?: number;
 }
 
 /** The lifespans an author may pick in the composer. `undefined` = forever. */

@@ -125,6 +125,27 @@ export interface ApiSecret {
    * Never arrives alongside `body` — by then there is nothing left to whisper.
    */
   whisper?: Whisper;
+  /** Whether a share link may point here. Optional: servers predating 07 omit it. */
+  shareable?: boolean;
+}
+
+/**
+ * Public metadata for a shared spot (`GET /drops/:id/preview`).
+ *
+ * The one response shape with **no `body` field at all** — the server's Zod
+ * schema cannot emit one. `coordinate` is coarsened server-side to ~3 dp
+ * (≈100 m); it is not the point the drop is stored at, and the client must
+ * never present it as exact.
+ */
+export interface ApiDropPreview {
+  id: string;
+  coordinate: Coordinate;
+  placeLabel?: string;
+  city?: string;
+  mood: Mood;
+  createdAt: number;
+  revealCount: number;
+  expiresAt?: number;
 }
 
 /**
@@ -215,6 +236,14 @@ export const fetchNearbyDrops = (
     .then(r => r.data);
 };
 
+/**
+ * Public metadata for one drop, for a shared link. The only read that works
+ * without having walked anywhere — and correspondingly the only one that
+ * returns no secret text. 404s for hidden, pending, and expired drops alike.
+ */
+export const fetchDropPreview = (id: string) =>
+  api.get<ApiDropPreview>(`/drops/${id}/preview`).then(r => r.data);
+
 /** Server-proxied walking route from `from` → `to` (for the Walk screen path). */
 export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>
   api
@@ -227,6 +256,9 @@ export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>
  * `expiresInDays` is a duration, not a timestamp — the server owns the clock,
  * so a drop's expiry can't be moved by a device with a wrong one. Omit it for
  * a drop that lives forever.
+ *
+ * `shareable` is the author's opt-out from share links; omit it for the
+ * permissive default.
  */
 export const createDrop = (
   body: string,
@@ -235,9 +267,18 @@ export const createDrop = (
   placeLabel?: string,
   city?: string,
   expiresInDays?: ExpiresInDays,
+  shareable?: boolean,
 ) =>
   api
-    .post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city, expiresInDays })
+    .post<ApiSecret>('/drops', {
+      body,
+      mood,
+      coordinate,
+      placeLabel,
+      city,
+      expiresInDays,
+      shareable,
+    })
     .then(r => r.data);
 
 export const revealDrop = (id: string, coordinate: Coordinate) =>

@@ -31,6 +31,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     return true
   }
+
+  /// Share-a-spot deep links (`dropped://d/<uuid>`), tapped while the app is
+  /// already running.
+  ///
+  /// This delegate is a plain `UIApplicationDelegate` rather than a subclass of
+  /// `RCTAppDelegate`, so nothing forwards opened URLs to React Native on its
+  /// own — without this, `Linking`'s `url` event never fires and only cold
+  /// starts would work. (Cold starts are already covered: `launchOptions` is
+  /// handed to `startReactNative` above, which is where `getInitialURL` reads
+  /// the launch URL from.)
+  func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    return RCTLinkingManager.application(app, open: url, options: options)
+  }
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {

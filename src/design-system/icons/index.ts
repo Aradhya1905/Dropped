@@ -18,5 +18,6 @@ export {
   ClockIcon,
   HumIcon,
   LocateIcon,
+  ShareSpotIcon,
 } from './Icons';
 export type { IconProps } from './Icons';

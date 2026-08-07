@@ -27,6 +27,8 @@ import {
 import { PinIcon, WalkIcon } from '../../../design-system/icons';
 import { colors, fonts, moodColor, shadows } from '../../../design-system/tokens';
 import { Compass } from '../components/Compass';
+import { useSpotPreview } from '../hooks';
+import { previewToSealedSecret } from '../types';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useDeviceLocation, useNearbyDrops } from '../../map/hooks';
 import { WHISPER_RADIUS_M } from '../../../types';
@@ -54,6 +56,7 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { secretId } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
+  const upsertDrop = useDropsStore(s => s.upsertDrop);
   const { coord } = useDeviceLocation();
 
   // Shares the map's query key while no mood filter is set, so this costs
@@ -66,21 +69,42 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   // never starve the screen showing a secret you already opened (you can reach
   // one from the Trail that the map is currently hiding). The cost is one extra
   // key while a filter is active.
+  //
+  // This is also what upgrades a shared link from coarse to exact: a recipient
+  // arrives with only the preview's ~100 m coordinate, and the first nearby
+  // result that includes this drop replaces it with the real one.
   const { data: fresh } = useNearbyDrops(coord);
-  const upsertDrop = useDropsStore(s => s.upsertDrop);
   useEffect(() => {
     fresh?.secrets.forEach(s => upsertDrop(s));
   }, [fresh, upsertDrop]);
 
+  // Someone who arrived on a shared link is normally nowhere near the drop, so
+  // it is not in the nearby results and not in the store. The preview endpoint
+  // is the only thing that can describe the place to them — skipped entirely
+  // when the drop is already known, so the walk-up flow costs no extra request.
+  const { preview, isLoading: previewLoading, gone } = useSpotPreview(
+    secretId,
+    !secret,
+  );
+
+  // Everything below reads one shape. `approx` says whether the coordinate came
+  // from the preview (coarsened to ~100 m server-side) rather than from a real
+  // nearby result — the UI must not present that distance as exact.
+  const spot = secret?.drop.coordinate ?? preview?.coordinate ?? null;
+  const approx = !secret && preview != null;
+
+  const placeLabel = secret?.drop.placeLabel ?? preview?.placeLabel;
+  const createdAt = secret?.drop.createdAt ?? preview?.createdAt;
+  const mood = secret?.mood ?? preview?.mood;
+  const revealCount = secret?.revealCount ?? preview?.revealCount ?? 0;
+  const replyCount = secret?.replyCount ?? 0;
+  const expiresAt = secret?.expiresAt ?? preview?.expiresAt;
+
   const deviceHeading = useCompassHeading();
 
-  const distM = coord && secret
-    ? haversineMeters(coord, secret.drop.coordinate)
-    : null;
+  const distM = coord && spot ? haversineMeters(coord, spot) : null;
 
-  const dropBearing = coord && secret
-    ? bearingTo(coord, secret.drop.coordinate)
-    : null;
+  const dropBearing = coord && spot ? bearingTo(coord, spot) : null;
 
   // Needle rotation: bearing to drop relative to device heading (so needle
   // points at the drop no matter which way the phone faces).
@@ -98,18 +122,66 @@ export function SecretDetailScreen({ navigation, route }: Props) {
 
   // null for a drop that lives forever — this screen then reads exactly as it
   // did before expiring drops existed.
-  const fadesLabel = fadesInLabel(secret?.expiresAt);
+  const fadesLabel = fadesInLabel(expiresAt);
 
   // The client's own half of the 150 m line: the server decides what to send,
   // this decides what to show. Latched once heard — GPS jitter on the boundary
   // must not make a whisper blink in and out, and there's nothing to take back
   // once you've read it.
+  //
+  // Must sit above the `gone` early return below: it is a hook, and a hook
+  // behind a conditional return changes call order between renders.
   const heardRef = useRef(false);
   if (distM != null && distM <= WHISPER_RADIUS_M) {
     heardRef.current = true;
   }
   const whisper = heardRef.current ? secret?.whisper : undefined;
   const whisperInk = moodColor(whisper?.mood).ink;
+
+  /**
+   * Start the walk. When all we have is a preview, seed the store with it
+   * first so the Walk screen has a coordinate to aim at — coarse at the start
+   * of the walk, then replaced by the exact drop as soon as the walker comes
+   * inside the nearby radius (MapScreen upserts nearby results, and it stays
+   * mounted underneath the walk).
+   */
+  const startWalk = () => {
+    if (!secret && preview) {
+      upsertDrop(previewToSealedSecret(preview));
+    }
+    navigation.navigate('Main', {
+      screen: 'MapTab',
+      params: { screen: 'Walk', params: { secretId, beat: 'approach' } },
+    });
+  };
+
+  // Hidden, moderated and faded drops all answer the preview the same way, on
+  // purpose — so there is one message, and it doesn't confirm the drop is real.
+  if (gone) {
+    return (
+      <PaperScreen>
+        <MapTexture dense blur />
+        <Sheet style={[styles.sheet, { top: insets.top + 64 }]}>
+          <View style={[styles.inner, { paddingBottom: insets.bottom + 26 }]}>
+            <Grabber style={styles.grabber} />
+            <View style={styles.head}>
+              <EmotionTag label="wonder" />
+              <CloseX onPress={() => navigation.goBack()} />
+            </View>
+            <View style={styles.goneBody}>
+              <Text style={styles.goneTitle}>This isn't here anymore.</Text>
+              <Text style={styles.goneSub}>
+                It faded, or it was taken down. Whatever was left here is gone.
+              </Text>
+            </View>
+            <View style={styles.actions}>
+              <AppButton label="Back to the map" onPress={() => navigation.goBack()} />
+            </View>
+          </View>
+        </Sheet>
+      </PaperScreen>
+    );
+  }
 
   return (
     <PaperScreen>
@@ -119,7 +191,7 @@ export function SecretDetailScreen({ navigation, route }: Props) {
         <View style={[styles.inner, { paddingBottom: insets.bottom + 26 }]}>
           <Grabber style={styles.grabber} />
           <View style={styles.head}>
-            <EmotionTag label={secret?.mood ?? 'wonder'} />
+            <EmotionTag label={mood ?? 'wonder'} />
             <CloseX onPress={() => navigation.goBack()} />
           </View>
 
@@ -127,6 +199,9 @@ export function SecretDetailScreen({ navigation, route }: Props) {
 
           <View style={styles.dist}>
             <Text style={styles.distBig}>
+              {/* "≈" while the coordinate is the coarsened one. The number is
+                  honest about being a neighbourhood, not a doorstep. */}
+              {approx && distM != null ? '≈' : ''}
               {distM != null ? formatDist(distM) : '—'}
               <Text style={styles.distUnit}>{distM != null ? formatDistUnit(distM) : ''}</Text>
             </Text>
@@ -134,19 +209,26 @@ export function SecretDetailScreen({ navigation, route }: Props) {
           <Text style={styles.walkMeta}>
             {walkMins != null
               ? `${walkMins} min walk${cardinal != null ? ` · heading ${cardinal}` : ''}`
-              : 'Locating…'}
+              : previewLoading
+                ? 'Finding the place…'
+                : 'Locating…'}
           </Text>
+          {approx && (
+            <Text style={styles.approxNote}>
+              shared with you · exact spot sharpens as you get close
+            </Text>
+          )}
 
           <View style={styles.addrTag}>
             <PinIcon size={20} dotColor={colors.accent} />
             <View style={styles.addrWho}>
-              <Text style={styles.addrName}>{secret?.drop.placeLabel ?? 'Unknown place'}</Text>
+              <Text style={styles.addrName}>{placeLabel ?? 'Unknown place'}</Text>
               <Text style={styles.addrStreet}>
-                {secret ? new Date(secret.drop.createdAt).toLocaleDateString() : ''}
+                {createdAt != null ? new Date(createdAt).toLocaleDateString() : ''}
               </Text>
             </View>
             <View style={styles.addrFound}>
-              <Text style={styles.addrFoundNum}>{secret?.revealCount ?? 0}</Text>
+              <Text style={styles.addrFoundNum}>{revealCount}</Text>
               <Text style={styles.addrFoundLbl}>found</Text>
             </View>
           </View>
@@ -173,12 +255,18 @@ export function SecretDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.previewBlur}>Walk close enough and it will open.</Text>
               </Text>
             )}
-            {(secret?.replyCount ?? 0) > 0 && (
+            {/*
+              A link recipient never has a whisper here: it rides on a nearby
+              result, and they are too far away to be in one. They get the
+              placeholder branch until they walk into range.
+            */}
+            {replyCount > 0 && (
               // The count is public; the replies themselves are not. Knowing
               // people answered here is the pull — reading them still costs a walk.
+              // A preview never carries this, so it only shows for a known drop.
               <Text style={styles.voices}>
-                {secret!.replyCount}{' '}
-                {secret!.replyCount === 1 ? 'voice has' : 'voices have'} answered here
+                {replyCount} {replyCount === 1 ? 'voice has' : 'voices have'} answered
+                here
               </Text>
             )}
             <View style={styles.sealRow}>
@@ -201,14 +289,9 @@ export function SecretDetailScreen({ navigation, route }: Props) {
 
           <View style={styles.actions}>
             <AppButton
-              label="Walk here to unlock"
+              label={approx ? 'Walk toward it' : 'Walk here to unlock'}
               iconLeft={<WalkIcon size={18} />}
-              onPress={() =>
-                navigation.navigate('Main', {
-                  screen: 'MapTab',
-                  params: { screen: 'Walk', params: { secretId, beat: 'approach' } },
-                })
-              }
+              onPress={startWalk}
             />
             <AppButton label="Save to come back later" variant="ghost" onPress={() => navigation.goBack()} />
           </View>
@@ -240,6 +323,33 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.inkFaint,
     marginTop: 6,
+  },
+  // Sits under the walk meta, in the same quiet mono as the other stamps —
+  // the honesty line for a coarsened, shared coordinate.
+  approxNote: {
+    textAlign: 'center',
+    fontFamily: fonts.mono,
+    fontSize: 8.5,
+    letterSpacing: 8.5 * 0.2,
+    textTransform: 'uppercase',
+    color: colors.accentDeep,
+    marginTop: 5,
+  },
+  goneBody: { marginTop: 'auto', marginBottom: 'auto', alignItems: 'center' },
+  goneTitle: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 28,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  goneSub: {
+    fontFamily: fonts.sans,
+    fontSize: 13.5,
+    lineHeight: 13.5 * 1.56,
+    color: colors.inkSoft,
+    maxWidth: 262,
+    textAlign: 'center',
+    marginTop: 12,
   },
   addrTag: {
     flexDirection: 'row',

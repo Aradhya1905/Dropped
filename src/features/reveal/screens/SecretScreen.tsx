@@ -28,7 +28,13 @@ import {
   PaperScreen,
   Tape,
 } from '../../../design-system/components';
-import { BookmarkIcon, HeartIcon, PinIcon } from '../../../design-system/icons';
+import { shareSpot } from '../../../app/navigation/linking';
+import {
+  BookmarkIcon,
+  HeartIcon,
+  PinIcon,
+  ShareSpotIcon,
+} from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
 import { ReplyStrips } from '../components';
@@ -177,6 +183,24 @@ export function SecretScreen({ navigation, route }: Props) {
           >
             <HeartIcon size={21} color={heart.hearted ? colors.accentDeep : colors.ink} />
           </Pressable>
+          {/*
+            Share the place, never the words. The link carries an id; whoever
+            receives it still has to walk here, exactly as this reader did.
+
+            Hidden when the author opted out: a link to that drop 404s, so
+            offering the button would hand someone a dead link.
+          */}
+          {secret?.shareable !== false && (
+            <Pressable
+              accessibilityLabel="Someone should stand here"
+              onPress={() => {
+                shareSpot(secretId, secret?.drop.placeLabel);
+              }}
+              style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed]}
+            >
+              <ShareSpotIcon size={21} color={colors.ink} />
+            </Pressable>
+          )}
         </View>
         </KeyboardAvoidingView>
       </View>
@@ -340,5 +364,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heartBtnActive: { backgroundColor: colors.accentDeep },
+  // Same circle as the heart, on plain paper — a quieter third action.
+  shareBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: colors.paperCard,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pressed: { opacity: 0.85 },
 });

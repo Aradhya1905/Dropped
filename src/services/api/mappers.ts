@@ -1,5 +1,5 @@
-import type { Reply, Secret } from '../../types';
-import type { ApiReply, ApiSecret } from './index';
+import type { DropPreview, Reply, Secret } from '../../types';
+import type { ApiDropPreview, ApiReply, ApiSecret } from './index';
 
 export function apiSecretToSecret(s: ApiSecret): Secret {
   return {
@@ -29,6 +29,27 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     // Likewise absent = out of the whisper band (or a server that predates the
     // whisper tier). The UI reads `undefined` as "you're too far to hear it".
     whisper: s.whisper,
+    // Older servers predate the opt-out; treat a missing flag as shareable,
+    // matching the column default rather than silently hiding the affordance.
+    shareable: s.shareable ?? true,
+  };
+}
+
+/**
+ * A shared spot as the app holds it. Field-for-field with the wire shape, but
+ * kept explicit (rather than a cast) so that adding a `body` on the server
+ * would not silently start flowing into the app.
+ */
+export function apiDropPreviewToDropPreview(p: ApiDropPreview): DropPreview {
+  return {
+    id: p.id,
+    coordinate: p.coordinate,
+    placeLabel: p.placeLabel,
+    city: p.city,
+    mood: p.mood,
+    createdAt: p.createdAt,
+    revealCount: p.revealCount,
+    expiresAt: p.expiresAt,
   };
 }
 

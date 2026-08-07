@@ -32,6 +32,27 @@
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
+
+      <!--
+        Share-a-spot deep links: dropped://d/<uuid>. The link carries an id and
+        nothing else — no body, no coordinate — so the recipient still has to
+        walk within 50 m. See src/app/navigation/linking.ts.
+
+        launchMode="singleTask" above means a warm tap arrives through
+        onNewIntent rather than relaunching, which is what keeps the current
+        screen's state intact.
+
+        The https form (App Links, android:autoVerify) is deliberately NOT here
+        yet: it needs a real domain serving .well-known/assetlinks.json. The
+        parser already accepts that shape, so turning it on is this block plus
+        one constant in linking.ts.
+      -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="dropped" android:host="d" />
+      </intent-filter>
     </activity>
   </application>
 </manifest>
