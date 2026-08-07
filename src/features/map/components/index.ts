@@ -8,3 +8,4 @@ export { FindCard } from './FindCard';
 export { LocationPermissionSheet } from './LocationPermissionSheet';
 export { MapLoader } from './MapLoader';
 export { LayerSheet } from './LayerSheet';
+export { BackgroundWalkSheet } from './BackgroundWalkSheet';

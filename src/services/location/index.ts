@@ -137,13 +137,36 @@ export function getCurrent(): Promise<Coordinate> {
 }
 
 /**
+ * Cadence knobs for {@link watch}. Defaults match the foreground walk (a fix
+ * every 5 m); the background engine turns them down to save battery, and back
+ * up while a drop is close. See `backgroundWatch.setCadence`.
+ */
+export interface WatchTuning {
+  /** Minimum movement between fixes, meters. */
+  distanceFilter?: number;
+  /** Android: desired / fastest fix interval, ms. Ignored on iOS. */
+  interval?: number;
+  fastestInterval?: number;
+  /** iOS: show the blue "using your location" bar while backgrounded. */
+  showsBackgroundLocationIndicator?: boolean;
+}
+
+const DEFAULT_TUNING: WatchTuning = { distanceFilter: 5 };
+
+/**
  * Continuously watch position. Calls `onFix` with the coordinate *and* its
  * accuracy on each fix; returns an unsubscribe that clears the watch.
  * `onError` is optional.
+ *
+ * **Prefer `backgroundWatch.subscribe` over calling this directly.** Two
+ * concurrent watches is the fastest route to a battery complaint, and this
+ * function has no idea whether one is already running — the singleton in
+ * `./backgroundWatch` is what enforces "exactly one".
  */
 export function watch(
   onFix: (f: Fix) => void,
   onError?: (e: unknown) => void,
+  tuning: WatchTuning = DEFAULT_TUNING,
 ): () => void {
   const startedAt = Date.now();
   let best: GeoPosition | null = null;
@@ -179,7 +202,7 @@ export function watch(
       // else: coarse early fix, still within grace — wait for a better one.
     },
     err => onError?.(err),
-    { ...GEO_OPTIONS, distanceFilter: 5 },
+    { ...GEO_OPTIONS, ...DEFAULT_TUNING, ...tuning },
   );
   return () => Geolocation.clearWatch(id);
 }

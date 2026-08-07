@@ -28,7 +28,13 @@ import {
 import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { MOODS } from '../../../types';
 import { MoodChips } from '../../drop/components';
-import { EMPTY_NEARBY, useDeviceLocation, useMoodFilter, useNearbyDrops } from '../hooks';
+import {
+  EMPTY_NEARBY,
+  useBackgroundWalk,
+  useDeviceLocation,
+  useMoodFilter,
+  useNearbyDrops,
+} from '../hooks';
 import { EchoCard, useEchoes } from '../../echo';
 import { useDropsStore } from '../../../store/dropsStore';
 import { agoLabel } from '../../../utils/format';
@@ -37,6 +43,7 @@ import { MapPin } from '../components/MapPin';
 import { MapLoader } from '../components/MapLoader';
 import { RangeCard } from '../components/RangeCard';
 import { LayerSheet } from '../components/LayerSheet';
+import { BackgroundWalkSheet } from '../components/BackgroundWalkSheet';
 import { isWithin } from '../../../utils/geo';
 import { WHISPER_RADIUS_M } from '../../../types';
 
@@ -64,6 +71,7 @@ export function MapScreen({ navigation }: Props) {
   const upsertDrop = useDropsStore(s => s.upsertDrop);
   const knownDrops = useDropsStore(s => s.drops);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
+  const backgroundWalk = useBackgroundWalk();
 
   // Anniversaries near this spot. Off unless the user asked for them, and the
   // hook rides the same location watch as everything else on this screen — it
@@ -281,6 +289,22 @@ export function MapScreen({ navigation }: Props) {
         options={styleOptions}
         onSelect={setMapStyle}
         onClose={() => setLayerSheetOpen(false)}
+      />
+
+      {/*
+        The background-location ask. Offered here rather than at onboarding
+        because Android puts "allow all the time" in a second dialog that a
+        first-run user will simply refuse — and a refusal is permanent. The hook
+        holds it back until at least one secret has been revealed.
+      */}
+      <BackgroundWalkSheet
+        visible={backgroundWalk.prompting}
+        busy={backgroundWalk.busy}
+        blocked={backgroundWalk.blocked}
+        onEnable={() => {
+          backgroundWalk.enable().catch(() => {});
+        }}
+        onClose={backgroundWalk.dismiss}
       />
     </View>
   );

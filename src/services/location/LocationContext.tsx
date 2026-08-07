@@ -7,9 +7,9 @@ import {
   hasPermission,
   requestPermission,
   shouldRecordFix,
-  watch,
   type PermissionStatus,
 } from './index';
+import { getLastFix, subscribe } from './backgroundWatch';
 import { useReverseGeocode } from '../maps';
 import { addWalkedCells } from '../storage';
 import { cellIdFor } from '../../utils/geo';
@@ -90,20 +90,26 @@ function useLocationImpl(): UseDeviceLocationResult {
   const { address, refetch: refetchGeocode } = useReverseGeocode(coord, { debounceMs: 800 });
   refetchGeocodeRef.current = refetchGeocode;
 
+  // Subscribes to the shared watch rather than starting one. The singleton in
+  // ./backgroundWatch is what keeps "exactly one GPS watch" true — this
+  // provider unmounts when the app backgrounds, and the walk engine needs the
+  // stream to survive that.
   const startWatch = useCallback(() => {
     stopWatchRef.current?.();
-    setFixing(true);
-    stopWatchRef.current = watch(
-      fix => {
-        if (!mountedRef.current) return;
-        recordCell(fix.coordinate, fix.accuracy);
-        setCoord(fix.coordinate);
-        setFixing(false);
-      },
-      () => {
-        if (mountedRef.current) setFixing(false);
-      },
-    );
+    const seed = getLastFix();
+    if (seed) {
+      // The watch may already be warm (the engine started it, or a previous
+      // mount did). Don't show a spinner for a fix we already have.
+      recordCell(seed.coordinate, seed.accuracy);
+      setCoord(seed.coordinate);
+    }
+    setFixing(!seed);
+    stopWatchRef.current = subscribe(fix => {
+      if (!mountedRef.current) return;
+      recordCell(fix.coordinate, fix.accuracy);
+      setCoord(fix.coordinate);
+      setFixing(false);
+    });
   }, [recordCell]);
 
   const request = useCallback(async (): Promise<PermissionStatus> => {

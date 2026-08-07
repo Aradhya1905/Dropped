@@ -15,6 +15,9 @@ export const StorageKeys = {
   mutedEchoIds: 'echo.muted',
   echoCache: 'echo.cache',
   seals: 'trail.seals',
+  backgroundWalk: 'settings.backgroundWalk',
+  backgroundWalkAsked: 'settings.backgroundWalkAsked',
+  producerState: 'notify.producerState',
 } as const;
 
 /**
@@ -84,6 +87,18 @@ export const DEFAULT_ECHOES_ENABLED = false;
  * that person nothing except the fiction.
  */
 export const DEFAULT_ACCURATE_COMPASS = false;
+
+/**
+ * Whether the app may keep watching the walk while it is closed.
+ *
+ * **Off by default, and it stays off until someone deliberately turns it on.**
+ * Background location is the scariest permission an anonymous confessions app
+ * could hold; defaulting it on — or leaving it on after the OS grant is
+ * revoked — would be the single worst decision in this codebase. The OS grant
+ * is checked separately at start-up; this flag is the user's intent, not the
+ * permission.
+ */
+export const DEFAULT_BACKGROUND_WALK = false;
 
 /**
  * One remembered anniversary, as it survives an app restart.

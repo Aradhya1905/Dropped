@@ -12,7 +12,14 @@ import { identifyDevice } from '../services/analytics';
 import { initHaptics } from '../services/haptics';
 import { initStepCounting } from '../services/pedometer';
 import { getDeviceId } from '../services/storage';
-import { navigationRef, RootNavigator, startSpotLinks } from './navigation';
+import { setSecretOpener, startWalkEngine } from '../services/walkEngine';
+import {
+  consumePendingSpot,
+  navigationRef,
+  rememberPendingSpot,
+  RootNavigator,
+  startSpotLinks,
+} from './navigation';
 import { AppProviders } from './providers';
 
 // Inactive tab screens stop re-rendering while blurred → cheaper switches.
@@ -44,6 +51,21 @@ export default function App(): React.JSX.Element {
   // not inside the container, because a cold-start URL exists before the
   // navigator mounts — see navigation/linking.
   useEffect(() => startSpotLinks(), []);
+
+  // The background walk engine. A tapped hum takes the same route a shared link
+  // does — park the id, then let whoever owns the next navigation consume it —
+  // so a notification opened from a cold start still lands on the map with the
+  // drop on top of it, rather than on a lone screen with nothing behind it.
+  //
+  // Started, never stopped: the engine deliberately outlives this tree, which
+  // is the entire point of it living outside the React tree in the first place.
+  useEffect(() => {
+    setSecretOpener(secretId => {
+      rememberPendingSpot(secretId);
+      consumePendingSpot();
+    });
+    startWalkEngine().catch(() => {});
+  }, []);
 
   return (
     <AppProviders>

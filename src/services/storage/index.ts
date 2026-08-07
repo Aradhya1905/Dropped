@@ -6,9 +6,14 @@
 import { createMMKV } from 'react-native-mmkv';
 
 import { getNativeUniqueId, nativeIdToUuidV4 } from '../device';
+import {
+  EMPTY_PRODUCER_STATE,
+  type ProducerState,
+} from '../notifications/producer';
 import { MOODS, type Mood } from '../../types';
 import {
   DEFAULT_ACCURATE_COMPASS,
+  DEFAULT_BACKGROUND_WALK,
   DEFAULT_ECHOES_ENABLED,
   DEFAULT_HAPTICS_ENABLED,
   DEFAULT_MAP_STYLE,
@@ -418,6 +423,84 @@ export function getSealCities(): string[] {
 /** Forget the collection (settings wipe / rollback). */
 export function clearSeals(): void {
   mmkv.remove(StorageKeys.seals);
+}
+
+// --- background walk engine --------------------------------------------------
+
+/**
+ * Whether the user has asked the app to keep watching while it's closed.
+ * See {@link DEFAULT_BACKGROUND_WALK} for why this can only ever default off.
+ *
+ * This is intent, not permission: `backgroundWatch.hasBackgroundPermission()`
+ * is what the OS thinks, and the engine requires both.
+ */
+export function getBackgroundWalkEnabled(): boolean {
+  return mmkv.getBoolean(StorageKeys.backgroundWalk) ?? DEFAULT_BACKGROUND_WALK;
+}
+
+/** Turning it off forgets the producer's state too — off should mean gone. */
+export function setBackgroundWalkEnabled(on: boolean): void {
+  mmkv.set(StorageKeys.backgroundWalk, on);
+  if (!on) {
+    mmkv.remove(StorageKeys.producerState);
+  }
+}
+
+/**
+ * Whether the in-context "keep watching while it's closed?" prompt has been
+ * shown. Asked **once**, ever.
+ *
+ * On Android a second refusal is permanent — the OS stops showing the dialog
+ * and the only route left is app settings — so a nagging prompt doesn't just
+ * annoy, it burns the feature. One ask, then never again unless the user comes
+ * looking for the switch themselves.
+ */
+export function getBackgroundWalkAsked(): boolean {
+  return mmkv.getBoolean(StorageKeys.backgroundWalkAsked) ?? false;
+}
+
+export function setBackgroundWalkAsked(asked: boolean): void {
+  mmkv.set(StorageKeys.backgroundWalkAsked, asked);
+}
+
+/**
+ * Dedupe + cooldown state for the walk-by hum.
+ *
+ * Persisted rather than kept in memory because a force-stop would otherwise
+ * reset the cooldown to zero and the fired-drop list to empty — reopen the app
+ * on the same street and you'd get the same hum again, which is exactly the
+ * behaviour that makes people disable notifications.
+ *
+ * Validated defensively on read: this is parsed on a background thread where a
+ * thrown exception is invisible, so a corrupt value has to degrade into "hum
+ * nothing yet" rather than into a crash nobody can see.
+ */
+export function getProducerState(): ProducerState {
+  const stored = getJSON<unknown>(StorageKeys.producerState, null);
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
+    return EMPTY_PRODUCER_STATE;
+  }
+  const s = stored as Partial<ProducerState>;
+  const coord = s.lastCheckCoord;
+  return {
+    lastFiredAt: typeof s.lastFiredAt === 'number' ? s.lastFiredAt : null,
+    firedDropIds: Array.isArray(s.firedDropIds)
+      ? s.firedDropIds.filter((id): id is string => typeof id === 'string')
+      : [],
+    lastCheckCoord:
+      coord && typeof coord.lat === 'number' && typeof coord.lng === 'number'
+        ? { lat: coord.lat, lng: coord.lng }
+        : null,
+  };
+}
+
+export function setProducerState(state: ProducerState): void {
+  setJSON(StorageKeys.producerState, state);
+}
+
+/** Forget the cooldown and every remembered hum (panic wipe / rollback). */
+export function clearProducerState(): void {
+  mmkv.remove(StorageKeys.producerState);
 }
 
 /** Test/escape hatch: wipe everything. */

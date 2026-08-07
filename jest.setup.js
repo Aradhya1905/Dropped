@@ -82,9 +82,16 @@ jest.mock('@notifee/react-native', () => ({
     createChannel: jest.fn(() => Promise.resolve('default')),
     displayNotification: jest.fn(() => Promise.resolve()),
     cancelAllNotifications: jest.fn(() => Promise.resolve()),
+    // Background walk engine: foreground service + tap routing.
+    registerForegroundService: jest.fn(),
+    stopForegroundService: jest.fn(() => Promise.resolve()),
+    onForegroundEvent: jest.fn(() => () => {}),
+    onBackgroundEvent: jest.fn(),
+    getInitialNotification: jest.fn(() => Promise.resolve(null)),
   },
-  AndroidImportance: { DEFAULT: 3, LOW: 2 },
+  AndroidImportance: { DEFAULT: 3, LOW: 2, MIN: 1 },
   AuthorizationStatus: { AUTHORIZED: 1, DENIED: 0 },
+  EventType: { DISMISSED: 0, PRESS: 1, ACTION_PRESS: 2, DELIVERED: 3 },
 }));
 
 jest.mock('@dongminyu/react-native-step-counter', () => ({
