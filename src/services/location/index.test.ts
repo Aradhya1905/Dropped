@@ -1,4 +1,10 @@
-import { distanceTo, getCurrent, isWithinDrop, watch } from './index';
+import {
+  distanceTo,
+  getCurrent,
+  isWithinDrop,
+  shouldRecordFix,
+  watch,
+} from './index';
 
 const mockGetCurrentPosition = jest.fn();
 const mockWatchPosition = jest.fn();
@@ -29,16 +35,65 @@ describe('location coordinate mapping', () => {
 });
 
 describe('location watch', () => {
-  it('emits mapped coords and unsubscribe clears the watch', () => {
+  it('emits mapped coords with accuracy, and unsubscribe clears the watch', () => {
     mockWatchPosition.mockImplementation((success: Function) => {
-      success({ coords: { latitude: 3, longitude: 4 } });
+      // `accuracy` must beat the cold-start floor or the fix is held back.
+      success({ coords: { latitude: 3, longitude: 4, accuracy: 8 } });
       return 99;
     });
-    const onCoord = jest.fn();
-    const stop = watch(onCoord);
-    expect(onCoord).toHaveBeenCalledWith({ lat: 3, lng: 4 });
+    const onFix = jest.fn();
+    const stop = watch(onFix);
+    expect(onFix).toHaveBeenCalledWith({
+      coordinate: { lat: 3, lng: 4 },
+      accuracy: 8,
+    });
     stop();
     expect(mockClearWatch).toHaveBeenCalledWith(99);
+  });
+
+  it('passes accuracy through on streamed fixes, not just the first', () => {
+    let emit: Function = () => {};
+    mockWatchPosition.mockImplementation((success: Function) => {
+      emit = success;
+      return 1;
+    });
+    const onFix = jest.fn();
+    watch(onFix);
+    emit({ coords: { latitude: 3, longitude: 4, accuracy: 8 } }); // acquires
+    emit({ coords: { latitude: 5, longitude: 6, accuracy: 42 } }); // streamed
+    expect(onFix).toHaveBeenLastCalledWith({
+      coordinate: { lat: 5, lng: 6 },
+      accuracy: 42,
+    });
+  });
+
+  it('reports a missing accuracy as Infinity so gated consumers fail closed', () => {
+    let emit: Function = () => {};
+    mockWatchPosition.mockImplementation((success: Function) => {
+      emit = success;
+      return 1;
+    });
+    const onFix = jest.fn();
+    watch(onFix);
+    emit({ coords: { latitude: 3, longitude: 4, accuracy: 8 } });
+    emit({ coords: { latitude: 5, longitude: 6 } });
+    expect(onFix).toHaveBeenLastCalledWith({
+      coordinate: { lat: 5, lng: 6 },
+      accuracy: Infinity,
+    });
+  });
+});
+
+describe('shouldRecordFix', () => {
+  it('accepts fixes at or under the accuracy budget', () => {
+    expect(shouldRecordFix(12, 25)).toBe(true);
+    expect(shouldRecordFix(25, 25)).toBe(true);
+  });
+
+  it('rejects coarse or unknown accuracy', () => {
+    expect(shouldRecordFix(40, 25)).toBe(false);
+    expect(shouldRecordFix(Infinity, 25)).toBe(false);
+    expect(shouldRecordFix(NaN, 25)).toBe(false);
   });
 });
 

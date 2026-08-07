@@ -32,8 +32,10 @@ jest.mock('react-native-mmkv', () => {
     getNumber: k => (typeof store.get(k) === 'number' ? store.get(k) : undefined),
     set: (k, v) => store.set(k, v),
     delete: k => store.delete(k),
+    remove: k => store.delete(k),
     contains: k => store.has(k),
     clearAll: () => store.clear(),
+    addOnValueChangedListener: () => ({ remove: () => {} }),
   };
   return { createMMKV: () => instance };
 });
@@ -46,8 +48,88 @@ jest.mock('@maplibre/maplibre-react-native', () => {
   const { View } = require('react-native');
   const MapMock = ({ children, style }) => React.createElement(View, { style }, children);
   const CameraMock = React.forwardRef((_props, _ref) => null);
+  const PassThrough = ({ children }) => React.createElement(View, null, children);
   return {
     Map: MapMock,
     Camera: CameraMock,
+    GeoJSONSource: PassThrough,
+    Layer: () => null,
+    Marker: PassThrough,
   };
 });
+
+// Remaining native bridges pulled in transitively by App → RootNavigator.
+// None of them have a Jest preset; the app-level smoke test only needs them to
+// import cleanly.
+jest.mock('react-native-bootsplash', () => ({
+  __esModule: true,
+  default: { hide: jest.fn(() => Promise.resolve()), isVisible: jest.fn(() => Promise.resolve(false)) },
+}));
+
+jest.mock('react-native-device-info', () => ({
+  __esModule: true,
+  default: {
+    getUniqueId: jest.fn(() => Promise.resolve('test-device')),
+    getUniqueIdSync: jest.fn(() => 'test-device'),
+  },
+  getUniqueIdSync: jest.fn(() => 'test-device'),
+}));
+
+jest.mock('@notifee/react-native', () => ({
+  __esModule: true,
+  default: {
+    requestPermission: jest.fn(() => Promise.resolve({ authorizationStatus: 1 })),
+    createChannel: jest.fn(() => Promise.resolve('default')),
+    displayNotification: jest.fn(() => Promise.resolve()),
+    cancelAllNotifications: jest.fn(() => Promise.resolve()),
+  },
+  AndroidImportance: { DEFAULT: 3, LOW: 2 },
+  AuthorizationStatus: { AUTHORIZED: 1, DENIED: 0 },
+}));
+
+jest.mock('@dongminyu/react-native-step-counter', () => ({
+  __esModule: true,
+  default: {
+    isStepCountingSupported: jest.fn(() => Promise.resolve({ granted: false, supported: false })),
+    startStepCounterUpdate: jest.fn(),
+    stopStepCounterUpdate: jest.fn(),
+  },
+  isStepCountingSupported: jest.fn(() => Promise.resolve({ granted: false, supported: false })),
+  startStepCounterUpdate: jest.fn(),
+  stopStepCounterUpdate: jest.fn(),
+  parseStepData: jest.fn(() => ({ steps: 0 })),
+}));
+
+// Magnetometer bridge — no native module under Jest.
+jest.mock('react-native-compass-heading', () => ({
+  __esModule: true,
+  default: { start: jest.fn(), stop: jest.fn() },
+}));
+
+// react-native-config reads its values from the native build; under Jest there
+// is no build, so hand back an empty env (the adapters all tolerate undefined).
+jest.mock('react-native-config', () => ({ __esModule: true, default: {} }));
+
+// The GPS SDK ships untranspiled and needs a native binding; stub it so any
+// test that transitively imports services/location loads. Tests that assert on
+// watch behaviour re-mock it locally with their own spies.
+jest.mock('react-native-geolocation-service', () => ({
+  __esModule: true,
+  default: {
+    getCurrentPosition: jest.fn(),
+    watchPosition: jest.fn(() => 0),
+    clearWatch: jest.fn(),
+    requestAuthorization: jest.fn(),
+  },
+}));
+
+// Crashlytics reaches for a native module at import time (services/analytics
+// runs getCrashlytics() at module scope), which doesn't exist under Jest.
+jest.mock('@react-native-firebase/crashlytics', () => ({
+  getCrashlytics: () => ({}),
+  setUserId: jest.fn(),
+  log: jest.fn(),
+  recordError: jest.fn(),
+  setCrashlyticsCollectionEnabled: jest.fn(),
+  crash: jest.fn(),
+}));

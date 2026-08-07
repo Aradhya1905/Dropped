@@ -46,6 +46,34 @@ const toCoordinate = (p: GeoPosition): Coordinate => ({
 });
 
 /**
+ * A watch fix: where we are, plus how much we trust it. Consumers that paint
+ * something permanent from GPS (the fog-of-war trail) need the accuracy to
+ * reject smeared fixes — `watch` only applies its own floor during cold-start
+ * acquisition and streams everything after that, so the filtering has to happen
+ * on the consumer side.
+ */
+export interface Fix {
+  coordinate: Coordinate;
+  /** Horizontal accuracy radius in meters. `Infinity` when the OS omits it. */
+  accuracy: number;
+}
+
+const toFix = (p: GeoPosition): Fix => ({
+  coordinate: toCoordinate(p),
+  // Treat a missing accuracy as untrustworthy rather than perfect, so an
+  // accuracy-gated consumer fails closed.
+  accuracy: p.coords.accuracy ?? Number.POSITIVE_INFINITY,
+});
+
+/**
+ * Whether a fix is precise enough to record permanently (fog cells). Pure and
+ * exported so the threshold behaviour is testable without a GPS mock.
+ */
+export function shouldRecordFix(accuracy: number, max: number): boolean {
+  return Number.isFinite(accuracy) && accuracy <= max;
+}
+
+/**
  * Ask for "while using the app" location permission. Maps both platforms'
  * results onto `granted | denied | blocked` ("blocked" = denied with
  * never-ask-again / Settings re-prompt required).
@@ -109,11 +137,12 @@ export function getCurrent(): Promise<Coordinate> {
 }
 
 /**
- * Continuously watch position. Calls `onCoordinate` on each fix; returns an
- * unsubscribe that clears the watch. `onError` is optional.
+ * Continuously watch position. Calls `onFix` with the coordinate *and* its
+ * accuracy on each fix; returns an unsubscribe that clears the watch.
+ * `onError` is optional.
  */
 export function watch(
-  onCoordinate: (c: Coordinate) => void,
+  onFix: (f: Fix) => void,
   onError?: (e: unknown) => void,
 ): () => void {
   const startedAt = Date.now();
@@ -128,7 +157,7 @@ export function watch(
   const id = Geolocation.watchPosition(
     p => {
       if (acquired) {
-        onCoordinate(toCoordinate(p));
+        onFix(toFix(p));
         return;
       }
 
@@ -140,12 +169,12 @@ export function watch(
 
       if (accurate) {
         acquired = true;
-        onCoordinate(toCoordinate(p));
+        onFix(toFix(p));
       } else if (graceExpired && best) {
         // No GPS-grade fix arrived in time; surface the best we got, then start
         // streaming so the dot keeps up even where accuracy stays coarse.
         acquired = true;
-        onCoordinate(toCoordinate(best));
+        onFix(toFix(best));
       }
       // else: coarse early fix, still within grace — wait for a better one.
     },
