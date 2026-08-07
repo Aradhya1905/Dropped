@@ -8,7 +8,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
-import { MOODS, type ExpiresInDays, type Mood } from '../../../types';
+import {
+  MOODS,
+  type ExpiresInDays,
+  type Mood,
+  type RevealCondition,
+} from '../../../types';
 import {
   AppButton,
   CloseX,
@@ -22,6 +27,7 @@ import {
 } from '../../../design-system/components';
 import { PinIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
+import { ConditionChips } from '../components/ConditionChips';
 import { LifespanChips } from '../components/LifespanChips';
 import { MoodChips } from '../components/MoodChips';
 import { ShareableToggle } from '../components/ShareableToggle';
@@ -43,6 +49,11 @@ export function ComposerScreen({ navigation }: Props) {
   // Shareable by default — matches the column default, and someone who never
   // thinks about links gets the growth loop without a decision.
   const [shareable, setShareable] = useState(true);
+  // undefined = readable at any hour. A gate is opt-in, and only one of them
+  // can ever be set — the state is a single value, not a set.
+  const [revealCondition, setRevealCondition] = useState<
+    RevealCondition | undefined
+  >(undefined);
   const { coord, shortAddress, city, status, refresh } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
 
@@ -55,9 +66,17 @@ export function ComposerScreen({ navigation }: Props) {
   const canDrop = !!coord && body.trim().length > 0 && !isPending;
 
   // The button has always promised "forever" — keep it honest once that's a
-  // choice, so the commitment being made is on the button you press.
+  // choice, so the commitment being made is on the button you press. A gate
+  // joins it for the same reason, and only when one was chosen: appending
+  // "any time" to every drop would be noise on the one control nobody can miss.
   const lifespanLabel =
     expiresInDays === undefined ? 'forever' : `${expiresInDays} days`;
+  const dropLabel =
+    revealCondition === undefined
+      ? `Drop here · ${lifespanLabel}`
+      : `Drop here · ${lifespanLabel} · ${
+          revealCondition === 'night' ? 'after dark' : 'daylight'
+        }`;
 
   const handleDrop = async () => {
     if (!canDrop) return;
@@ -71,6 +90,7 @@ export function ComposerScreen({ navigation }: Props) {
         expiresInDays,
         // Only sent when the author declined; absent is the server's default.
         shareable: shareable ? undefined : false,
+        revealCondition,
       });
       navigation.replace('Dropped', { secretId: secret.id });
     } catch {
@@ -132,10 +152,15 @@ export function ComposerScreen({ navigation }: Props) {
 
           <LifespanChips selected={expiresInDays} onSelect={setExpiresInDays} />
 
+          <ConditionChips
+            selected={revealCondition}
+            onSelect={setRevealCondition}
+          />
+
           <ShareableToggle value={shareable} onChange={setShareable} />
 
           <AppButton
-            label={isPending ? 'Dropping…' : `Drop here · ${lifespanLabel}`}
+            label={isPending ? 'Dropping…' : dropLabel}
             iconLeft={
               <SealPinIcon
                 size={18}

@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import type { Coordinate, ExpiresInDays, Mood, Secret } from '../../../types';
+import type {
+  Coordinate,
+  ExpiresInDays,
+  Mood,
+  RevealCondition,
+  Secret,
+} from '../../../types';
 import type { ApiError } from '../../../services/api';
 import { apiSecretToSecret } from '../../../services/api/mappers';
 import { useDropsStore } from '../../../store/dropsStore';
@@ -16,6 +22,11 @@ interface CreateDropParams {
   expiresInDays?: ExpiresInDays;
   /** Author's opt-out from share links. Omitted = shareable, the default. */
   shareable?: boolean;
+  /**
+   * One time gate on top of the 50 m rule. Omitted = any time, the composer's
+   * default. Single-valued by design — one condition per drop.
+   */
+  revealCondition?: RevealCondition;
 }
 
 export function useCreateDrop() {
@@ -32,6 +43,7 @@ export function useCreateDrop() {
         params.city,
         params.expiresInDays,
         params.shareable,
+        params.revealCondition,
       ).then(apiSecretToSecret),
     onSuccess: secret => {
       upsert(secret);

@@ -107,6 +107,7 @@ export function MapScreen({ navigation }: Props) {
             duration={9000 + i * 1000}
             replyCount={secret.replyCount}
             expiresAt={secret.expiresAt}
+            revealCondition={secret.revealCondition}
             mood={secret.mood}
             whisper={
               (secret.distanceMeters ?? Infinity) <= WHISPER_RADIUS_M

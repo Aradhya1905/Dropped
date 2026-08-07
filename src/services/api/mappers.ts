@@ -32,6 +32,9 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     // Older servers predate the opt-out; treat a missing flag as shareable,
     // matching the column default rather than silently hiding the affordance.
     shareable: s.shareable ?? true,
+    // Absent = no condition beyond the 50 m rule, which is both the default and
+    // what a server predating time gates sends for every drop.
+    revealCondition: s.revealCondition,
   };
 }
 

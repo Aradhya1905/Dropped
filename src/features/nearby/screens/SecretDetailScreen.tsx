@@ -34,6 +34,7 @@ import { useDeviceLocation, useNearbyDrops } from '../../map/hooks';
 import { WHISPER_RADIUS_M } from '../../../types';
 import { haversineMeters, bearingTo } from '../../../utils/geo';
 import { fadesInLabel } from '../../../utils/expiry';
+import { conditionTag } from '../../../utils/revealCondition';
 import { useCompassHeading } from '../../../services/location/useCompassHeading';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SecretDetail'>;
@@ -123,6 +124,9 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   // null for a drop that lives forever — this screen then reads exactly as it
   // did before expiring drops existed.
   const fadesLabel = fadesInLabel(expiresAt);
+
+  // null for a drop readable at any hour, which is nearly all of them.
+  const gateLabel = conditionTag(secret?.revealCondition);
 
   // The client's own half of the 150 m line: the server decides what to send,
   // this decides what to show. Latched once heard — GPS jitter on the boundary
@@ -282,6 +286,16 @@ export function SecretDetailScreen({ navigation, route }: Props) {
               seal line so the deadline reads as a property of the secret, not
               of the walk.
             */}
+            {/*
+              The hour, under the seal, for the same reason the deadline is
+              here: it is a property of the secret, and knowing it before you
+              set out is what stops the walk being wasted. A share-link preview
+              never carries one — `DropPreview` has no condition — so this shows
+              only for a drop the map already knows.
+            */}
+            {gateLabel != null && (
+              <Text style={styles.gate}>{gateLabel}</Text>
+            )}
             {fadesLabel != null && (
               <Text style={styles.fades}>{fadesLabel}</Text>
             )}
@@ -414,6 +428,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   fades: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 8.5,
+    letterSpacing: 8.5 * 0.2,
+    textTransform: 'uppercase',
+    color: colors.accentDeep,
+    marginTop: 6,
+  },
+  // Sibling of `fades` — same micro-caption weight, so the hour and the
+  // deadline stack as two facts about the same secret.
+  gate: {
     fontFamily: fonts.monoMedium,
     fontSize: 8.5,
     letterSpacing: 8.5 * 0.2,

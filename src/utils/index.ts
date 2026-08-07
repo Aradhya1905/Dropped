@@ -5,3 +5,8 @@ export {
   fadesInLabel,
   isExpired,
 } from './expiry';
+export {
+  conditionInvitation,
+  conditionTag,
+  opensInLabel,
+} from './revealCondition';

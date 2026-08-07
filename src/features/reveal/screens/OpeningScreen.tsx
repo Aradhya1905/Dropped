@@ -19,6 +19,10 @@ import { SealBurst } from '../components/SealBurst';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useReveal } from '../hooks';
 import type { ApiError } from '../../../services/api';
+import {
+  conditionInvitation,
+  opensInLabel,
+} from '../../../utils/revealCondition';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Opening'>;
 
@@ -35,14 +39,28 @@ export function OpeningScreen({ navigation, route }: Props) {
       navigation.replace('Secret', { secretId });
     } catch (err) {
       const apiErr = err as ApiError;
-      if (apiErr?.status === 403) {
+      if (apiErr?.status !== 403) return;
+
+      // Two different 403s, and they must not read alike. The server checks
+      // distance first, so a `revealCondition` here means the walk was right
+      // and only the hour was wrong — which is an appointment, not a failure.
+      if (apiErr.revealCondition) {
+        const opensIn = opensInLabel(apiErr.opensAt);
         Alert.alert(
-          'Too far',
-          apiErr.distanceMeters != null
-            ? `Get within 50 m. You're ${Math.round(apiErr.distanceMeters)} m away.`
-            : 'Get within 50 m to reveal this secret.',
+          'Not yet',
+          [conditionInvitation(apiErr.revealCondition), opensIn ? `Opens ${opensIn}.` : null]
+            .filter(Boolean)
+            .join(' '),
         );
+        return;
       }
+
+      Alert.alert(
+        'Too far',
+        apiErr.distanceMeters != null
+          ? `Get within 50 m. You're ${Math.round(apiErr.distanceMeters)} m away.`
+          : 'Get within 50 m to reveal this secret.',
+      );
     }
   };
 

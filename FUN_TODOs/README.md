@@ -26,7 +26,7 @@ all wired end to end.
 | [06](06-mood-filter.md) | Mood filter + mood-tinted pins | backend + client | S | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-06-mood-filter.md) |
 | [07](07-share-a-spot.md) | Share-a-spot deep link | backend + client | M | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-07-share-a-spot.md) |
 | [08](08-anniversary-echo.md) | Anniversary echo | backend + client | M | todo | [plan](../.claude/plans/2026-08-07-08-anniversary-echo.md) |
-| [09](09-time-gates.md) | Time / condition gated drops | backend + client | M | todo | [plan](../.claude/plans/2026-08-07-09-time-gates.md) |
+| [09](09-time-gates.md) | Time / condition gated drops | backend + client | M | **built** (migration + device QA owed) | [plan](../.claude/plans/2026-08-07-09-time-gates.md) |
 | [10](10-city-constellation.md) | City constellation | mostly client | M | todo | [plan](../.claude/plans/2026-08-07-10-city-constellation.md) |
 | [11](11-wax-seal-collection.md) | Wax seal collection | client only | S | todo | [plan](../.claude/plans/2026-08-07-11-wax-seal-collection.md) |
 | [12](12-lying-compass.md) | Lying compass | client only | S | todo | [plan](../.claude/plans/2026-08-07-12-lying-compass.md) |

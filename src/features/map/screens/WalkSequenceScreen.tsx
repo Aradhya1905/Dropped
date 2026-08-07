@@ -46,6 +46,7 @@ import {
   haversineMeters,
   samplePathSteps,
 } from '../../../utils/geo';
+import { conditionTag } from '../../../utils/revealCondition';
 import type { Coordinate } from '../../../types';
 import { REVEAL_RADIUS_M } from '../../../types';
 
@@ -242,6 +243,10 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   }
 
   const distLabel = distM != null ? `${Math.round(distM)} m` : '— m';
+  // null for a drop readable at any hour. When it isn't, the walk cards carry
+  // the hour from the first beat on: someone who is going to be turned away at
+  // the pin should learn it before the walk, not at the end of it.
+  const gateLabel = conditionTag(secret?.revealCondition);
   const zoneFillOpacity = beat === 'arrived' ? 0.18 : beat === 'range' ? 0.12 : 0.07;
   const zoneLineOpacity = beat === 'approach' ? 0.5 : 0.9;
   const footstepSpacing = footsteps.spacing;
@@ -386,27 +391,38 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
           locked
           kicker="something's buried nearby…"
           title="Keep walking"
-          meta={`${distLabel} away · out of range`}
+          meta={_meta(`${distLabel} away · out of range`, gateLabel)}
           style={styles.findCard}
         />
       ) : beat === 'range' ? (
         <FindCard
           kicker="you crossed the line —"
           title="A secret is within 50 m"
-          meta={`walk to the pin · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
+          meta={_meta(
+            `walk to the pin · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`,
+            gateLabel,
+          )}
           style={styles.findCard}
         />
       ) : (
         <FindCard
           kicker="you made it —"
           title="A secret was dropped here"
-          meta={`right where you're standing · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
+          meta={_meta(
+            `right where you're standing · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`,
+            gateLabel,
+          )}
           onBreakSeal={() => navigation.navigate('Opening', { secretId })}
           style={styles.findCard}
         />
       )}
     </View>
   );
+}
+
+/** Append a time gate to a card's meta line, when the drop has one. */
+function _meta(base: string, gateLabel: string | null): string {
+  return gateLabel ? `${base} · ${gateLabel}` : base;
 }
 
 function _yearsAgo(ms: number): string {
