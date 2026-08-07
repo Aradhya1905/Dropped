@@ -16,6 +16,16 @@ export interface Drop {
   coordinate: Coordinate;
   /** Optional human label, e.g. "Blue Tokai, Indiranagar". */
   placeLabel?: string;
+  /**
+   * The city the drop was left in, as the composer resolved it. Absent for
+   * every drop made before the column existed, and for any made without
+   * reverse geocoding.
+   *
+   * Coarser than `placeLabel` and therefore *safer*, not more sensitive — it is
+   * what lets the scrapbook say "your first seal in this city" without knowing
+   * which bench.
+   */
+  city?: string;
   /** ms epoch. */
   createdAt: number;
 }

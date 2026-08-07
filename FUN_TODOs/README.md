@@ -28,7 +28,7 @@ all wired end to end.
 | [08](08-anniversary-echo.md) | Anniversary echo | backend + client | M | **built** (in-app half; device QA owed) | [plan](../.claude/plans/2026-08-07-08-anniversary-echo.md) |
 | [09](09-time-gates.md) | Time / condition gated drops | backend + client | M | **built** (migration + device QA owed) | [plan](../.claude/plans/2026-08-07-09-time-gates.md) |
 | [10](10-city-constellation.md) | City constellation | mostly client | M | todo | [plan](../.claude/plans/2026-08-07-10-city-constellation.md) |
-| [11](11-wax-seal-collection.md) | Wax seal collection | client only | S | todo | [plan](../.claude/plans/2026-08-07-11-wax-seal-collection.md) |
+| [11](11-wax-seal-collection.md) | Wax seal collection | client only | S | **built** (device QA owed) | [plan](../.claude/plans/2026-08-07-11-wax-seal-collection.md) |
 | [12](12-lying-compass.md) | Lying compass | client only | S | todo | [plan](../.claude/plans/2026-08-07-12-lying-compass.md) |
 | [13](13-settings-retention.md) | Settings: retention levers | client + small backend | M | todo | [plan](../.claude/plans/2026-08-07-13-settings-retention.md) |
 | [14](14-settings-trust.md) | Settings: trust & privacy | client + backend | M | todo | [plan](../.claude/plans/2026-08-07-14-settings-trust.md) |

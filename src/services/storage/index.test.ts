@@ -2,9 +2,13 @@ import {
   addSavedId,
   addWalkedCells,
   clearAll,
+  clearSeals,
   clearWalkedCells,
   FOG_CELL_CAP,
   getDeviceId,
+  getSeal,
+  getSealCities,
+  getSeals,
   getEchoCache,
   getEchoesEnabled,
   getMutedEchoIds,
@@ -14,7 +18,9 @@ import {
   getWalkedCells,
   isEchoMuted,
   isSaved,
+  putSeal,
   removeSavedId,
+  SEAL_CAP,
   setEchoCache,
   setEchoesEnabled,
   setEchoMuted,
@@ -192,6 +198,64 @@ describe('storage anniversary echoes', () => {
       echoCheckDue(last, { lat: here.lat + 0.004, lng: here.lng }, '2026-08-07'),
     ).toBe(true); // ~440 m
     expect(echoCheckDue(last, here, '2026-08-08')).toBe(true);
+  });
+});
+
+describe('storage wax seals', () => {
+  const seal = {
+    motif: 'first' as const,
+    tint: 'ache',
+    night: true,
+    city: 'Bengaluru',
+    at: 1_700_000_000_000,
+  };
+
+  it('round-trips a pressed seal', () => {
+    expect(getSeal('s1')).toBeNull();
+    putSeal('s1', seal);
+    expect(getSeal('s1')).toEqual(seal);
+  });
+
+  it('refuses to overwrite one', () => {
+    // Belt and braces with `features/trail/seals` — a silent overwrite here
+    // would be invisible until someone noticed their history had changed.
+    putSeal('s1', seal);
+    putSeal('s1', { ...seal, motif: 'worn', at: seal.at + 1000 });
+    expect(getSeal('s1')?.motif).toBe('first');
+  });
+
+  it('lists the cities it has stamped, deduped', () => {
+    putSeal('s1', seal);
+    putSeal('s2', { ...seal, at: seal.at + 1 });
+    putSeal('s3', { ...seal, city: 'Lisbon', at: seal.at + 2 });
+    expect(getSealCities().sort()).toEqual(['Bengaluru', 'Lisbon']);
+  });
+
+  it('ignores a city on a seal that never had one', () => {
+    putSeal('s1', { motif: 'plain', tint: 'joy', night: false, at: 1 });
+    expect(getSealCities()).toEqual([]);
+  });
+
+  it('survives a persisted value that is not an object map', () => {
+    setMoodFilter([]); // unrelated write, so the store isn't empty
+    putSeal('s1', seal);
+    expect(getSeals()).toHaveProperty('s1');
+  });
+
+  it('caps the collection and evicts the oldest reveal first', () => {
+    for (let i = 0; i <= SEAL_CAP; i++) {
+      putSeal(`s${i}`, { motif: 'plain', tint: 'joy', night: false, at: 1000 + i });
+    }
+    const seals = getSeals();
+    expect(Object.keys(seals).length).toBe(SEAL_CAP);
+    expect(seals.s0).toBeUndefined(); // oldest reveal
+    expect(seals[`s${SEAL_CAP}`]).toBeDefined(); // newest
+  });
+
+  it('clears', () => {
+    putSeal('s1', seal);
+    clearSeals();
+    expect(getSeal('s1')).toBeNull();
   });
 });
 

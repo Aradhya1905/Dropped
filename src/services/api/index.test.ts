@@ -148,6 +148,22 @@ describe('reply mapping', () => {
     expect(apiSecretToSecret(apiSecret).expiresAt).toBeUndefined();
   });
 
+  it('carries drop.city through apiSecretToSecret', () => {
+    // The seal collection's "new city" motif is the only thing that reads it,
+    // and it can't derive one from a coordinate.
+    const placed = {
+      ...apiSecret,
+      drop: { ...apiSecret.drop, city: 'Bengaluru' },
+    };
+    expect(apiSecretToSecret(placed).drop.city).toBe('Bengaluru');
+  });
+
+  it('leaves drop.city undefined when the server omits it', () => {
+    // Every drop made before the column existed, and any made without reverse
+    // geocoding. Absent must stay absent rather than becoming ''.
+    expect(apiSecretToSecret(apiSecret).drop.city).toBeUndefined();
+  });
+
   it('carries revealCondition through apiSecretToSecret', () => {
     // It rides on the SEALED shape on purpose: the pin says *when* it opens
     // before anyone walks, which is the whole point of a visible gate.

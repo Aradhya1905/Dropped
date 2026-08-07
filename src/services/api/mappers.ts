@@ -9,6 +9,9 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
       id: s.drop.id,
       coordinate: s.drop.coordinate,
       placeLabel: s.drop.placeLabel,
+      // Absent stays absent — the seal derivation treats "no city" as "cannot
+      // be a new-city find" rather than stamping an empty name.
+      city: s.drop.city,
       createdAt: s.drop.createdAt,
     },
     createdAt: s.createdAt,

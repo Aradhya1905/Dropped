@@ -125,6 +125,8 @@ export interface ApiDrop {
   id: string;
   coordinate: Coordinate;
   placeLabel?: string;
+  /** City the drop was left in. Optional: absent on drops made without it. */
+  city?: string;
   createdAt: number;
 }
 
