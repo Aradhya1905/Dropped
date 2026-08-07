@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useDropsStore } from '../../../store/dropsStore';
 import { apiSecretToSecret } from '../../../services/api/mappers';
+import { trigger as haptic } from '../../../services/haptics';
 import { useDeviceLocation } from '../../map/hooks';
 import { postReveal } from '../api';
 
@@ -22,6 +23,10 @@ export function useReveal() {
       return postReveal(id, coord).then(apiSecretToSecret);
     },
     onSuccess: secret => {
+      // The warmth pulses stop at the 50 m line; this is the payoff. Fired on
+      // server confirmation, never on client optimism — a spoofed position must
+      // not get the winning feel before the server rejects the reveal.
+      haptic('snap');
       upsert(secret);
       queryClient.invalidateQueries({ queryKey: ['trail'] });
       // Keep the map pins in sync with the new revealed state.

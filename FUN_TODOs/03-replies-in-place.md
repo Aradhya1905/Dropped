@@ -1,6 +1,6 @@
 # 03 — Replies in place
 
-**Effort:** L · **Where:** backend + client · **Status:** todo
+**Effort:** L · **Where:** backend + client · **Status:** built, migrated — device QA owed
 **Plan:** [2026-08-07-03-replies-in-place.md](../.claude/plans/2026-08-07-03-replies-in-place.md)
 
 ## What

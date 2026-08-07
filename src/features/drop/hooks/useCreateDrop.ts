@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import type { Coordinate, Mood, Secret } from '../../../types';
+import type { Coordinate, ExpiresInDays, Mood, Secret } from '../../../types';
 import type { ApiError } from '../../../services/api';
 import { apiSecretToSecret } from '../../../services/api/mappers';
 import { useDropsStore } from '../../../store/dropsStore';
@@ -12,6 +12,8 @@ interface CreateDropParams {
   coordinate: Coordinate;
   placeLabel?: string;
   city?: string;
+  /** 7 or 30. Omitted = forever, the composer's default. */
+  expiresInDays?: ExpiresInDays;
 }
 
 export function useCreateDrop() {
@@ -20,7 +22,14 @@ export function useCreateDrop() {
 
   const mutation = useMutation<Secret, ApiError, CreateDropParams>({
     mutationFn: params =>
-      postDrop(params.body, params.mood, params.coordinate, params.placeLabel, params.city).then(apiSecretToSecret),
+      postDrop(
+        params.body,
+        params.mood,
+        params.coordinate,
+        params.placeLabel,
+        params.city,
+        params.expiresInDays,
+      ).then(apiSecretToSecret),
     onSuccess: secret => {
       upsert(secret);
       queryClient.invalidateQueries({ queryKey: ['trail'] });

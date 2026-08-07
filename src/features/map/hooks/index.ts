@@ -5,3 +5,17 @@ export type {
 } from './useDeviceLocation';
 export { useNearbyDrops } from './useNearbyDrops';
 export { useFootRoute } from './useFootRoute';
+export {
+  useWarmth,
+  bandFor,
+  periodFor,
+  hapticFor,
+  ringPeriodFor,
+  WARMTH_COLD_M,
+  WARMTH_FAR_M,
+  WARMTH_WARM_M,
+  WARMTH_HOT_M,
+  WARMTH_HYSTERESIS_M,
+  type WarmthBand,
+  type UseWarmthResult,
+} from './useWarmth';

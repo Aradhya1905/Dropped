@@ -1,6 +1,7 @@
 import { AxiosError } from 'axios';
 
-import { api, type ApiError } from './index';
+import { api, type ApiError, type ApiReply, type ApiSecret } from './index';
+import { apiReplyToReply, apiSecretToSecret } from './mappers';
 
 jest.mock('../storage', () => ({
   getDeviceId: () => 'device-abc',
@@ -67,5 +68,61 @@ describe('api error normalization', () => {
       expect(e.code).toBe('network');
       expect(e.status).toBe(0);
     });
+  });
+});
+
+describe('reply mapping', () => {
+  const apiSecret: ApiSecret = {
+    id: 'd1',
+    drop: { id: 'd1', coordinate: { lat: 1, lng: 2 }, createdAt: 100 },
+    createdAt: 100,
+    mood: 'ache',
+    hearts: 0,
+    stoodHere: 1,
+    replyCount: 3,
+    sealed: true,
+    saved: false,
+    hearted: false,
+  };
+
+  it('carries replyCount through apiSecretToSecret', () => {
+    expect(apiSecretToSecret(apiSecret).replyCount).toBe(3);
+  });
+
+  it('defaults replyCount to 0 when a server predates replies', () => {
+    const legacy = { ...apiSecret };
+    delete (legacy as Partial<ApiSecret>).replyCount;
+    expect(apiSecretToSecret(legacy).replyCount).toBe(0);
+  });
+
+  it('carries expiresAt through apiSecretToSecret', () => {
+    const expiring = { ...apiSecret, expiresAt: 1_800_000_000_000 };
+    expect(apiSecretToSecret(expiring).expiresAt).toBe(1_800_000_000_000);
+  });
+
+  it('leaves expiresAt undefined when the drop lives forever', () => {
+    // The server omits the field entirely rather than sending a sentinel, so
+    // "forever" must survive the mapping as plain undefined.
+    expect(apiSecretToSecret(apiSecret).expiresAt).toBeUndefined();
+  });
+
+  it('never carries author identity on a reply', () => {
+    const wire: ApiReply = {
+      id: 'r1',
+      body: 'I sat here too.',
+      createdAt: 200,
+      mine: true,
+    };
+    const mapped = apiReplyToReply(wire);
+
+    // Assert on the key set, so this fails if a device id (hashed or not) is
+    // ever added to the reply shape.
+    expect(Object.keys(mapped).sort()).toEqual([
+      'body',
+      'createdAt',
+      'id',
+      'mine',
+    ]);
+    expect(mapped).not.toHaveProperty('deviceId');
   });
 });

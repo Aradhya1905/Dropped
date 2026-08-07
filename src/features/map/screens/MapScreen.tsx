@@ -91,6 +91,8 @@ export function MapScreen({ navigation }: Props) {
           <MapPin
             deltaY={i % 2 === 0 ? -9 : 9}
             duration={9000 + i * 1000}
+            replyCount={secret.replyCount}
+            expiresAt={secret.expiresAt}
             onPress={() =>
               navigation.navigate('SecretDetail', { secretId: secret.id })
             }

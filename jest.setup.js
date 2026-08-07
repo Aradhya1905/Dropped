@@ -100,6 +100,18 @@ jest.mock('@dongminyu/react-native-step-counter', () => ({
   parseStepData: jest.fn(() => ({ steps: 0 })),
 }));
 
+// Vibration motor bridge — no native module under Jest. The services/haptics
+// adapter requires this lazily; tests that assert on haptic calls grab the mock
+// with `require('react-native-haptic-feedback').default.trigger`.
+jest.mock('react-native-haptic-feedback', () => {
+  const trigger = jest.fn();
+  return {
+    __esModule: true,
+    default: { trigger },
+    trigger,
+  };
+});
+
 // Magnetometer bridge — no native module under Jest.
 jest.mock('react-native-compass-heading', () => ({
   __esModule: true,

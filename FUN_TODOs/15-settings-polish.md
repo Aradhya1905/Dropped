@@ -9,7 +9,7 @@ the design or listed under "Polish" in the remaining-work doc.
 | Setting | Notes |
 |---|---|
 | **Reduced motion** | The design already has a `no-motion` concept. The app runs several always-on ambient loops (`design-system/components/anim.tsx` — `FloatBob`, `PulseRing`, `FadeUp`, plus the `Compass` sway fallback); this switch should stop them, not just slow them. Also a performance win — pair with pausing loops off-screen via `useIsFocused` (`YouScreen.tsx` already uses that hook, so the pattern is there). |
-| **Haptics off** | Needed once [02 warmth haptics](02-warmth-haptics.md) lands. |
+| **Haptics off** | Half done by [02 warmth haptics](02-warmth-haptics.md): the flag persists (`settings.haptics`, default on) and `services/haptics.setHapticsEnabled()` persists + applies in one call. All that's missing is the You-screen row that calls it. |
 | **Accurate compass** | Accessibility escape hatch for [12 lying compass](12-lying-compass.md). |
 | **Text size** | Respect OS Dynamic Type. The four custom families in `tokens.typography.fonts` need checking at large sizes — the paper layouts are tight. |
 | **High contrast** | The paper/ink/sage palette is low-contrast by design; needs an alternate token set, not per-component overrides. |

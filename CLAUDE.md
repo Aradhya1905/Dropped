@@ -25,6 +25,8 @@ anonymous device id. Moderation is the hard problem, not engineering.
   - **Storage** — `react-native-mmkv` v4 (Nitro Module; needs `react-native-nitro-modules`)
   - **Animation** — `react-native-reanimated` v4 + `react-native-worklets` (paired; reveal/near animations)
   - **Location** — `react-native-geolocation-service` (GPS watch, distance-to-drop)
+  - **Haptics** — `react-native-haptic-feedback` behind `services/haptics`
+    (warmth-on-approach pulses + the reveal snap; one persisted on/off flag)
   - **Identity** — `react-native-device-info` (stable anonymous id from `ANDROID_ID`/IDFV, behind `services/device`; survives app-data-clear)
   - **Camera/media** — `react-native-vision-camera` v5 + `react-native-nitro-image` (paired), `react-native-svg`
   - **UI** — `react-native-modal`, `@react-native-clipboard/clipboard`
@@ -63,7 +65,7 @@ To add a weight later: drop the `.ttf` in `assets/fonts/`, re-run `npx react-nat
 - `features/` — one folder per domain (`onboarding map nearby drop reveal trail settings`);
   each has `screens/ components/ hooks/ api/ types.ts`. `trail/` was added for
   the design's Trail tab (found/saved/dropped scrapbook).
-- `services/` — vendor integrations behind adapters (`api storage maps location notifications analytics`)
+- `services/` — vendor integrations behind adapters (`api storage maps location haptics notifications analytics`)
 - `store/` — global Zustand stores
 - `utils/` — `geo.ts` (haversine, isWithin), format, validators
 - `types/` — `Coordinate`, `Drop`, `Secret`, `RevealState`, `REVEAL_RADIUS_M = 50`

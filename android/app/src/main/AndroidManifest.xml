@@ -8,6 +8,9 @@
 
   <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
+  <!-- warmth haptics on the walk (services/haptics) -->
+  <uses-permission android:name="android.permission.VIBRATE" />
+
   <application
     android:name=".MainApplication"
     android:label="@string/app_name"

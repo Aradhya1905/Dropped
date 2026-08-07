@@ -11,7 +11,7 @@ import axios, {
 } from 'axios';
 
 import { getDeviceId } from '../storage';
-import type { Coordinate, Mood } from '../../types';
+import type { Coordinate, ExpiresInDays, Mood } from '../../types';
 
 // Dev server — update to prod URL before release
 export const DROPPED_API_URL = 'https://droppeddev.duckdns.org';
@@ -107,10 +107,26 @@ export interface ApiSecret {
   mood: Mood;
   hearts: number;
   stoodHere: number;
+  replyCount: number;
   sealed: boolean;
   saved: boolean;
   hearted: boolean;
   distanceMeters?: number;
+  /** ms epoch when the drop fades. Absent = forever. */
+  expiresAt?: number;
+}
+
+/**
+ * A reply pinned under a drop. The server never serializes authorship — this
+ * shape has no `deviceId`, hashed or otherwise. `mine` is the server's answer
+ * to "did the requesting device write this?", which is all the UI needs to
+ * offer a delete.
+ */
+export interface ApiReply {
+  id: string;
+  body: string;
+  createdAt: number;
+  mine: boolean;
 }
 
 /** A walking route from the /route/foot proxy. `available` is false (and the
@@ -169,8 +185,22 @@ export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>
     })
     .then(r => r.data);
 
-export const createDrop = (body: string, mood: Mood, coordinate: Coordinate, placeLabel?: string, city?: string) =>
-  api.post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city }).then(r => r.data);
+/**
+ * `expiresInDays` is a duration, not a timestamp — the server owns the clock,
+ * so a drop's expiry can't be moved by a device with a wrong one. Omit it for
+ * a drop that lives forever.
+ */
+export const createDrop = (
+  body: string,
+  mood: Mood,
+  coordinate: Coordinate,
+  placeLabel?: string,
+  city?: string,
+  expiresInDays?: ExpiresInDays,
+) =>
+  api
+    .post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city, expiresInDays })
+    .then(r => r.data);
 
 export const revealDrop = (id: string, coordinate: Coordinate) =>
   api.post<ApiSecret>(`/drops/${id}/reveal`, { coordinate }).then(r => r.data);
@@ -189,6 +219,28 @@ export const unheartDrop = (id: string) =>
 
 export const reportDrop = (id: string, reason: string) =>
   api.post<{ reported: true }>(`/drops/${id}/report`, { reason }).then(r => r.data);
+
+// Replies in place. Both reads and writes 403 unless the server has a reveal on
+// record for this device — a device that hasn't stood there gets an error, not
+// an empty list. Callers must render that 403 as "walk here first", not as
+// "no replies yet".
+export const fetchReplies = (id: string, limit = 50, offset = 0) =>
+  api
+    .get<{ replies: ApiReply[]; total: number }>(`/drops/${id}/replies`, {
+      params: { limit, offset },
+    })
+    .then(r => r.data);
+
+export const postReply = (id: string, body: string) =>
+  api.post<ApiReply>(`/drops/${id}/replies`, { body }).then(r => r.data);
+
+export const deleteReply = (id: string, replyId: string) =>
+  api.delete<{ deleted: true }>(`/drops/${id}/replies/${replyId}`).then(r => r.data);
+
+export const reportReply = (id: string, replyId: string, reason: string) =>
+  api
+    .post<{ reported: true }>(`/drops/${id}/replies/${replyId}/report`, { reason })
+    .then(r => r.data);
 
 export const fetchTrailFound = (limit = 20, offset = 0) =>
   api.get<{ secrets: ApiSecret[]; total: number }>('/drops/trail/found', { params: { limit, offset } }).then(r => r.data);

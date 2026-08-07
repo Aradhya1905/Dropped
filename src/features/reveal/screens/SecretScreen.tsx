@@ -1,9 +1,22 @@
 /**
  * 07 The secret — the unlocked confession on a spacious taped card, with the
- * "unlocked · here, now" pill, save and heart actions.
+ * "unlocked · here, now" pill, save and heart actions, and the replies left
+ * here by other people who stood on this spot.
+ *
+ * The replies stay readable at this coordinate even after the secret reseals —
+ * a place accruing history is the whole point of them.
  */
 import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -18,7 +31,8 @@ import {
 import { BookmarkIcon, HeartIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
-import { useSave, useHeart, useReport } from '../hooks';
+import { ReplyStrips } from '../components';
+import { useSave, useHeart, useReport, useReplies, useCreateReply } from '../hooks';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Secret'>;
 
@@ -30,6 +44,9 @@ export function SecretScreen({ navigation, route }: Props) {
   const save = useSave(secretId);
   const heart = useHeart(secretId);
   const { report, reported } = useReport(secretId);
+
+  const replies = useReplies(secretId);
+  const compose = useCreateReply(secretId);
 
   return (
     <PaperScreen>
@@ -48,6 +65,16 @@ export function SecretScreen({ navigation, route }: Props) {
           <CloseX onPress={() => navigation.goBack()} style={styles.close} />
         </View>
 
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollBody}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <Pressable
           onLongPress={() => {
             if (reported) return;
@@ -95,6 +122,30 @@ export function SecretScreen({ navigation, route }: Props) {
           </View>
         </Pressable>
 
+          <ReplyStrips
+            replies={replies.replies}
+            total={replies.total}
+            isLoading={replies.isLoading}
+            gated={replies.gated}
+            hasError={replies.error != null}
+            onRetry={replies.refetch}
+            // The list only loads at all once the gate has opened, so having it
+            // is the same proof that lets you write.
+            canCompose={!replies.gated && !replies.isLoading && replies.error == null}
+            alreadyReplied={replies.replies.some(r => r.mine)}
+            // Both rejections are already surfaced through compose.error, so
+            // the catches exist only to keep the promise from going unhandled.
+            onSubmit={body => {
+              compose.submit(body).catch(() => {});
+            }}
+            onDelete={replyId => {
+              compose.remove(replyId).catch(() => {});
+            }}
+            isSubmitting={compose.isPending}
+            submitError={compose.error?.message ?? null}
+          />
+        </ScrollView>
+
         <View style={styles.actions}>
           <Pressable
             onPress={save.toggle}
@@ -127,6 +178,7 @@ export function SecretScreen({ navigation, route }: Props) {
             <HeartIcon size={21} color={heart.hearted ? colors.accentDeep : colors.ink} />
           </Pressable>
         </View>
+        </KeyboardAvoidingView>
       </View>
     </PaperScreen>
   );
@@ -180,8 +232,13 @@ const styles = StyleSheet.create({
     color: colors.accentDeep,
   },
   close: { marginLeft: 'auto' },
+  flex: { flex: 1 },
+  // The card used to fill the screen. With replies below it, the card sizes to
+  // its content and the pair scroll together; minHeight keeps a short secret
+  // from collapsing into a cramped slip.
+  scrollBody: { flexGrow: 1, paddingBottom: 4 },
   card: {
-    flex: 1,
+    minHeight: 320,
     backgroundColor: colors.paperCard,
     borderRadius: 6,
     borderWidth: 1,

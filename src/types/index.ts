@@ -34,11 +34,39 @@ export interface Secret {
   mood: Mood;
   hearts: number;
   stoodHere: number;
+  /** Replies pinned here. Reading them still requires standing here. */
+  replyCount: number;
   sealed: boolean;
   saved: boolean;
   hearted: boolean;
   distanceMeters?: number;
+  /**
+   * ms epoch when this drop fades — it leaves the map and can no longer be
+   * revealed. Absent = forever, which is the default and what every drop made
+   * before expiring drops shipped carries.
+   */
+  expiresAt?: number;
 }
+
+/** The lifespans an author may pick in the composer. `undefined` = forever. */
+export type ExpiresInDays = 7 | 30;
+
+/**
+ * A reply left under a secret by someone who physically stood at the drop.
+ * Authorship is never on the wire — `mine` is derived server-side against the
+ * requesting device, so it says which reply you may delete and nothing about
+ * who wrote any other.
+ */
+export interface Reply {
+  id: string;
+  body: string;
+  /** ms epoch. */
+  createdAt: number;
+  mine: boolean;
+}
+
+/** Max length of a reply. One line, not a comment thread. */
+export const MAX_REPLY_LENGTH = 140;
 
 /**
  * Per-viewer reveal state for a secret:

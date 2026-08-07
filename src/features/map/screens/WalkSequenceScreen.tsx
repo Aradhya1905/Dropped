@@ -28,7 +28,13 @@ import type {
 import { PulseRing } from '../../../design-system/components';
 import { HeadingIcon, LocateIcon, LockIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
-import { useDeviceLocation, useFootRoute } from '../hooks';
+import {
+  useDeviceLocation,
+  useFootRoute,
+  useWarmth,
+  WARMTH_FAR_M,
+  WARMTH_WARM_M,
+} from '../hooks';
 import { FindCard } from '../components/FindCard';
 import { MapStatus } from '../components/MapStatus';
 import { MapLoader } from '../components/MapLoader';
@@ -51,8 +57,9 @@ type Props = CompositeScreenProps<
   >
 >;
 
-// Distance thresholds in metres.
-const RANGE_THRESHOLD = 150;
+// Distance thresholds in metres. Taken from the warmth bands (`useWarmth`) so
+// the beats you see and the pulses you feel change at exactly the same lines.
+const RANGE_THRESHOLD = WARMTH_FAR_M;
 const ARRIVED_THRESHOLD = REVEAL_RADIUS_M;
 
 /** Footstep spacing along the walking route, in metres. */
@@ -62,7 +69,7 @@ const FOOTSTEP_SPACING_M = 35;
  * Steps within this along-route distance of the user glow solid ("walked");
  * beyond it they stay faint ("ahead") — a bright→faint trail from the feet out.
  */
-const STEP_LIT_RANGE_M = 70;
+const STEP_LIT_RANGE_M = WARMTH_WARM_M;
 
 /** The buried secret's wax pin — grows and shakes as you arrive. */
 function SecretPin({ beat }: { beat: WalkBeat }) {
@@ -161,6 +168,10 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
     distM <= ARRIVED_THRESHOLD ? 'arrived' :
     distM <= RANGE_THRESHOLD ? 'range' :
     'approach';
+
+  // Hot/cold: haptic pulses + the ring's tempo, both keyed off the same bands.
+  // Must run before the loader early-returns below.
+  const { ringPeriodMs } = useWarmth(distM);
 
   // Frame both points on the first fix and whenever the beat changes — so the
   // pair stays in view as you close in ("fit both, then follow").
@@ -334,7 +345,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
               fromScale={0.6}
               toScale={beat === 'approach' ? 2.6 : 3.4}
               peakOpacity={0.5}
-              durationMs={beat === 'approach' ? 4200 : 3000}
+              durationMs={ringPeriodMs}
               borderWidth={1.5}
               borderColor={colors.accent}
             />

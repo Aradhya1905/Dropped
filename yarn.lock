@@ -4036,6 +4036,7 @@ __metadata:
     react-native-device-info: "npm:^15.0.2"
     react-native-geolocation-service: "npm:^5.3.1"
     react-native-gesture-handler: "npm:^3.0.0"
+    react-native-haptic-feedback: "npm:^3.0.0"
     react-native-mmkv: "npm:^4.3.1"
     react-native-modal: "npm:^14.0.0-rc.1"
     react-native-nitro-image: "npm:0.15.0"
@@ -9153,6 +9154,19 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/abc2c02d89c7dba0a1c58a02a99f136bfedcffc1d28e879045e5cc7738a12fd2ad76c5175987cd642141cce59ea104eb2337c4595d91b56ab2f43e1563c27747
+  languageName: node
+  linkType: hard
+
+"react-native-haptic-feedback@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "react-native-haptic-feedback@npm:3.0.0"
+  peerDependencies:
+    react: ">=18.0.0"
+    react-native: ">=0.71.0"
+  peerDependenciesMeta:
+    react:
+      optional: true
+  checksum: 10c0/209566a098470b33e209aafc333dc897f911dc71243a41ab5486cb067e995dde78daa276b33b6c13b004bf1168352452bf39c4d9c536b6d3c9c210b6d78028cf
   languageName: node
   linkType: hard
 

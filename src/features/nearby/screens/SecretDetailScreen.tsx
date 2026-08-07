@@ -25,6 +25,7 @@ import { Compass } from '../components/Compass';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useDeviceLocation } from '../../map/hooks';
 import { haversineMeters, bearingTo } from '../../../utils/geo';
+import { fadesInLabel } from '../../../utils/expiry';
 import { useCompassHeading } from '../../../services/location/useCompassHeading';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SecretDetail'>;
@@ -73,6 +74,10 @@ export function SecretDetailScreen({ navigation, route }: Props) {
 
   const walkMins = distM != null ? Math.max(1, Math.round(distM / 80)) : null;
 
+  // null for a drop that lives forever — this screen then reads exactly as it
+  // did before expiring drops existed.
+  const fadesLabel = fadesInLabel(secret?.expiresAt);
+
   return (
     <PaperScreen>
       <MapTexture dense blur />
@@ -118,12 +123,28 @@ export function SecretDetailScreen({ navigation, route }: Props) {
               {'Something was left here. '}
               <Text style={styles.previewBlur}>Walk close enough and it will open.</Text>
             </Text>
+            {(secret?.replyCount ?? 0) > 0 && (
+              // The count is public; the replies themselves are not. Knowing
+              // people answered here is the pull — reading them still costs a walk.
+              <Text style={styles.voices}>
+                {secret!.replyCount}{' '}
+                {secret!.replyCount === 1 ? 'voice has' : 'voices have'} answered here
+              </Text>
+            )}
             <View style={styles.sealRow}>
               <Svg width={11} height={11} viewBox="0 0 16 16" fill="none">
                 <Path d="M5 7V5a3 3 0 0 1 6 0v2M4 7h8v5H4z" stroke={colors.accentDeep} strokeWidth={1.5} />
               </Svg>
               <Text style={styles.sealRowText}>sealed · walk here to read</Text>
             </View>
+            {/*
+              The reason to walk today rather than some day. Sits under the
+              seal line so the deadline reads as a property of the secret, not
+              of the walk.
+            */}
+            {fadesLabel != null && (
+              <Text style={styles.fades}>{fadesLabel}</Text>
+            )}
           </View>
 
           <View style={styles.actions}>
@@ -216,6 +237,20 @@ const styles = StyleSheet.create({
     textShadowColor: colors.ink,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
+  },
+  voices: {
+    fontFamily: fonts.handMedium,
+    fontSize: 16,
+    color: colors.accentDeep,
+    marginTop: 8,
+  },
+  fades: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 8.5,
+    letterSpacing: 8.5 * 0.2,
+    textTransform: 'uppercase',
+    color: colors.accentDeep,
+    marginTop: 6,
   },
   sealRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 9 },
   sealRowText: {

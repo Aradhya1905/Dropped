@@ -1,6 +1,7 @@
 # 04 — Expiring drops
 
-**Effort:** S · **Where:** backend + client · **Status:** todo
+**Effort:** S · **Where:** backend + client · **Status:** built — migration applied
+to the Neon dev DB, backend 64/64 + client 95/95 green, visual device QA owed
 **Plan:** [2026-08-07-04-expiring-drops.md](../.claude/plans/2026-08-07-04-expiring-drops.md)
 
 ## What

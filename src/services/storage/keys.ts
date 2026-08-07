@@ -6,6 +6,7 @@ export const StorageKeys = {
   seenSecretIds: 'secrets.seen',
   mapStyle: 'settings.mapStyle',
   notificationMode: 'settings.notificationMode',
+  hapticsEnabled: 'settings.haptics',
   stepState: 'steps.state',
   walkedCells: 'trail.walkedCells',
 } as const;
@@ -42,3 +43,9 @@ export type NotificationMode = 'off' | 'hum';
 
 export const DEFAULT_MAP_STYLE: MapStyle = 'dropped';
 export const DEFAULT_NOTIFICATION_MODE: NotificationMode = 'off';
+
+/**
+ * Warmth haptics on the walk are on by default — they're the point of the
+ * feature, and the OS haptics setting still outranks this one.
+ */
+export const DEFAULT_HAPTICS_ENABLED = true;

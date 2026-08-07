@@ -1,6 +1,6 @@
 # 02 — Warmth haptics on approach
 
-**Effort:** S · **Where:** client only · **Status:** todo
+**Effort:** S · **Where:** client only · **Status:** **built** (device QA owed)
 **Plan:** [2026-08-07-02-warmth-haptics.md](../.claude/plans/2026-08-07-02-warmth-haptics.md)
 
 ## What
@@ -27,12 +27,12 @@ to use a walking app.
 
 - **Distance source** — already available: `utils/geo.ts` (`haversine`,
   `isWithin`) plus the live fix from `services/location`.
-- **Haptics** — no haptics dependency yet. Add
-  `react-native-haptic-feedback` (or use the Vibration API for a first pass) and
-  put it behind a `services/haptics` adapter — features never import a vendor SDK
-  directly per the repo conventions.
-- **Pulse** — `design-system/components/anim.tsx` already exports `PulseRing`.
-  Drive its period from distance rather than a constant.
+- **Haptics** — ✅ `react-native-haptic-feedback` behind `services/haptics`
+  (`trigger('tick'|'thump'|'snap')`), with an Android `Vibration` fallback when
+  the native module isn't linked. Features never import the SDK.
+- **Pulse** — ✅ `PulseRing`'s existing `durationMs` is now fed
+  `ringPeriodFor(band)` from `features/map/hooks/useWarmth.ts`, so the ring and
+  the buzz quicken together. `anim.tsx` itself is unchanged.
 - **Throttle** — recompute the band on each GPS fix, but only re-trigger the
   haptic on band change or on a fixed interval. Never buzz per fix.
 - **Reveal snap** — one strong haptic when the server confirms the reveal

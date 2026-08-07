@@ -7,6 +7,7 @@ import { createMMKV } from 'react-native-mmkv';
 
 import { getNativeUniqueId, nativeIdToUuidV4 } from '../device';
 import {
+  DEFAULT_HAPTICS_ENABLED,
   DEFAULT_MAP_STYLE,
   DEFAULT_NOTIFICATION_MODE,
   EMPTY_STEP_STATE,
@@ -151,6 +152,19 @@ export function getNotificationMode(): NotificationMode {
 
 export function setNotificationMode(mode: NotificationMode): void {
   mmkv.set(StorageKeys.notificationMode, mode);
+}
+
+/**
+ * Warmth-haptics preference. Read this through `services/haptics`
+ * (`initHaptics` / `setHapticsEnabled`) rather than calling it directly, so the
+ * adapter's in-memory gate never drifts from what's persisted.
+ */
+export function getHapticsEnabled(): boolean {
+  return mmkv.getBoolean(StorageKeys.hapticsEnabled) ?? DEFAULT_HAPTICS_ENABLED;
+}
+
+export function setHapticsEnabled(on: boolean): void {
+  mmkv.set(StorageKeys.hapticsEnabled, on);
 }
 
 // --- steps (locally counted, see pedometer service) --------------------------

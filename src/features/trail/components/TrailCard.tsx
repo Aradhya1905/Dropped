@@ -17,6 +17,11 @@ export interface TrailCardProps {
   rotate: number;
   /** How the card is stuck to the page. */
   fastener?: 'tape' | 'tapeRight' | 'pin';
+  /**
+   * Renders the card aged — a drop that has expired. Faded, never hidden: your
+   * own history doesn't disappear just because strangers can no longer find it.
+   */
+  faded?: boolean;
 }
 
 export function TrailCard({
@@ -27,9 +32,16 @@ export function TrailCard({
   footRight,
   rotate,
   fastener = 'tape',
+  faded = false,
 }: TrailCardProps) {
   return (
-    <View style={[styles.card, { transform: [{ rotate: `${rotate}deg` }] }]}>
+    <View
+      style={[
+        styles.card,
+        { transform: [{ rotate: `${rotate}deg` }] },
+        faded && styles.cardFaded,
+      ]}
+    >
       {fastener === 'pin' ? (
         <WaxSeal size={13} style={styles.pin} />
       ) : (
@@ -63,6 +75,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 13,
     boxShadow: '0 16px 28px -22px rgba(43,33,20,0.5)',
+  },
+  // Yellowed paper, lifted off the page a little less. Legible on purpose —
+  // this is an archive, not a tombstone.
+  cardFaded: {
+    backgroundColor: colors.paperDeep,
+    opacity: 0.72,
+    boxShadow: '0 10px 20px -20px rgba(43,33,20,0.4)',
   },
   tape: { position: 'absolute', top: -8, left: 22 },
   tapeRight: { position: 'absolute', top: -8, right: 22 },

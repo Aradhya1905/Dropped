@@ -9,6 +9,7 @@ import { enableFreeze } from 'react-native-screens';
 
 import { colors } from '../design-system/tokens';
 import { identifyDevice } from '../services/analytics';
+import { initHaptics } from '../services/haptics';
 import { initStepCounting } from '../services/pedometer';
 import { getDeviceId } from '../services/storage';
 import { RootNavigator } from './navigation';
@@ -35,6 +36,9 @@ export default function App(): React.JSX.Element {
 
   // Count steps for the Trail's "steps this month" stat while the app is open.
   useEffect(() => initStepCounting(), []);
+
+  // Apply the persisted haptics preference before any walk can buzz.
+  useEffect(() => initHaptics(), []);
 
   return (
     <AppProviders>

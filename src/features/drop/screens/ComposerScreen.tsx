@@ -1,6 +1,6 @@
 /**
  * 08 Composer — "What happened here?" Pin your spot, write the confession on
- * ruled paper, pick a mood, drop it forever.
+ * ruled paper, pick a mood, choose how long it lasts, drop it.
  */
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
-import type { Mood } from '../../../types';
+import type { ExpiresInDays, Mood } from '../../../types';
 import {
   AppButton,
   CloseX,
@@ -22,6 +22,7 @@ import {
 } from '../../../design-system/components';
 import { PinIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
+import { LifespanChips } from '../components/LifespanChips';
 import { MoodChips } from '../components/MoodChips';
 import { WriteCard } from '../components/WriteCard';
 import { useDeviceLocation } from '../../map/hooks';
@@ -33,6 +34,11 @@ export function ComposerScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [mood, setMood] = useState<Mood>('joy');
   const [body, setBody] = useState('');
+  // undefined = forever. The default, so nothing changes for anyone who
+  // doesn't care about expiry.
+  const [expiresInDays, setExpiresInDays] = useState<ExpiresInDays | undefined>(
+    undefined,
+  );
   const { coord, shortAddress, city, status, refresh } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
 
@@ -44,6 +50,11 @@ export function ComposerScreen({ navigation }: Props) {
 
   const canDrop = !!coord && body.trim().length > 0 && !isPending;
 
+  // The button has always promised "forever" — keep it honest once that's a
+  // choice, so the commitment being made is on the button you press.
+  const lifespanLabel =
+    expiresInDays === undefined ? 'forever' : `${expiresInDays} days`;
+
   const handleDrop = async () => {
     if (!canDrop) return;
     try {
@@ -53,6 +64,7 @@ export function ComposerScreen({ navigation }: Props) {
         coordinate: coord,
         placeLabel: shortAddress ?? undefined,
         city: city ?? undefined,
+        expiresInDays,
       });
       navigation.replace('Dropped', { secretId: secret.id });
     } catch {
@@ -111,8 +123,10 @@ export function ComposerScreen({ navigation }: Props) {
             onSelect={v => setMood(v as Mood)}
           />
 
+          <LifespanChips selected={expiresInDays} onSelect={setExpiresInDays} />
+
           <AppButton
-            label={isPending ? 'Dropping…' : 'Drop here · forever'}
+            label={isPending ? 'Dropping…' : `Drop here · ${lifespanLabel}`}
             iconLeft={
               <SealPinIcon
                 size={18}

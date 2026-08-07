@@ -14,6 +14,7 @@ import { FogHeader } from '../components/FogHeader';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
 import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
+import { fadesInLabel, isExpired } from '../../../utils/expiry';
 import type { Secret } from '../../../types';
 
 const FASTENERS = ['tape', 'pin', 'tapeRight'] as const;
@@ -109,18 +110,30 @@ export function TrailScreen() {
           ) : activeSecrets.length === 0 ? (
             <Text style={styles.empty}>Nothing here yet.</Text>
           ) : (
-            activeSecrets.map((s, i) => (
-              <TrailCard
-                key={s.id}
-                rotate={ROTATIONS[i % ROTATIONS.length]}
-                fastener={FASTENERS[i % FASTENERS.length]}
-                place={s.drop.placeLabel ?? 'Here'}
-                mood={s.mood}
-                quote={`"${s.body ?? ''}"`}
-                footLeft={s.drop.placeLabel ?? ''}
-                footRight={`unlocked · ${_relTime(s.createdAt)}`}
-              />
-            ))
+            activeSecrets.map((s, i) => {
+              // The server keeps expired drops in these lists on purpose: your
+              // own drops stay in your history, and a drop you saved stays
+              // yours. Show them aged rather than dropping them from the feed.
+              const expired = isExpired(s.expiresAt);
+              const fades = fadesInLabel(s.expiresAt);
+              return (
+                <TrailCard
+                  key={s.id}
+                  rotate={ROTATIONS[i % ROTATIONS.length]}
+                  fastener={FASTENERS[i % FASTENERS.length]}
+                  place={s.drop.placeLabel ?? 'Here'}
+                  mood={s.mood}
+                  quote={`"${s.body ?? ''}"`}
+                  faded={expired}
+                  footLeft={s.drop.placeLabel ?? ''}
+                  footRight={
+                    fades != null
+                      ? `${fades} · ${_relTime(s.createdAt)}`
+                      : `unlocked · ${_relTime(s.createdAt)}`
+                  }
+                />
+              );
+            })
           )}
         </ScrollView>
       </View>
