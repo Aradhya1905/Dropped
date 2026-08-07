@@ -106,6 +106,23 @@ describe('reply mapping', () => {
     expect(apiSecretToSecret(apiSecret).expiresAt).toBeUndefined();
   });
 
+  it('carries the author opt-out through apiSecretToSecret', () => {
+    expect(apiSecretToSecret({ ...apiSecret, shareable: false }).shareable).toBe(
+      false,
+    );
+    expect(apiSecretToSecret({ ...apiSecret, shareable: true }).shareable).toBe(
+      true,
+    );
+  });
+
+  it('treats a server that predates the opt-out as shareable', () => {
+    // Matches the column default. Defaulting to false instead would silently
+    // hide the share button against every older deployment.
+    const legacy = { ...apiSecret };
+    delete (legacy as Partial<ApiSecret>).shareable;
+    expect(apiSecretToSecret(legacy).shareable).toBe(true);
+  });
+
   it('never carries author identity on a reply', () => {
     const wire: ApiReply = {
       id: 'r1',

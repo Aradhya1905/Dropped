@@ -12,7 +12,7 @@ import { identifyDevice } from '../services/analytics';
 import { initHaptics } from '../services/haptics';
 import { initStepCounting } from '../services/pedometer';
 import { getDeviceId } from '../services/storage';
-import { RootNavigator } from './navigation';
+import { navigationRef, RootNavigator, startSpotLinks } from './navigation';
 import { AppProviders } from './providers';
 
 // Inactive tab screens stop re-rendering while blurred → cheaper switches.
@@ -40,6 +40,11 @@ export default function App(): React.JSX.Element {
   // Apply the persisted haptics preference before any walk can buzz.
   useEffect(() => initHaptics(), []);
 
+  // Catch shared spot links (cold start and every warm tap). Started here, and
+  // not inside the container, because a cold-start URL exists before the
+  // navigator mounts — see navigation/linking.
+  useEffect(() => startSpotLinks(), []);
+
   return (
     <AppProviders>
       <StatusBar
@@ -47,7 +52,7 @@ export default function App(): React.JSX.Element {
         backgroundColor="transparent"
         translucent
       />
-      <NavigationContainer theme={theme}>
+      <NavigationContainer ref={navigationRef} theme={theme}>
         <RootNavigator />
       </NavigationContainer>
     </AppProviders>

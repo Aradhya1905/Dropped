@@ -1,5 +1,5 @@
-import type { Reply, Secret } from '../../types';
-import type { ApiReply, ApiSecret } from './index';
+import type { DropPreview, Reply, Secret } from '../../types';
+import type { ApiDropPreview, ApiReply, ApiSecret } from './index';
 
 export function apiSecretToSecret(s: ApiSecret): Secret {
   return {
@@ -26,6 +26,27 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     // Absent stays absent: a drop with no expiry lives forever, and the UI
     // reads `undefined` as "no countdown" rather than needing a sentinel.
     expiresAt: s.expiresAt,
+    // Older servers predate the opt-out; treat a missing flag as shareable,
+    // matching the column default rather than silently hiding the affordance.
+    shareable: s.shareable ?? true,
+  };
+}
+
+/**
+ * A shared spot as the app holds it. Field-for-field with the wire shape, but
+ * kept explicit (rather than a cast) so that adding a `body` on the server
+ * would not silently start flowing into the app.
+ */
+export function apiDropPreviewToDropPreview(p: ApiDropPreview): DropPreview {
+  return {
+    id: p.id,
+    coordinate: p.coordinate,
+    placeLabel: p.placeLabel,
+    city: p.city,
+    mood: p.mood,
+    createdAt: p.createdAt,
+    revealCount: p.revealCount,
+    expiresAt: p.expiresAt,
   };
 }
 

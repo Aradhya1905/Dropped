@@ -310,3 +310,47 @@ export function LocateIcon({ size = 21, color = colors.ink, strokeWidth = 1.6 }:
     </Svg>
   );
 }
+
+/**
+ * "Point someone at this place" — a pin with an arc leaving it. Used for the
+ * share-a-spot affordance.
+ *
+ * Not from the design export (which predates share links); drawn in the same
+ * 24-box, same stroke weights and round caps as the other 18 so it sits in the
+ * set rather than next to it.
+ */
+export function ShareSpotIcon({
+  size = 21,
+  color = colors.ink,
+  strokeWidth = 1.6,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 20c3.6-4.4 5.6-7 5.6-9.4A5.6 5.6 0 0 0 3.4 10.6C3.4 13 5.4 15.6 9 20Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M9 8.6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M16 14.5c2.6-1.1 4.2-3.3 4.6-6.1"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray="2.4 2.8"
+      />
+      <Path
+        d="M17.6 4.6 21 8.2l-3.6 3.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}

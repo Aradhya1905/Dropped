@@ -8,4 +8,5 @@ export const postDrop = (
   placeLabel?: string,
   city?: string,
   expiresInDays?: ExpiresInDays,
-) => createDrop(body, mood, coordinate, placeLabel, city, expiresInDays);
+  shareable?: boolean,
+) => createDrop(body, mood, coordinate, placeLabel, city, expiresInDays, shareable);

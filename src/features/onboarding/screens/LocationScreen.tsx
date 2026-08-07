@@ -7,6 +7,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { consumePendingSpot } from '../../../app/navigation/linking';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import {
   AppButton,
@@ -35,6 +36,10 @@ export function LocationScreen({ navigation }: Props) {
   const { request } = useDeviceLocation();
   const enterApp = () => {
     setOnboardingComplete(true);
+    // Someone who tapped a shared link on a fresh install lands here first —
+    // permission before compass, or the walk screen points nowhere. Now that
+    // onboarding is done, the parked link takes over the handoff.
+    if (consumePendingSpot()) return;
     navigation.replace('Main');
   };
 

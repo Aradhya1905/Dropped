@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { consumePendingSpot } from '../../../app/navigation/linking';
 import type { RootStackParamList } from '../../../app/navigation/types';
 import { FadeUp, PaperScreen } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
@@ -97,6 +98,11 @@ export function SplashScreen({ navigation }: Props) {
 
     const next = getOnboardingComplete() ? 'Main' : 'Welcome';
     const timer = setTimeout(() => {
+      // A shared spot link parked during the intro wins over the normal
+      // handoff — it resets to [Main, SecretDetail] itself. It returns false
+      // (and stays parked) when there is no link, or when onboarding hasn't
+      // run yet, in which case the Location screen consumes it instead.
+      if (consumePendingSpot()) return;
       navigation.reset({ index: 0, routes: [{ name: next }] });
     }, HOLD_MS);
 
