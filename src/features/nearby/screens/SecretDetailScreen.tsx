@@ -56,14 +56,20 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   const { coord } = useDeviceLocation();
 
-  // Same query key as the map's, so this costs nothing while you stand still
-  // and refetches when you cross a ~33 m grid cell. Without it the whisper on
-  // this screen would be frozen at whatever the map last fetched — and this is
-  // the screen you're looking at *while* you close the distance.
+  // Shares the map's query key while no mood filter is set, so this costs
+  // nothing while you stand still and refetches when you cross a ~33 m grid
+  // cell. Without it the whisper on this screen would be frozen at whatever the
+  // map last fetched — and this is the screen you're looking at *while* you
+  // close the distance.
+  //
+  // Deliberately unfiltered: a mood filter is a view over the map, and it must
+  // never starve the screen showing a secret you already opened (you can reach
+  // one from the Trail that the map is currently hiding). The cost is one extra
+  // key while a filter is active.
   const { data: fresh } = useNearbyDrops(coord);
   const upsertDrop = useDropsStore(s => s.upsertDrop);
   useEffect(() => {
-    fresh?.forEach(s => upsertDrop(s));
+    fresh?.secrets.forEach(s => upsertDrop(s));
   }, [fresh, upsertDrop]);
 
   const deviceHeading = useCompassHeading();

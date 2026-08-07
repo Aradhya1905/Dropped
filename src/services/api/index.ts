@@ -11,7 +11,13 @@ import axios, {
 } from 'axios';
 
 import { getDeviceId } from '../storage';
-import type { Coordinate, ExpiresInDays, Mood, Whisper } from '../../types';
+import {
+  MOODS,
+  type Coordinate,
+  type ExpiresInDays,
+  type Mood,
+  type Whisper,
+} from '../../types';
 
 // Dev server — update to prod URL before release
 export const DROPPED_API_URL = 'https://droppeddev.duckdns.org';
@@ -179,8 +185,35 @@ export const fetchDeviceSteps = () =>
 export const postDeviceSteps = (entries: { day: string; delta: number }[]) =>
   api.post<{ steps: number }>('/devices/me/steps', { entries }).then(r => r.data.steps);
 
-export const fetchNearbyDrops = (lat: number, lng: number, radiusMeters = 2000) =>
-  api.get<{ secrets: ApiSecret[] }>('/drops/nearby', { params: { lat, lng, radiusMeters } }).then(r => r.data);
+/**
+ * Nearby drops, optionally narrowed to a set of moods.
+ *
+ * Sending all four moods is the same as sending none, so the param is omitted
+ * in that case — it keeps the URL clean and, more importantly, keeps one cache
+ * entry for "everything" instead of two that hold identical data.
+ *
+ * `hiddenByFilter` is what the filter removed, counted server-side over the
+ * same result set. The map shows it so a filter always reads as a view rather
+ * than as an emptier world.
+ */
+export const fetchNearbyDrops = (
+  lat: number,
+  lng: number,
+  radiusMeters = 2000,
+  moods: Mood[] = [],
+) => {
+  const filtering = moods.length > 0 && moods.length < MOODS.length;
+  return api
+    .get<{ secrets: ApiSecret[]; hiddenByFilter: number }>('/drops/nearby', {
+      params: {
+        lat,
+        lng,
+        radiusMeters,
+        ...(filtering ? { mood: [...moods].sort().join(',') } : {}),
+      },
+    })
+    .then(r => r.data);
+};
 
 /** Server-proxied walking route from `from` → `to` (for the Walk screen path). */
 export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>

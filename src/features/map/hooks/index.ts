@@ -3,7 +3,9 @@ export type {
   UseDeviceLocationResult,
   LocationStatus,
 } from './useDeviceLocation';
-export { useNearbyDrops } from './useNearbyDrops';
+export { useNearbyDrops, nearbyQueryKey, EMPTY_NEARBY } from './useNearbyDrops';
+export type { NearbyDrops } from './useNearbyDrops';
+export { useMoodFilter } from './useMoodFilter';
 export { useFootRoute } from './useFootRoute';
 export {
   useWarmth,

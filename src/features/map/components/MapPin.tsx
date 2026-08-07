@@ -6,6 +6,9 @@
  * reason to walk back to a spot you've already read: the secret doesn't
  * change, but the voices under it do.
  *
+ * A pin carries its mood as a wash and a ring, so a neighbourhood reads as a
+ * mood map at a glance rather than as identical anonymous dots.
+ *
  * A pin that's about to fade thins out and wears its days-left tag. The whole
  * point of an expiring drop is that you can see the clock from across the map,
  * so the ramp is deliberately visible — but floored well above invisible, since
@@ -23,7 +26,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FloatBob } from '../../../design-system/components';
 import { LockIcon } from '../../../design-system/icons';
 import { colors, fonts, moodColor } from '../../../design-system/tokens';
-import type { Whisper } from '../../../types';
+import type { Mood, Whisper } from '../../../types';
 import { daysUntilExpiry, fadeOpacity } from '../../../utils/expiry';
 
 export function MapPin({
@@ -31,6 +34,7 @@ export function MapPin({
   duration = 9000,
   replyCount = 0,
   expiresAt,
+  mood,
   whisper,
   onPress,
 }: {
@@ -40,6 +44,8 @@ export function MapPin({
   replyCount?: number;
   /** ms epoch when this drop fades. Absent = forever, and nothing changes. */
   expiresAt?: number;
+  /** The drop's mood. Colours the ring and the lock. Absent = plain paper. */
+  mood?: Mood;
   /**
    * Mood + teaser, when the server judged you inside the whisper band. Absent
    * = you're too far to hear anything, and the pin stays a plain sealed dot.
@@ -52,7 +58,9 @@ export function MapPin({
   // Only tag a pin once the countdown is short enough to act on — a 30-day
   // drop wearing "30d" for three weeks is noise, not urgency.
   const showDaysTag = daysLeft !== null && daysLeft <= 7;
-  const mood = whisper ? moodColor(whisper.mood) : null;
+  // A whisper always knows its own mood; a far-off pin is told one by the map.
+  const moodKey = whisper?.mood ?? mood;
+  const ink = moodKey ? moodColor(moodKey) : null;
 
   return (
     <FloatBob rotate={0} deltaRotate={0} deltaY={deltaY} duration={duration}>
@@ -61,7 +69,11 @@ export function MapPin({
         hitSlop={8}
         accessibilityLabel={
           [
-            whisper ? `Whispering secret, ${whisper.mood}` : 'Sealed secret',
+            whisper
+              ? `Whispering secret, ${whisper.mood}`
+              : moodKey
+              ? `Sealed secret, ${moodKey}`
+              : 'Sealed secret',
             whisper?.teaser ? `starts "${whisper.teaser}"` : null,
             replyCount > 0
               ? `${replyCount} ${replyCount === 1 ? 'voice' : 'voices'} here`
@@ -78,15 +90,24 @@ export function MapPin({
         style={({ pressed }) => [
           styles.pin,
           { opacity },
-          mood != null && { backgroundColor: mood.tint, borderColor: mood.ink },
+          // A pin escalates in three steps: plain paper when the map knows
+          // nothing, a mood-coloured ring once it does, and the full wash only
+          // inside the whisper band. Tinting every pin would otherwise flatten
+          // the one signal that says "this one is close enough to speak".
+          ink != null && { borderColor: ink.ink },
+          whisper != null && ink != null && { backgroundColor: ink.tint },
           pressed && styles.pressed,
         ]}
       >
-        {mood != null ? (
+        {whisper != null && ink != null ? (
           // Inside the band the lock is the wrong idea — it's ajar, not shut.
-          <View style={[styles.moodDot, { backgroundColor: mood.ink }]} />
+          <View style={[styles.moodDot, { backgroundColor: ink.ink }]} />
         ) : (
-          <LockIcon size={14} color={colors.inkSoft} strokeWidth={1.5} />
+          <LockIcon
+            size={14}
+            color={ink ? ink.ink : colors.inkSoft}
+            strokeWidth={1.5}
+          />
         )}
         {replyCount > 0 && (
           <View style={styles.badge}>
@@ -115,7 +136,7 @@ export function MapPin({
           numberOfLines={1}
           style={[
             styles.teaser,
-            { color: mood?.ink },
+            { color: ink?.ink },
             // A fading drop's whisper fades with it.
             { opacity },
             // Drops below the days tag when both are showing.

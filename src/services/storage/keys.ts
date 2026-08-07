@@ -9,6 +9,7 @@ export const StorageKeys = {
   hapticsEnabled: 'settings.haptics',
   stepState: 'steps.state',
   walkedCells: 'trail.walkedCells',
+  moodFilter: 'map.moodFilter',
 } as const;
 
 /**
@@ -49,3 +50,12 @@ export const DEFAULT_NOTIFICATION_MODE: NotificationMode = 'off';
  * feature, and the OS haptics setting still outranks this one.
  */
 export const DEFAULT_HAPTICS_ENABLED = true;
+
+/**
+ * The map's mood filter. An empty array means "no filter" — every mood shows.
+ *
+ * Stored as the *selected* moods rather than the hidden ones so that adding a
+ * fifth mood later reveals it by default instead of silently hiding it from
+ * everyone who ever touched the filter.
+ */
+export const DEFAULT_MOOD_FILTER: readonly [] = [];

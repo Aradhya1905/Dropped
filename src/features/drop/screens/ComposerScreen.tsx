@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
-import type { ExpiresInDays, Mood } from '../../../types';
+import { MOODS, type ExpiresInDays, type Mood } from '../../../types';
 import {
   AppButton,
   CloseX,
@@ -118,9 +118,10 @@ export function ComposerScreen({ navigation }: Props) {
           />
 
           <MoodChips
-            moods={['joy', 'ache', 'trouble', 'wonder']}
-            selected={mood}
-            onSelect={v => setMood(v as Mood)}
+            label="How did it feel?"
+            moods={MOODS}
+            selected={[mood]}
+            onToggle={setMood}
           />
 
           <LifespanChips selected={expiresInDays} onSelect={setExpiresInDays} />

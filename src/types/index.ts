@@ -23,6 +23,13 @@ export interface Drop {
 export type Mood = 'joy' | 'ache' | 'trouble' | 'wonder';
 
 /**
+ * Every mood, in composer order. Exactly four, fixed by the `drops_mood_chk`
+ * constraint in the database — the composer, the map filter and the colour map
+ * all read this rather than repeating the literals.
+ */
+export const MOODS: readonly Mood[] = ['joy', 'ache', 'trouble', 'wonder'];
+
+/**
  * What a sealed secret gives away while you're inside the whisper band: its
  * mood and the first word or two. Server-computed and server-gated — the body
  * is never on the wire until a verified reveal, so the client can only ever

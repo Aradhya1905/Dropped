@@ -6,10 +6,12 @@ import {
   FOG_CELL_CAP,
   getDeviceId,
   getOnboardingComplete,
+  getMoodFilter,
   getSavedIds,
   getWalkedCells,
   isSaved,
   removeSavedId,
+  setMoodFilter,
   setOnboardingComplete,
 } from './index';
 
@@ -86,6 +88,27 @@ describe('storage walked cells (fog of war)', () => {
     expect(cells.size).toBe(FOG_CELL_CAP);
     expect(cells.has('0:0')).toBe(false); // first inserted, evicted
     expect(cells.has(`0:${FOG_CELL_CAP}`)).toBe(true); // last inserted, kept
+  });
+});
+
+describe('storage mood filter', () => {
+  it('defaults to no filter', () => {
+    expect(getMoodFilter()).toEqual([]);
+  });
+
+  it('round-trips a selection', () => {
+    setMoodFilter(['joy', 'wonder']);
+    expect(getMoodFilter()).toEqual(['joy', 'wonder']);
+  });
+
+  it('drops a mood it no longer recognizes instead of crashing the map', () => {
+    setMoodFilter(['joy', 'dread' as never]);
+    expect(getMoodFilter()).toEqual(['joy']);
+  });
+
+  it('survives a persisted value that is not a list at all', () => {
+    setMoodFilter('joy' as never);
+    expect(getMoodFilter()).toEqual([]);
   });
 });
 

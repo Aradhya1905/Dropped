@@ -6,9 +6,11 @@
 import { createMMKV } from 'react-native-mmkv';
 
 import { getNativeUniqueId, nativeIdToUuidV4 } from '../device';
+import { MOODS, type Mood } from '../../types';
 import {
   DEFAULT_HAPTICS_ENABLED,
   DEFAULT_MAP_STYLE,
+  DEFAULT_MOOD_FILTER,
   DEFAULT_NOTIFICATION_MODE,
   EMPTY_STEP_STATE,
   FOG_CELL_CAP,
@@ -165,6 +167,26 @@ export function getHapticsEnabled(): boolean {
 
 export function setHapticsEnabled(on: boolean): void {
   mmkv.set(StorageKeys.hapticsEnabled, on);
+}
+
+/**
+ * The map's mood filter. `[]` = show everything.
+ *
+ * Unknown values are dropped on read rather than trusted: a downgrade (or a
+ * mood retired server-side) would otherwise persist a filter the app can't
+ * satisfy, and the user would be left staring at an empty map with no way to
+ * tell why.
+ */
+export function getMoodFilter(): Mood[] {
+  const stored = getJSON<unknown>(StorageKeys.moodFilter, DEFAULT_MOOD_FILTER);
+  if (!Array.isArray(stored)) {
+    return [];
+  }
+  return stored.filter((m): m is Mood => (MOODS as readonly string[]).includes(m));
+}
+
+export function setMoodFilter(moods: Mood[]): void {
+  setJSON(StorageKeys.moodFilter, moods);
 }
 
 // --- steps (locally counted, see pedometer service) --------------------------

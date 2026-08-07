@@ -1,6 +1,6 @@
 # 06 — Mood filter + mood-tinted pins
 
-**Effort:** S · **Where:** backend + client · **Status:** todo
+**Effort:** S · **Where:** backend + client · **Status:** built (device QA owed)
 **Plan:** [2026-08-07-06-mood-filter.md](../.claude/plans/2026-08-07-06-mood-filter.md)
 
 ## What

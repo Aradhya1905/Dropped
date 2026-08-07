@@ -4,7 +4,7 @@
  * and the "within range" card when you're within 50 m of a drop.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -25,8 +25,10 @@ import {
   LocateIcon,
   QuillIcon,
 } from '../../../design-system/icons';
-import { colors, shadows } from '../../../design-system/tokens';
-import { useDeviceLocation, useNearbyDrops } from '../hooks';
+import { colors, fonts, shadows } from '../../../design-system/tokens';
+import { MOODS } from '../../../types';
+import { MoodChips } from '../../drop/components';
+import { EMPTY_NEARBY, useDeviceLocation, useMoodFilter, useNearbyDrops } from '../hooks';
 import { useDropsStore } from '../../../store/dropsStore';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
@@ -51,7 +53,12 @@ export function MapScreen({ navigation }: Props) {
   // flashes (the map only mounts once we have a fix — see the guard below).
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
     useMaplibreAdapter(coord ?? undefined, { fog: true });
-  const { data: drops = [], refetch: refetchDrops } = useNearbyDrops(coord);
+  const { moods, toggle: toggleMood, clear: clearMoods, filtering } = useMoodFilter();
+  const { data: nearby = EMPTY_NEARBY, refetch: refetchDrops } = useNearbyDrops(
+    coord,
+    moods,
+  );
+  const { secrets: drops, hiddenByFilter } = nearby;
   const upsertDrop = useDropsStore(s => s.upsertDrop);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
 
@@ -100,6 +107,7 @@ export function MapScreen({ navigation }: Props) {
             duration={9000 + i * 1000}
             replyCount={secret.replyCount}
             expiresAt={secret.expiresAt}
+            mood={secret.mood}
             whisper={
               (secret.distanceMeters ?? Infinity) <= WHISPER_RADIUS_M
                 ? secret.whisper
@@ -168,6 +176,35 @@ export function MapScreen({ navigation }: Props) {
         <LayersIcon size={21} />
       </Pressable>
 
+      <View style={[styles.filterBar, { top: insets.top + 62 }]}>
+        <MoodChips
+          compact
+          tintDots
+          moods={MOODS}
+          selected={moods}
+          onToggle={toggleMood}
+        />
+        {/*
+          Filtering hides content in an app whose whole promise is that you can
+          only read what you walk to. The count keeps the filter honest: what's
+          missing is missing from the *view*, not from the world — and tapping
+          it puts everything back.
+        */}
+        {filtering ? (
+          <Pressable onPress={clearMoods} style={styles.hiddenLine}>
+            <Text style={styles.hiddenText}>
+              {drops.length === 0
+                ? `nothing ${moods.join(' or ')} near you · tap to clear`
+                : hiddenByFilter === 0
+                ? 'nothing hidden · tap to clear'
+                : `${hiddenByFilter} ${
+                    hiddenByFilter === 1 ? 'secret' : 'secrets'
+                  } hidden · tap to clear`}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+
       <Pressable
         accessibilityLabel="Recenter map on your location"
         onPress={() => {
@@ -226,6 +263,15 @@ function _yearsAgo(ms: number): string {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   locChip: { position: 'absolute', left: 16, zIndex: 20 },
+  filterBar: { position: 'absolute', left: 16, right: 16, zIndex: 20 },
+  hiddenLine: { marginTop: 8, alignSelf: 'flex-start' },
+  hiddenText: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 9 * 0.16,
+    textTransform: 'uppercase',
+    color: colors.inkFaint,
+  },
   layersFab: {
     position: 'absolute',
     right: 16,
