@@ -75,8 +75,11 @@ export function useBackgroundWalk(): UseBackgroundWalkResult {
 
       if (result.enabled && getNotificationMode() === 'off') {
         // Watching in the background with hums switched off would burn battery
-        // to produce silence.
-        setNotificationMode('always');
+        // to produce silence. `rare`, not `always`: the sheet the user just
+        // agreed to promises "one quiet hum, at most", and turning an opt-in
+        // into the loudest setting is how an app earns its notifications being
+        // switched back off for good.
+        setNotificationMode('rare');
       }
 
       if (result.permission === 'blocked') {

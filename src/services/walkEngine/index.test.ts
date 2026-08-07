@@ -15,10 +15,17 @@ jest.mock('../api/mappers', () => ({
   apiSecretToSecret: (s: unknown) => s,
 }));
 
+/**
+ * `humNearbySecret` is the gate *and* the exit to the OS, so the double both
+ * records what the engine asked for and hands back the verdict a test wants.
+ * `notifyNearbySecret` is here only to assert the engine never reaches for it.
+ */
+const mockHum = jest.fn(() => Promise.resolve('fire'));
 const mockNotify = jest.fn(() => Promise.resolve());
 const mockStartService = jest.fn(() => Promise.resolve());
 const mockStopService = jest.fn(() => Promise.resolve());
 jest.mock('../notifications', () => ({
+  humNearbySecret: (...a: unknown[]) => mockHum(...(a as [])),
   notifications: {
     notifyNearbySecret: (...a: unknown[]) => mockNotify(...(a as [])),
     startWalkService: () => mockStartService(),
@@ -51,16 +58,19 @@ jest.mock('../location/backgroundWatch', () => ({
 }));
 
 let mockWalkEnabled = true;
-let mockNotificationMode: 'off' | 'hum' = 'hum';
 const mockSetWalkEnabled = jest.fn((on: boolean) => {
   mockWalkEnabled = on;
 });
-let mockProducerState = { lastFiredAt: null, firedDropIds: [] as string[], lastCheckCoord: null };
+let mockProducerState = {
+  lastFiredAt: null as number | null,
+  firedDropIds: [] as string[],
+  lastCheckCoord: null as Coordinate | null,
+};
 jest.mock('../storage', () => ({
   getBackgroundWalkEnabled: () => mockWalkEnabled,
   setBackgroundWalkEnabled: (on: boolean) => mockSetWalkEnabled(on),
   getMoodFilter: () => [],
-  getNotificationMode: () => mockNotificationMode,
+  getPrivacyZones: () => [],
   getSeenIds: () => [],
   getProducerState: () => mockProducerState,
   setProducerState: (s: typeof mockProducerState) => {
@@ -111,7 +121,7 @@ beforeEach(() => {
   mockEmit = null;
   mockWalkEnabled = true;
   mockGranted = true;
-  mockNotificationMode = 'hum';
+  mockHum.mockResolvedValue('fire');
   mockProducerState = { lastFiredAt: null, firedDropIds: [], lastCheckCoord: null };
   mockFetchNearby.mockResolvedValue({ secrets: [secret('a', 40)], hiddenByFilter: 0 });
 });
@@ -149,25 +159,62 @@ describe('startWalkEngine', () => {
 });
 
 describe('a fix', () => {
-  it('hums about the nearest sealed drop', async () => {
+  it('hums about the nearest sealed drop, through humNearbySecret only', async () => {
     const engine = load();
     await engine.startWalkEngine();
     await walkTo(HERE);
 
-    expect(mockNotify).toHaveBeenCalledTimes(1);
-    const [nudge] = mockNotify.mock.calls[0] as unknown as [{ secretId: string }];
-    expect(nudge).toMatchObject({ secretId: 'a' });
+    expect(mockHum).toHaveBeenCalledTimes(1);
+    const [req] = mockHum.mock.calls[0] as unknown as [
+      { secretId: string; mood: string; at: { lat: number }; isMoving: boolean },
+    ];
+    expect(req).toMatchObject({ secretId: 'a', mood: 'wonder' });
+    // The gate needs a coordinate to answer the privacy-zone question; without
+    // one it fails closed and nothing would ever hum.
+    expect(req.at).toEqual(HERE);
     expect(engine.getLastDecisionReason()).toBe('fire');
+
+    // The engine must never reach past the gate to the adapter.
+    expect(mockNotify).not.toHaveBeenCalled();
   });
 
-  it('stays silent when the gate says no, and says why', async () => {
+  it('reports the gate verdict when the hum is refused', async () => {
+    mockHum.mockResolvedValue('quiet-hours');
     const engine = load();
-    engine.setNotificationGate(() => ({ allowed: false, reason: 'quiet-hours' }));
     await engine.startWalkEngine();
     await walkTo(HERE);
 
-    expect(mockNotify).not.toHaveBeenCalled();
     expect(engine.getLastDecisionReason()).toBe('quiet-hours');
+  });
+
+  it('does not burn a drop the gate refused', async () => {
+    mockHum.mockResolvedValue('quiet-hours');
+    const engine = load();
+    await engine.startWalkEngine();
+    await walkTo(HERE);
+
+    // One silent night must not cost the user every drop they walked past in
+    // it — the candidate stays eligible for the next pass.
+    expect(mockProducerState.firedDropIds).toEqual([]);
+    expect(mockProducerState.lastFiredAt).toBeNull();
+  });
+
+  it('burns a drop that actually hummed', async () => {
+    const engine = load();
+    await engine.startWalkEngine();
+    await walkTo(HERE);
+
+    expect(mockProducerState.firedDropIds).toEqual(['a']);
+  });
+
+  it('stays silent when the pre-hum filter says no, and says why', async () => {
+    const engine = load();
+    engine.setNotificationGate(() => ({ allowed: false, reason: 'suppressed' }));
+    await engine.startWalkEngine();
+    await walkTo(HERE);
+
+    expect(mockHum).not.toHaveBeenCalled();
+    expect(engine.getLastDecisionReason()).toBe('suppressed');
   });
 
   it('sends nothing to the server from inside a privacy zone', async () => {
@@ -179,7 +226,7 @@ describe('a fix', () => {
     // The zone has to suppress the *request*, not just the notification —
     // "I am at home, what's near me?" is the leak.
     expect(mockFetchNearby).not.toHaveBeenCalled();
-    expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockHum).not.toHaveBeenCalled();
     expect(engine.getLastDecisionReason()).toBe('privacy-zone');
   });
 
@@ -198,7 +245,7 @@ describe('a fix', () => {
     await engine.startWalkEngine();
     await walkTo(HERE);
 
-    expect(mockNotify).not.toHaveBeenCalled();
+    expect(mockHum).not.toHaveBeenCalled();
     expect(engine.getLastDecisionReason()).toBe('error');
   });
 

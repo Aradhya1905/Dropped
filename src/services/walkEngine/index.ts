@@ -8,9 +8,11 @@
  * turns into a real notification, and it lives outside the React tree because
  * the whole point is to keep working after the tree unmounts.
  *
- * It is also the only scheduler of notifications in the app. If a second thing
- * ever calls `notifications.notifyNearbySecret`, the user's settings stop being
- * a reliable description of what the app does.
+ * It is the app's only *producer* of walk-by hums, and it is not the thing that
+ * decides whether one is allowed: every hum leaves through
+ * `notifications.humNearbySecret`, which owns the gate and the cooldown. This
+ * module never calls `notifications.notifyNearbySecret` and never re-checks a
+ * setting the gate already reads.
  */
 import { fetchNearbyDrops } from '../api';
 import { apiSecretToSecret } from '../api/mappers';
@@ -24,9 +26,15 @@ import {
   setCadence,
   subscribe,
 } from '../location/backgroundWatch';
-import { notifications } from '../notifications';
+import { isSustainedMovement, type TimedFix } from '../location/movement';
+import { isInsideAnyZone } from '../location/privacyZones';
+// `notifications` is used only for the foreground service and notification
+// taps. The hum itself goes through `humNearbySecret` — see the header.
+import { humNearbySecret, notifications } from '../notifications';
 import {
   decide,
+  markChecked,
+  openGate,
   shouldPoll,
   type NotificationGate,
   type ProducerState,
@@ -34,7 +42,7 @@ import {
 import {
   getBackgroundWalkEnabled,
   getMoodFilter,
-  getNotificationMode,
+  getPrivacyZones,
   getProducerState,
   getSeenIds,
   setBackgroundWalkEnabled,
@@ -54,24 +62,30 @@ const FETCH_RADIUS_M = 600;
 const CLOSE_M = 250;
 
 /**
- * The gate this engine consults. Defaults to the notification-mode switch that
- * exists today; FUN_TODOs/13 replaces it with the full one (quiet hours,
- * movement, radius, mood subscriptions, privacy zones) via
- * {@link setNotificationGate}.
+ * How far back movement is judged over.
  *
- * Kept as a single mutable slot rather than a list on purpose: two gates means
- * "why didn't it fire?" has two answers.
+ * Wider than `movement.DEFAULT_WINDOW_MS` (one minute) because the background
+ * cadence deliberately emits a fix roughly once a minute — a one-minute window
+ * would never hold the three fixes `isSustainedMovement` needs, so every hum
+ * would be suppressed as `not-moving` and the feature would look broken rather
+ * than strict.
  */
-let gate: NotificationGate = () =>
-  getNotificationMode() !== 'off'
-    ? { allowed: true }
-    : { allowed: false, reason: 'notifications-off' };
+const MOVEMENT_WINDOW_MS = 5 * 60_000;
 
 /**
- * Install the real gate. Call once, at start-up, before the engine runs.
- * Everything that decides whether a hum is allowed belongs behind this
- * function — nothing in this file re-checks a setting the gate already owns.
+ * The gate slot.
+ *
+ * **The real gate is `notifications/gate.shouldNotify`, reached through
+ * `humNearbySecret`** — quiet hours, only-when-moving, notify radius, mood
+ * subscriptions, privacy zones and the cooldown all live there, and this module
+ * re-checks none of them. What is left here is an override seam for tests and
+ * for a future caller that needs to suppress a candidate *before* the hum path
+ * is entered; it defaults to permissive precisely so it cannot become a second
+ * opinion about the user's settings.
  */
+let gate: NotificationGate = openGate;
+
+/** Override the pre-hum filter. Tests only — the user's settings live in the gate. */
 export function setNotificationGate(next: NotificationGate): void {
   gate = next;
 }
@@ -79,20 +93,34 @@ export function setNotificationGate(next: NotificationGate): void {
 /**
  * Is this coordinate inside one of the user's privacy zones?
  *
- * Checked at the **capture** layer — before the fix is sent anywhere — because
- * a zone has to suppress the network call, not just the notification. Filtering
- * on display while still telling the server "I am at home, what's near me?" is
- * the one failure this feature cannot have.
- *
- * Late-bound through {@link setPrivacyZoneCheck} rather than imported so this
- * module doesn't depend on the zone store landing first; the default answers
- * "no zones", which is correct for a device that has never set one.
+ * Asked at the **capture** layer — before the fix is sent anywhere — because a
+ * zone has to suppress the network call, not just the notification. Telling the
+ * server "I am at home, what's near me?" and then declining to notify is the one
+ * failure this feature cannot have. `humNearbySecret` asks the same question
+ * again later; that duplication is deliberate, since the two checks defend
+ * different things (the request, and the notification).
  */
-let insideZone: (c: Coordinate) => boolean = () => false;
+let insideZone: (c: Coordinate) => boolean = c => {
+  const zones = getPrivacyZones();
+  return zones.length > 0 && isInsideAnyZone(c, zones);
+};
 
-/** Wire in `location/privacyZones.isInsideAnyZone`. Call once at start-up. */
+/** Override the zone check. Tests only. */
 export function setPrivacyZoneCheck(check: (c: Coordinate) => boolean): void {
   insideZone = check;
+}
+
+/**
+ * Recent fixes, for the "are they actually walking?" question the gate asks.
+ * Kept here rather than in `backgroundWatch` because it is the only consumer,
+ * and trimmed on every write so a long walk can't grow it without bound.
+ */
+let recentFixes: TimedFix[] = [];
+
+export function rememberFix(coordinate: Coordinate, at: number): void {
+  recentFixes = [...recentFixes, { at, coordinate }].filter(
+    f => at - f.at <= MOVEMENT_WINDOW_MS,
+  );
 }
 
 let unsubscribeWatch: (() => void) | null = null;
@@ -156,24 +184,43 @@ async function onFix(fix: Coordinate): Promise<void> {
     );
     setCadence(nearest <= CLOSE_M ? 'high' : isBackgroundEnabled() ? 'low' : 'normal');
 
+    const now = Date.now();
     const decision = decide({
       fix,
       nearby,
       state,
-      now: Date.now(),
+      now,
       gate,
       revealedIds: getSeenIds(),
+      // The cooldown belongs to the gate, which persists its own clock
+      // (`humLastFiredAt`). A second one here would silently double the
+      // interval the user thinks they set.
+      cooldownMs: 0,
     });
-    lastReason = decision.reason;
-    persist(decision.state);
 
-    if (decision.fire) {
-      await notifications.notifyNearbySecret({
-        secretId: decision.fire.id,
-        distanceM: decision.distanceM,
-        near: fix,
-      });
+    if (!decision.fire) {
+      lastReason = decision.reason;
+      persist(decision.state);
+      return;
     }
+
+    // The single exit to the OS. Every lever the user set is read inside this
+    // call; nothing above it re-implements one.
+    const verdict = await humNearbySecret({
+      secretId: decision.fire.id,
+      distanceM: decision.distanceM,
+      near: fix,
+      at: fix,
+      mood: decision.fire.mood,
+      isMoving: isSustainedMovement(recentFixes, { windowMs: MOVEMENT_WINDOW_MS }),
+      now,
+    });
+    lastReason = verdict;
+
+    // Only a hum that actually fired burns the drop. A candidate the gate
+    // refused — quiet hours, too far, wrong mood — has to stay eligible, or
+    // one silent night would cost the user every drop they walked past in it.
+    persist(verdict === 'fire' ? decision.state : markChecked(state, fix));
   } catch {
     // Offline, a 500, a denied fix — none of them are worth surfacing from a
     // background pass. The next fix tries again.
@@ -201,6 +248,9 @@ async function onFix(fix: Coordinate): Promise<void> {
 function attach(): void {
   if (unsubscribeWatch) return;
   unsubscribeWatch = subscribe(fix => {
+    // Remembered before the early returns below, so the movement window keeps
+    // filling even while nothing is worth polling for.
+    rememberFix(fix.coordinate, Date.now());
     // `onFix` swallows its own failures; the catch is belt and braces so a
     // rejection can never surface as an unhandled promise on a walk.
     onFix(fix.coordinate).catch(() => {});
