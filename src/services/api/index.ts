@@ -18,6 +18,7 @@ import {
   type EchoKind,
   type ExpiresInDays,
   type Mood,
+  type RevealCondition,
   type Whisper,
 } from '../../types';
 
@@ -36,6 +37,18 @@ export interface ApiError {
   message: string;
   /** Present on 403 reveal failures — metres from the drop. */
   distanceMeters?: number;
+  /**
+   * Present on a 403 when you were close enough but the drop's condition did
+   * not hold. Mutually exclusive with `distanceMeters`: the server checks
+   * distance first, so being too far is never reported as being too early.
+   */
+  revealCondition?: RevealCondition;
+  /**
+   * ms epoch when that condition next holds. Absent inside the polar circles,
+   * where the next sunset can be months away — render the refusal without a
+   * countdown rather than inventing one.
+   */
+  opensAt?: number;
 }
 
 const delay = (ms: number) =>
@@ -43,12 +56,21 @@ const delay = (ms: number) =>
 
 function toApiError(err: AxiosError): ApiError {
   if (err.response) {
-    const data = err.response.data as { message?: string; distanceMeters?: number } | undefined;
+    const data = err.response.data as
+      | {
+          message?: string;
+          distanceMeters?: number;
+          revealCondition?: RevealCondition;
+          opensAt?: number;
+        }
+      | undefined;
     return {
       status: err.response.status,
       code: 'http',
       message: data?.message ?? err.message,
       distanceMeters: data?.distanceMeters,
+      revealCondition: data?.revealCondition,
+      opensAt: data?.opensAt,
     };
   }
   if (err.code === 'ECONNABORTED') {
@@ -129,6 +151,11 @@ export interface ApiSecret {
   whisper?: Whisper;
   /** Whether a share link may point here. Optional: servers predating 07 omit it. */
   shareable?: boolean;
+  /**
+   * The extra condition guarding this drop. Absent = none, which is also what a
+   * server predating 09 sends for every drop.
+   */
+  revealCondition?: RevealCondition;
 }
 
 /**
@@ -290,6 +317,9 @@ export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>
  *
  * `shareable` is the author's opt-out from share links; omit it for the
  * permissive default.
+ *
+ * `revealCondition` is a **single** value, never an array — one condition per
+ * drop. 50 m is already a hard ask; stacking gates means nobody ever reads it.
  */
 export const createDrop = (
   body: string,
@@ -299,6 +329,7 @@ export const createDrop = (
   city?: string,
   expiresInDays?: ExpiresInDays,
   shareable?: boolean,
+  revealCondition?: RevealCondition,
 ) =>
   api
     .post<ApiSecret>('/drops', {
@@ -309,6 +340,7 @@ export const createDrop = (
       city,
       expiresInDays,
       shareable,
+      revealCondition,
     })
     .then(r => r.data);
 

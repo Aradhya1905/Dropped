@@ -1,5 +1,10 @@
 import { createDrop } from '../../../services/api';
-import type { Coordinate, ExpiresInDays, Mood } from '../../../types';
+import type {
+  Coordinate,
+  ExpiresInDays,
+  Mood,
+  RevealCondition,
+} from '../../../types';
 
 export const postDrop = (
   body: string,
@@ -9,4 +14,15 @@ export const postDrop = (
   city?: string,
   expiresInDays?: ExpiresInDays,
   shareable?: boolean,
-) => createDrop(body, mood, coordinate, placeLabel, city, expiresInDays, shareable);
+  revealCondition?: RevealCondition,
+) =>
+  createDrop(
+    body,
+    mood,
+    coordinate,
+    placeLabel,
+    city,
+    expiresInDays,
+    shareable,
+    revealCondition,
+  );

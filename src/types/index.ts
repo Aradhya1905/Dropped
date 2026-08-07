@@ -30,6 +30,24 @@ export type Mood = 'joy' | 'ache' | 'trouble' | 'wonder';
 export const MOODS: readonly Mood[] = ['joy', 'ache', 'trouble', 'wonder'];
 
 /**
+ * A second condition an author may put on a drop, on top of the 50 m rule.
+ * `night` opens between sunset and sunrise **at the drop's coordinate**; `day`
+ * is the exact inverse. Absent = no condition, which is nearly every drop.
+ *
+ * The server is the only judge of whether it currently holds: sunrise and
+ * sunset are computed there from the drop's own coordinate, so a device with a
+ * wrong clock — or a deliberately wrong one — changes nothing.
+ */
+export type RevealCondition = 'night' | 'day';
+
+/**
+ * Every condition, in composer order. Exactly two, fixed by the
+ * `drops_reveal_condition_chk` constraint in the database. Weather gating is
+ * deliberately not here — it needs an external API and is a separate ticket.
+ */
+export const REVEAL_CONDITIONS: readonly RevealCondition[] = ['night', 'day'];
+
+/**
  * What a sealed secret gives away while you're inside the whisper band: its
  * mood and the first word or two. Server-computed and server-gated — the body
  * is never on the wire until a verified reveal, so the client can only ever
@@ -78,6 +96,14 @@ export interface Secret {
    * it, which is the premise of the app.
    */
   shareable: boolean;
+  /**
+   * The extra condition guarding this drop. Absent = none.
+   *
+   * Present on sealed drops too, and that is the point: a pin can say *when* it
+   * opens without saying *what* it says, so the walk gets planned rather than
+   * wasted. It is a hint, never a gate — the gate is the server's.
+   */
+  revealCondition?: RevealCondition;
 }
 
 /**

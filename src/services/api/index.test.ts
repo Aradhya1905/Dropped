@@ -57,6 +57,48 @@ describe('api error normalization', () => {
     );
   });
 
+  it('carries a condition refusal off a 403 body', async () => {
+    // The two 403s must stay distinguishable on the client: distance is
+    // checked first server-side, so a condition refusal means the walk was
+    // right and only the hour was wrong.
+    api.defaults.adapter = async config => {
+      throw new AxiosError('forbidden', 'ERR_BAD_REQUEST', config, {}, {
+        data: {
+          message: 'This one waits for dark.',
+          revealCondition: 'night',
+          opensAt: 1_800_000_000_000,
+        },
+        status: 403,
+        statusText: 'Forbidden',
+        headers: {},
+        config,
+      } as never);
+    };
+    await api.post('/x').catch((e: ApiError) => {
+      expect(e.status).toBe(403);
+      expect(e.revealCondition).toBe('night');
+      expect(e.opensAt).toBe(1_800_000_000_000);
+      expect(e.distanceMeters).toBeUndefined();
+    });
+  });
+
+  it('keeps a too-far 403 free of any condition', async () => {
+    api.defaults.adapter = async config => {
+      throw new AxiosError('forbidden', 'ERR_BAD_REQUEST', config, {}, {
+        data: { message: 'Too far to reveal', distanceMeters: 512 },
+        status: 403,
+        statusText: 'Forbidden',
+        headers: {},
+        config,
+      } as never);
+    };
+    await api.post('/x').catch((e: ApiError) => {
+      expect(e.distanceMeters).toBe(512);
+      expect(e.revealCondition).toBeUndefined();
+      expect(e.opensAt).toBeUndefined();
+    });
+  });
+
   it('maps a network failure to ApiError(network)', async () => {
     api.defaults.adapter = async config => {
       const err = new AxiosError('Network Error', 'ERR_NETWORK', config);
@@ -104,6 +146,22 @@ describe('reply mapping', () => {
     // The server omits the field entirely rather than sending a sentinel, so
     // "forever" must survive the mapping as plain undefined.
     expect(apiSecretToSecret(apiSecret).expiresAt).toBeUndefined();
+  });
+
+  it('carries revealCondition through apiSecretToSecret', () => {
+    // It rides on the SEALED shape on purpose: the pin says *when* it opens
+    // before anyone walks, which is the whole point of a visible gate.
+    const gated = { ...apiSecret, revealCondition: 'night' as const };
+    const mapped = apiSecretToSecret(gated);
+    expect(mapped.revealCondition).toBe('night');
+    expect(mapped.sealed).toBe(true);
+    expect(mapped.body).toBeUndefined();
+  });
+
+  it('leaves revealCondition undefined for an ungated drop', () => {
+    // Absent = readable at any hour, which is also what a server predating
+    // time gates sends for every drop.
+    expect(apiSecretToSecret(apiSecret).revealCondition).toBeUndefined();
   });
 
   it('carries a whisper through apiSecretToSecret', () => {
