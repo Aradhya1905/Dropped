@@ -9,6 +9,12 @@ Drizzle). Both repos are further along than `Documentation/2026-06-13-remaining-
 claims — nearby / reveal / save / heart / report / trail / steps / foot-route are
 all wired end to end.
 
+> **All 16 are built.** Every ticket here is about *the walk*. The sibling folder
+> [RETURN_TODOs](../RETURN_TODOs/README.md) (17–23) covers what happens on either
+> side of it: the author never hearing that anyone found their drop, the empty
+> map that says nothing, and a first session that can't complete the core loop.
+> Numbering continues there rather than restarting.
+
 > Implementation plans are written for all 16 — dated files in `.claude/plans/`,
 > linked from the Plan column below and from each ticket's header. Each plan
 > carries ordered steps, the existing code to reuse, and a Unit / Device QA /

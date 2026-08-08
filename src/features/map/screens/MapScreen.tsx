@@ -60,8 +60,11 @@ export function MapScreen({ navigation }: Props) {
   const { coord, shortAddress, status, refresh, request } = useDeviceLocation();
   // Open the map already centered on the user so the default center never
   // flashes (the map only mounts once we have a fix — see the guard below).
+  // No fog here: the walked-cells overlay muddied the paper style on the main
+  // map. The fog map still lives on the Trail tab (`FogHeader`), where it's the
+  // point of the card rather than a film over everything else.
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
-    useMaplibreAdapter(coord ?? undefined, { fog: true });
+    useMaplibreAdapter(coord ?? undefined);
   const { moods, toggle: toggleMood, clear: clearMoods, filtering } = useMoodFilter();
   const {
     data: nearby = EMPTY_NEARBY,
@@ -216,7 +219,7 @@ export function MapScreen({ navigation }: Props) {
         in this app that difference is everything: one says "nothing happened
         here", the other says "we don't know". Never let the second render as
         the first. Small and dismissible-by-retry rather than a full takeover —
-        the map, the fog and your own dot are all still true offline.
+        the map and your own dot are both still true offline.
       */}
       {nearbyError != null && !nearbyLoading && (
         <Pressable
