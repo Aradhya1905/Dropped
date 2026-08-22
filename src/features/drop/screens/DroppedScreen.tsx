@@ -64,7 +64,7 @@ export function DroppedScreen({ navigation, route }: Props) {
               </Text>
               <View style={styles.dash} />
               <View style={styles.foot}>
-                <Text style={styles.footLbl}>sealed · ache</Text>
+                <Text style={styles.footLbl}>sealed · {secret?.mood ?? 'ache'}</Text>
                 <Text style={[styles.footLbl, styles.footNow]}>now</Text>
               </View>
               <WaxSeal size={52} rotate={-8} pulse style={styles.seal}>

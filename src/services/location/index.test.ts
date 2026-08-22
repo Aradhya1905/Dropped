@@ -31,7 +31,9 @@ describe('location coordinate mapping', () => {
 describe('location watch', () => {
   it('emits mapped coords and unsubscribe clears the watch', () => {
     mockWatchPosition.mockImplementation((success: Function) => {
-      success({ coords: { latitude: 3, longitude: 4 } });
+      // `accuracy` matters: the watch holds back fixes coarser than the
+      // accuracy floor, so a position without one is never emitted.
+      success({ coords: { latitude: 3, longitude: 4, accuracy: 8 } });
       return 99;
     });
     const onCoord = jest.fn();

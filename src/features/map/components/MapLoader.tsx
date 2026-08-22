@@ -7,7 +7,7 @@
  * static user dot, Newsreader serif copy.
  */
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MapTexture } from '../../../design-system/components';
 import { FadeUp, PulseRing } from '../../../design-system/components/anim';
@@ -15,9 +15,23 @@ import { colors, fonts } from '../../../design-system/tokens';
 
 const RING = 240;
 
-export function MapLoader() {
+export function MapLoader({
+  stalled = false,
+  onRetry,
+}: {
+  /** True once the fix has taken long enough that silence reads as broken. */
+  stalled?: boolean;
+  /** Tap-to-retry, offered only while stalled. */
+  onRetry?: () => void;
+} = {}) {
   return (
-    <View style={styles.root}>
+    <Pressable
+      accessibilityRole={stalled && onRetry ? 'button' : undefined}
+      accessibilityLabel={stalled && onRetry ? 'Try finding your location again' : undefined}
+      onPress={stalled ? onRetry : undefined}
+      disabled={!stalled || !onRetry}
+      style={styles.root}
+    >
       <MapTexture blur />
 
       <FadeUp style={styles.center}>
@@ -48,10 +62,16 @@ export function MapLoader() {
           </View>
         </View>
 
-        <Text style={styles.title}>finding where you are…</Text>
-        <Text style={styles.meta}>tuning the map to your spot</Text>
+        <Text style={styles.title}>
+          {stalled ? 'still looking for you…' : 'finding where you are…'}
+        </Text>
+        <Text style={styles.meta}>
+          {stalled
+            ? 'step outside or tap to try again'
+            : 'tuning the map to your spot'}
+        </Text>
       </FadeUp>
-    </View>
+    </Pressable>
   );
 }
 

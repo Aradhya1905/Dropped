@@ -18,6 +18,8 @@ import { colors, fonts } from '../../../design-system/tokens';
 import { SealBurst } from '../components/SealBurst';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useReveal } from '../hooks';
+import { NO_FIX } from '../hooks/useReveal';
+import { failed, sealBreak } from '../../../services/haptics';
 import type { ApiError } from '../../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Opening'>;
@@ -29,11 +31,22 @@ export function OpeningScreen({ navigation, route }: Props) {
   const { reveal, coord, isPending } = useReveal();
 
   const handlePress = async () => {
-    if (!coord || isPending) return;
+    // The tap is always live now: with no fix yet, `reveal` chases one first
+    // rather than leaving a dead screen.
+    if (isPending) return;
     try {
+      sealBreak();
       await reveal({ id: secretId });
       navigation.replace('Secret', { secretId });
     } catch (err) {
+      failed();
+      if (err instanceof Error && err.message === NO_FIX) {
+        Alert.alert(
+          "Can't place you yet",
+          "We need your location to know you're standing here. Check that location is on, then try again.",
+        );
+        return;
+      }
       const apiErr = err as ApiError;
       if (apiErr?.status === 403) {
         Alert.alert(
@@ -42,6 +55,13 @@ export function OpeningScreen({ navigation, route }: Props) {
             ? `Get within 50 m. You're ${Math.round(apiErr.distanceMeters)} m away.`
             : 'Get within 50 m to reveal this secret.',
         );
+      } else if (apiErr?.code === 'network' || apiErr?.code === 'timeout') {
+        // This case used to fail completely silently.
+        Alert.alert("Couldn't reach it", 'You look offline. Try again in a moment.');
+      } else if (apiErr?.status === 404) {
+        Alert.alert('It is gone', 'This secret is not here any more.');
+      } else {
+        Alert.alert("That didn't open", 'Something went wrong. Try again.');
       }
     }
   };
@@ -52,7 +72,9 @@ export function OpeningScreen({ navigation, route }: Props) {
       <Pressable
         style={[styles.view, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 30 }]}
         onPress={handlePress}
-        disabled={!coord || isPending}
+        disabled={isPending}
+        accessibilityRole="button"
+        accessibilityLabel="Break the seal and read this secret"
       >
         <FunKicker centered style={styles.kicker}>
           you made it all the way here —
@@ -64,8 +86,10 @@ export function OpeningScreen({ navigation, route }: Props) {
         <Text style={styles.meta}>{secret?.drop.placeLabel ?? ''}</Text>
         <Text style={styles.hint}>
           {isPending
-            ? 'opening…'
-            : 'someone left this here years ago — just for whoever got close.'}
+            ? coord
+              ? 'opening…'
+              : 'finding you first…'
+            : 'someone left this here — just for whoever got close.'}
         </Text>
 
         <View style={styles.foot}>

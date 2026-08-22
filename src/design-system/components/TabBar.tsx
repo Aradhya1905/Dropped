@@ -33,7 +33,9 @@ export function TabBar({
             key={item.key}
             onPress={() => onPress(item.key)}
             accessibilityRole="tab"
+            accessibilityLabel={item.label}
             accessibilityState={{ selected: item.key === activeKey }}
+            hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
             style={styles.tab}
           >
             {item.icon(color)}

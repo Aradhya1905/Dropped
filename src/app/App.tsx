@@ -9,6 +9,7 @@ import { enableFreeze } from 'react-native-screens';
 
 import { colors } from '../design-system/tokens';
 import { initStepCounting } from '../services/pedometer';
+import { bootstrapLocation, useLocationStore } from '../store/locationStore';
 import { RootNavigator } from './navigation';
 import { AppProviders } from './providers';
 
@@ -30,6 +31,14 @@ const theme = {
 export default function App(): React.JSX.Element {
   // Count steps for the Trail's "steps this month" stat while the app is open.
   useEffect(() => initStepCounting(), []);
+
+  // Start the app's single GPS watch as early as possible (silently — this
+  // never prompts) so every screen has a fix waiting instead of each one
+  // warming its own.
+  useEffect(() => {
+    bootstrapLocation();
+    return () => useLocationStore.getState().stopWatching();
+  }, []);
 
   return (
     <AppProviders>

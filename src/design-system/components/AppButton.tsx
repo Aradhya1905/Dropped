@@ -19,6 +19,10 @@ export interface AppButtonProps {
   iconLeft?: React.ReactNode;
   iconRight?: React.ReactNode;
   onPress?: () => void;
+  /** Overrides the label for screen readers (e.g. when the label is a glyph). */
+  accessibilityLabel?: string;
+  /** Set while the action is in flight so the button reads as unavailable. */
+  disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -29,6 +33,8 @@ export function AppButton({
   iconLeft,
   iconRight,
   onPress,
+  accessibilityLabel,
+  disabled = false,
   style,
 }: AppButtonProps) {
   // press = 0 at rest, 1 while held; drives the pill scale.
@@ -50,6 +56,10 @@ export function AppButton({
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        disabled={disabled || !onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityState={{ disabled: disabled || !onPress }}
         style={[
           styles.base,
           isPrimary && styles.primary,

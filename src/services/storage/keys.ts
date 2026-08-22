@@ -7,7 +7,24 @@ export const StorageKeys = {
   mapStyle: 'settings.mapStyle',
   notificationMode: 'settings.notificationMode',
   stepState: 'steps.state',
+  lastCoord: 'location.last',
+  composerDraft: 'drop.draft',
+  hapticsEnabled: 'settings.haptics',
 } as const;
+
+/** The composer's unsent confession, restored if the app dies mid-write. */
+export interface ComposerDraft {
+  body: string;
+  mood: string;
+  /** ms epoch of the last keystroke — lets us expire very stale drafts. */
+  updatedAt: number;
+}
+
+/** Drafts older than this are dropped rather than resurrected. */
+export const DRAFT_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
+
+/** Hard cap on a confession's length (enforced in the composer). */
+export const DROP_MAX_CHARS = 500;
 
 /**
  * Locally-counted steps not yet synced to the backend. The pedometer service

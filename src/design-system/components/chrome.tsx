@@ -27,12 +27,24 @@ export function EmotionTag({
 }
 
 /** Round dismiss button (`.close-x`). */
-export function CloseX({ onPress, style }: { onPress?: () => void; style?: StyleProp<ViewStyle> }) {
+export function CloseX({
+  onPress,
+  label = 'Close',
+  style,
+}: {
+  onPress?: () => void;
+  /** What closing means here, for screen readers. */
+  label?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={8}
-      accessibilityLabel="Close"
+      // The glyph is 14px inside a small circle — widen the target well past
+      // the visible edge without moving anything.
+      hitSlop={14}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => [styles.closeX, pressed && styles.pressed, style]}
     >
       <CloseIcon size={14} color={colors.inkSoft} />

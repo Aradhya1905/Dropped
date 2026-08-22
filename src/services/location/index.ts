@@ -78,6 +78,25 @@ export async function requestPermission(): Promise<PermissionStatus> {
 }
 
 /**
+ * Read the current permission without ever showing a dialog.
+ *
+ * Android answers straight from `PermissionsAndroid.check` — a false there can
+ * still mean "not asked yet", so callers treat 'denied' as "may still prompt".
+ * iOS has no silent check in the SDK, but `requestAuthorization` only shows the
+ * system dialog once per install; after the user has decided it just reports
+ * the standing answer, so calling it here is safe.
+ */
+export async function checkPermission(): Promise<PermissionStatus> {
+  if (Platform.OS === 'android') {
+    const granted = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+    return granted ? 'granted' : 'denied';
+  }
+  return requestPermission();
+}
+
+/**
  * One-shot current position. Forces a fresh fix (`maximumAge: 0`, supported on
  * the one-shot API) so we never echo a stale cached location. Rejects with the
  * SDK's GeoError on failure.

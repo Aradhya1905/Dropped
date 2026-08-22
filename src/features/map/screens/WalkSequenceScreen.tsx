@@ -36,6 +36,8 @@ import { MapStatus } from '../components/MapStatus';
 import { RouteLine } from '../components/RouteLine';
 import { useDropsStore } from '../../../store/dropsStore';
 import { haversineMeters } from '../../../utils/geo';
+import { relativeTime } from '../../../utils/format';
+import { crossedIntoRange, sealBreak } from '../../../services/haptics';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MapStackParamList, 'Walk'>,
@@ -169,7 +171,7 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { secretId } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
-  const { coord, shortAddress } = useDeviceLocation();
+  const { coord, live, shortAddress } = useDeviceLocation();
 
   // GPS-derived distance + beat
   const distM = coord && secret
@@ -193,6 +195,17 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
     else if (gpsBeat === 'range' && devBeat === 'approach') setDevBeat('range');
   }, [gpsBeat, devBeat]);
 
+  // Buzz once as each threshold is crossed — the phone is usually in a pocket
+  // on the way here, so the screen alone can't carry the moment.
+  const lastBeatRef = useRef<WalkBeat>(beat);
+  useEffect(() => {
+    const previous = lastBeatRef.current;
+    if (beat === previous) return;
+    lastBeatRef.current = beat;
+    if (beat === 'range' && previous === 'approach') crossedIntoRange();
+    if (beat === 'arrived') sealBreak();
+  }, [beat]);
+
   const advanceDev = () => {
     if (!__DEV__ || beat === 'arrived') return;
     LayoutAnimation.configureNext(LayoutAnimation.create(600, 'easeInEaseOut', 'opacity'));
@@ -202,14 +215,16 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
   const cfg = BEATS[beat];
 
   const distLabel = distM != null ? `${Math.round(distM)} m` : '— m';
+  // Distances measured off a stale fix would quietly lie about the walk.
+  const distTrusted = distM != null && live;
 
   const status =
     beat === 'approach' ? (
       <MapStatus
         icon={<HeadingIcon size={16} />}
-        kicker={`Walking · ${distLabel} away`}
+        kicker={distTrusted ? `Walking · ${distLabel} away` : 'Finding you…'}
         place={shortAddress ?? 'Locating…'}
-        state="out of range"
+        state={distTrusted ? 'out of range' : 'waiting for gps'}
         cold
       />
     ) : beat === 'range' ? (
@@ -356,33 +371,27 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
           locked
           kicker="something's buried nearby…"
           title="Keep walking"
-          meta={`${distLabel} away · out of range`}
+          meta={distTrusted ? `${distLabel} away · out of range` : 'waiting for a gps fix'}
           style={styles.findCard}
         />
       ) : beat === 'range' ? (
         <FindCard
           kicker="you crossed the line —"
           title="A secret is within 50 m"
-          meta={`walk to the pin · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
+          meta={`walk to the pin · ${secret ? relativeTime(secret.drop.createdAt) : ''}`}
           style={styles.findCard}
         />
       ) : (
         <FindCard
           kicker="you made it —"
           title="A secret was dropped here"
-          meta={`right where you're standing · ${secret ? _yearsAgo(secret.drop.createdAt) : ''}`}
+          meta={`right where you're standing · ${secret ? relativeTime(secret.drop.createdAt) : ''}`}
           onBreakSeal={() => navigation.navigate('Opening', { secretId })}
           style={styles.findCard}
         />
       )}
     </View>
   );
-}
-
-function _yearsAgo(ms: number): string {
-  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
-  if (years < 1) return 'just now';
-  return `${years} year${years === 1 ? '' : 's'} ago`;
 }
 
 const styles = StyleSheet.create({

@@ -2,8 +2,18 @@
  * 10 Your trail — the collected scrapbook: torn-receipt stats,
  * found/saved/dropped tabs, and the feed of secrets you've stood inside.
  */
-import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
@@ -11,28 +21,31 @@ import { colors, fonts } from '../../../design-system/tokens';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
 import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
+import { relativeTime } from '../../../utils/format';
+import { tap } from '../../../services/haptics';
 import type { Secret } from '../../../types';
 
 const FASTENERS = ['tape', 'pin', 'tapeRight'] as const;
 const ROTATIONS = [-1, 0.8, -0.6];
 
-function _relTime(ms: number): string {
-  const diff = Date.now() - ms;
-  const days = Math.floor(diff / (24 * 3600 * 1000));
-  if (days < 1) return 'today';
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}y ago`;
-}
+const PAGE = 20;
+
+/** Each tab earns its own empty line — "Nothing here yet" three times reads like a bug. */
+const EMPTY_COPY = {
+  found: 'No secrets found yet.\nWalk within 50 m of a pin to open one.',
+  saved: 'Nothing saved yet.\nSave a secret and it waits for you here.',
+  dropped: 'No drops of your own yet.\nTap the seal on the map to leave one.',
+} as const;
 
 export function TrailScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<'found' | 'saved' | 'dropped'>('found');
+  // How much of each feed we've asked for; grows as the user scrolls.
+  const [limits, setLimits] = useState({ found: PAGE, saved: PAGE, dropped: PAGE });
 
-  const found = useTrailFound();
-  const saved = useTrailSaved();
-  const dropped = useTrailDropped();
+  const found = useTrailFound(limits.found);
+  const saved = useTrailSaved(limits.saved);
+  const dropped = useTrailDropped(limits.dropped);
   const stats = useTrailStats();
   const { steps } = useSteps();
 
@@ -45,6 +58,28 @@ export function TrailScreen() {
   const activeQuery = tab === 'found' ? found : tab === 'saved' ? saved : dropped;
   const activeSecrets: Secret[] = activeQuery.data?.secrets ?? [];
   const isLoading = activeQuery.isLoading;
+  const total = activeQuery.data?.total ?? 0;
+  const hasMore = activeSecrets.length < total;
+
+  const refreshAll = useCallback(() => {
+    found.refetch();
+    saved.refetch();
+    dropped.refetch();
+    stats.refetch();
+  }, [found, saved, dropped, stats]);
+
+  /** Pull the next page in once the feed is nearly scrolled out. */
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!hasMore || activeQuery.isFetching) return;
+      const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+      const remaining = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      if (remaining < 240) {
+        setLimits(prev => ({ ...prev, [tab]: prev[tab] + PAGE }));
+      }
+    },
+    [hasMore, activeQuery.isFetching, tab],
+  );
 
   // The heading is explicitly "this month" — use the month-scoped found count.
   const foundCount = stats.data?.foundThisMonth ?? 0;
@@ -77,7 +112,13 @@ export function TrailScreen() {
             return (
               <Pressable
                 key={t.key}
-                onPress={() => setTab(t.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${t.label} · ${t.count}`}
+                onPress={() => {
+                  if (!on) tap();
+                  setTab(t.key);
+                }}
                 style={[styles.tab, on && styles.tabOn]}
               >
                 <Text style={[styles.tabText, on && styles.tabTextOn]}>{t.label}</Text>
@@ -91,24 +132,47 @@ export function TrailScreen() {
           style={styles.feed}
           contentContainerStyle={styles.feedContent}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={200}
+          refreshControl={
+            <RefreshControl
+              refreshing={activeQuery.isRefetching}
+              onRefresh={refreshAll}
+              colors={[colors.accent]}
+              tintColor={colors.accent}
+            />
+          }
         >
           {isLoading ? (
             <ActivityIndicator color={colors.accent} style={styles.loader} />
+          ) : activeQuery.isError ? (
+            <Text
+              accessibilityRole="button"
+              style={styles.empty}
+              onPress={() => activeQuery.refetch()}
+            >
+              Couldn&apos;t load your trail.{'\n'}Tap to try again.
+            </Text>
           ) : activeSecrets.length === 0 ? (
-            <Text style={styles.empty}>Nothing here yet.</Text>
+            <Text style={styles.empty}>{EMPTY_COPY[tab]}</Text>
           ) : (
-            activeSecrets.map((s, i) => (
-              <TrailCard
-                key={s.id}
-                rotate={ROTATIONS[i % ROTATIONS.length]}
-                fastener={FASTENERS[i % FASTENERS.length]}
-                place={s.drop.placeLabel ?? 'Here'}
-                mood={s.mood}
-                quote={`"${s.body ?? ''}"`}
-                footLeft={s.drop.placeLabel ?? ''}
-                footRight={`unlocked · ${_relTime(s.createdAt)}`}
-              />
-            ))
+            <>
+              {activeSecrets.map((s, i) => (
+                <TrailCard
+                  key={s.id}
+                  rotate={ROTATIONS[i % ROTATIONS.length]}
+                  fastener={FASTENERS[i % FASTENERS.length]}
+                  place={s.drop.placeLabel ?? 'Here'}
+                  mood={s.mood}
+                  quote={`"${s.body ?? ''}"`}
+                  footLeft={s.drop.placeLabel ?? ''}
+                  footRight={`unlocked · ${relativeTime(s.createdAt)}`}
+                />
+              ))}
+              {hasMore ? (
+                <ActivityIndicator color={colors.accent} style={styles.loader} />
+              ) : null}
+            </>
           )}
         </ScrollView>
       </View>
@@ -157,6 +221,7 @@ const styles = StyleSheet.create({
   empty: {
     fontFamily: fonts.handSemibold,
     fontSize: 18,
+    lineHeight: 18 * 1.3,
     color: colors.inkFaint,
     textAlign: 'center',
     marginTop: 40,

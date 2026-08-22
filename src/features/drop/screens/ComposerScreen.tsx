@@ -2,7 +2,7 @@
  * 08 Composer — "What happened here?" Pin your spot, write the confession on
  * ruled paper, pick a mood, drop it forever.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,23 +26,65 @@ import { MoodChips } from '../components/MoodChips';
 import { WriteCard } from '../components/WriteCard';
 import { useDeviceLocation } from '../../map/hooks';
 import { useCreateDrop } from '../hooks';
+import {
+  clearComposerDraft,
+  DROP_MAX_CHARS,
+  getComposerDraft,
+  setComposerDraft,
+} from '../../../services/storage';
+import { dropped as hapticDropped, failed as hapticFailed } from '../../../services/haptics';
+import type { ApiError } from '../../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Composer'>;
 
 export function ComposerScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [mood, setMood] = useState<Mood>('joy');
-  const [body, setBody] = useState('');
-  const { coord, shortAddress, city, status, refresh } = useDeviceLocation();
+  // Restore an unsent confession — the app dying (or a stray back tap) used to
+  // take the whole thing with it.
+  const restored = useRef(getComposerDraft()).current;
+  const [mood, setMood] = useState<Mood>((restored?.mood as Mood) ?? 'joy');
+  const [body, setBody] = useState(restored?.body ?? '');
+  const { coord, shortAddress, city } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
 
-  // This screen has its own location hook instance; warm it so we get a fix
-  // (and the Drop button enables) even if the user jumped straight here.
+  // Autosave every keystroke; MMKV writes are synchronous and tiny.
   useEffect(() => {
-    if (status === 'unknown') refresh();
-  }, [status, refresh]);
+    if (body.trim().length === 0) {
+      clearComposerDraft();
+      return;
+    }
+    setComposerDraft({ body, mood, updatedAt: Date.now() });
+  }, [body, mood]);
 
   const canDrop = !!coord && body.trim().length > 0 && !isPending;
+
+  // Set once the drop succeeded, so the confirm below doesn't fire on the
+  // navigation that *is* the success.
+  const submittedRef = useRef(false);
+
+  /**
+   * Leaving with words on the page asks first — this covers the close button,
+   * the Android back button and the swipe-back gesture in one place.
+   */
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      if (submittedRef.current || body.trim().length === 0) return;
+      e.preventDefault();
+      Alert.alert('Leave this here?', "We'll keep what you wrote for next time.", [
+        { text: 'Keep writing', style: 'cancel' },
+        { text: 'Leave', onPress: () => navigation.dispatch(e.data.action) },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            clearComposerDraft();
+            navigation.dispatch(e.data.action);
+          },
+        },
+      ]);
+    });
+    return unsubscribe;
+  }, [body, navigation]);
 
   const handleDrop = async () => {
     if (!canDrop) return;
@@ -54,17 +96,35 @@ export function ComposerScreen({ navigation }: Props) {
         placeLabel: shortAddress ?? undefined,
         city: city ?? undefined,
       });
+      clearComposerDraft();
+      submittedRef.current = true;
+      hapticDropped();
       navigation.replace('Dropped', { secretId: secret.id });
-    } catch {
-      Alert.alert('Could not drop', 'Check your connection and try again.');
+    } catch (err) {
+      hapticFailed();
+      const apiErr = err as ApiError;
+      // The draft stays on disk, so nothing is lost by failing here.
+      Alert.alert(
+        'Could not drop',
+        apiErr?.code === 'network' || apiErr?.code === 'timeout'
+          ? "You look offline. What you wrote is saved — try again in a moment."
+          : (apiErr?.message ?? 'Check your connection and try again.'),
+      );
     }
   };
+
+  const dropLabel = isPending
+    ? 'Dropping…'
+    : !coord
+      ? 'Finding your spot…'
+      : 'Drop here · forever';
 
   return (
     <PaperScreen>
       <MapTexture dense />
 
       <CloseX
+        label="Close without dropping"
         onPress={() => navigation.goBack()}
         style={[styles.close, { top: insets.top + 54 }]}
       />
@@ -73,7 +133,7 @@ export function ComposerScreen({ navigation }: Props) {
         <Text style={styles.spotPillText}>Dropping at this spot</Text>
       </View>
       <Text style={[styles.placeLbl, { top: insets.top + 62 }]}>
-        {shortAddress?.toUpperCase() ?? 'LOCATING…'}
+        {shortAddress?.toUpperCase() ?? (coord ? 'THIS SPOT' : 'LOCATING…')}
       </Text>
       <View style={[styles.marker, { top: insets.top + 58 }]}>
         <PulseRing
@@ -103,6 +163,7 @@ export function ComposerScreen({ navigation }: Props) {
             onChangeText={setBody}
             sign="— anonymous, here, now"
             count={body.length}
+            maxLength={DROP_MAX_CHARS}
           />
 
           <MoodChips
@@ -112,7 +173,7 @@ export function ComposerScreen({ navigation }: Props) {
           />
 
           <AppButton
-            label={isPending ? 'Dropping…' : 'Drop here · forever'}
+            label={dropLabel}
             iconLeft={
               <SealPinIcon
                 size={18}

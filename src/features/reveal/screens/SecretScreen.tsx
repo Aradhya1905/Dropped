@@ -12,6 +12,7 @@ import {
   CloseX,
   EmotionTag,
   MapTexture,
+  MetaFoot,
   PaperScreen,
   Tape,
 } from '../../../design-system/components';
@@ -19,6 +20,8 @@ import { BookmarkIcon, HeartIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useSave, useHeart, useReport } from '../hooks';
+import { droppedAgo } from '../../../utils/format';
+import { tap } from '../../../services/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Secret'>;
 
@@ -49,8 +52,10 @@ export function SecretScreen({ navigation, route }: Props) {
         </View>
 
         <Pressable
+          accessibilityHint="Hold to report this secret"
           onLongPress={() => {
             if (reported) return;
+            tap();
             Alert.alert('Report this secret?', 'It will be reviewed and may be removed.', [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Report', style: 'destructive', onPress: () => report('inappropriate') },
@@ -82,7 +87,7 @@ export function SecretScreen({ navigation, route }: Props) {
             <View style={styles.dash} />
             <View style={styles.footGrid}>
               <View>
-                <Text style={styles.dropped}>— {secret ? _yearsAgo(secret.drop.createdAt) : ''}</Text>
+                <Text style={styles.dropped}>— {secret ? droppedAgo(secret.drop.createdAt) : ''}</Text>
                 <Text style={styles.byline}>by someone who{'\n'}stood right here</Text>
               </View>
               <View style={styles.stood}>
@@ -95,7 +100,12 @@ export function SecretScreen({ navigation, route }: Props) {
 
         <View style={styles.actions}>
           <Pressable
-            onPress={save.toggle}
+            accessibilityRole="button"
+            accessibilityLabel={save.saved ? 'Remove from your collection' : 'Save to your collection'}
+            onPress={() => {
+              tap();
+              save.toggle();
+            }}
             disabled={save.isPending}
             style={({ pressed }) => [
               styles.saveBtn,
@@ -113,8 +123,12 @@ export function SecretScreen({ navigation, route }: Props) {
             </Text>
           </Pressable>
           <Pressable
-            accessibilityLabel="I feel this"
-            onPress={heart.toggle}
+            accessibilityRole="button"
+            accessibilityLabel={heart.hearted ? 'Undo "I feel this"' : 'I feel this'}
+            onPress={() => {
+              tap();
+              heart.toggle();
+            }}
             disabled={heart.isPending}
             style={({ pressed }) => [
               styles.heartBtn,
@@ -125,15 +139,13 @@ export function SecretScreen({ navigation, route }: Props) {
             <HeartIcon size={21} color={heart.hearted ? colors.accentDeep : colors.ink} />
           </Pressable>
         </View>
+
+        <MetaFoot style={styles.reportHint}>
+          {reported ? 'reported · thanks for the flag' : 'hold the card to report it'}
+        </MetaFoot>
       </View>
     </PaperScreen>
   );
-}
-
-function _yearsAgo(ms: number): string {
-  const years = Math.round((Date.now() - ms) / (365.25 * 24 * 3600 * 1000));
-  if (years < 1) return 'just now';
-  return `dropped ${years} year${years === 1 ? '' : 's'} ago`;
 }
 
 const styles = StyleSheet.create({
@@ -251,6 +263,7 @@ const styles = StyleSheet.create({
     color: colors.inkFaint,
   },
   actions: { flexDirection: 'row', gap: 12, marginTop: 18 },
+  reportHint: { textAlign: 'center', marginTop: 12 },
   saveBtn: {
     flex: 1,
     height: 54,

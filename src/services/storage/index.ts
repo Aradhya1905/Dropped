@@ -8,14 +8,18 @@ import { createMMKV } from 'react-native-mmkv';
 import {
   DEFAULT_MAP_STYLE,
   DEFAULT_NOTIFICATION_MODE,
+  DRAFT_MAX_AGE_MS,
   EMPTY_STEP_STATE,
   StorageKeys,
+  type ComposerDraft,
   type MapStyle,
   type NotificationMode,
   type StepState,
 } from './keys';
+import type { Coordinate } from '../../types';
 
-export type { MapStyle, NotificationMode, StepState } from './keys';
+export type { ComposerDraft, MapStyle, NotificationMode, StepState } from './keys';
+export { DROP_MAX_CHARS } from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
 
@@ -144,6 +148,49 @@ export function getStepState(): StepState {
 
 export function setStepState(state: StepState): void {
   setJSON(StorageKeys.stepState, state);
+}
+
+// --- last known position -----------------------------------------------------
+
+/**
+ * The last GPS fix we saw. Lets a cold start centre the map (and answer
+ * "how far away is this?") immediately instead of blocking on a new fix.
+ */
+export function getLastCoord(): Coordinate | null {
+  const c = getJSON<Coordinate | null>(StorageKeys.lastCoord, null);
+  return c && typeof c.lat === 'number' && typeof c.lng === 'number' ? c : null;
+}
+
+export function setLastCoord(coord: Coordinate): void {
+  setJSON(StorageKeys.lastCoord, coord);
+}
+
+// --- composer draft ----------------------------------------------------------
+
+/** The unsent confession, if there is a recent one. */
+export function getComposerDraft(): ComposerDraft | null {
+  const draft = getJSON<ComposerDraft | null>(StorageKeys.composerDraft, null);
+  if (!draft || !draft.body) return null;
+  if (Date.now() - draft.updatedAt > DRAFT_MAX_AGE_MS) return null;
+  return draft;
+}
+
+export function setComposerDraft(draft: ComposerDraft): void {
+  setJSON(StorageKeys.composerDraft, draft);
+}
+
+export function clearComposerDraft(): void {
+  mmkv.remove(StorageKeys.composerDraft);
+}
+
+// --- haptics -----------------------------------------------------------------
+
+export function getHapticsEnabled(): boolean {
+  return mmkv.getBoolean(StorageKeys.hapticsEnabled) ?? true;
+}
+
+export function setHapticsEnabled(on: boolean): void {
+  mmkv.set(StorageKeys.hapticsEnabled, on);
 }
 
 /** Test/escape hatch: wipe everything. */

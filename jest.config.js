@@ -3,6 +3,6 @@ module.exports = {
   setupFiles: ['./jest.setup.js'],
   // These ship untranspiled ESM; let Babel transform them in tests.
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|@react-navigation|react-native-gesture-handler|react-native-safe-area-context|react-native-screens|react-native-svg|@maplibre/maplibre-react-native|@mapbox)/)',
+    'node_modules/(?!(react-native|@react-native|@react-navigation|react-native-gesture-handler|react-native-safe-area-context|react-native-screens|react-native-svg|react-native-modal|react-native-animatable|@maplibre/maplibre-react-native|@mapbox)/)',
   ],
 };

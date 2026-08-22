@@ -28,11 +28,14 @@ export function WriteCard({
   onChangeText,
   sign,
   count,
+  maxLength,
 }: {
   value: string;
   onChangeText: (t: string) => void;
   sign: string;
   count: number;
+  /** Hard cap; when set the counter reads "n/max" so the limit isn't a surprise. */
+  maxLength?: number;
 }) {
   return (
     <View style={styles.card}>
@@ -43,8 +46,10 @@ export function WriteCard({
         value={value}
         onChangeText={onChangeText}
         multiline
+        maxLength={maxLength}
         placeholder="What happened here?"
         placeholderTextColor={colors.inkFaint}
+        accessibilityLabel="Your confession"
         scrollEnabled={false}
       />
       <View style={styles.foot}>
@@ -54,8 +59,8 @@ export function WriteCard({
           editable={false}
         />
         <TextInput
-          style={styles.count}
-          value={String(count)}
+          style={[styles.count, maxLength != null && count >= maxLength && styles.countFull]}
+          value={maxLength != null ? `${count}/${maxLength}` : String(count)}
           editable={false}
         />
       </View>
@@ -107,4 +112,5 @@ const styles = StyleSheet.create({
     color: colors.inkFaint,
     padding: 0,
   },
+  countFull: { color: colors.accentDeep },
 });

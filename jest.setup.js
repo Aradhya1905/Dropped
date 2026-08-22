@@ -20,6 +20,30 @@ jest.mock('react-native-safe-area-context', () => {
   return { SafeAreaProvider, ...rest };
 });
 
+// react-native-geolocation-service ships untranspiled ESM and has no native
+// binding under Jest; App -> locationStore -> services/location pulls it in.
+jest.mock('react-native-geolocation-service', () => ({
+  __esModule: true,
+  default: {
+    getCurrentPosition: jest.fn(),
+    watchPosition: jest.fn(() => 1),
+    clearWatch: jest.fn(),
+    requestAuthorization: jest.fn(() => Promise.resolve('denied')),
+  },
+}));
+
+// Native modules with no Jest binding, pulled in transitively by the screens.
+jest.mock('react-native-compass-heading', () => ({
+  __esModule: true,
+  default: { start: jest.fn(), stop: jest.fn() },
+}));
+
+jest.mock('react-native-config', () => ({
+  __esModule: true,
+  default: {},
+  Config: {},
+}));
+
 // react-native-mmkv is a Nitro native module with no Jest preset; provide an
 // in-memory stand-in so any test that transitively imports services/storage
 // (e.g. App → pedometer → api → storage) loads without the native binding.
@@ -32,6 +56,7 @@ jest.mock('react-native-mmkv', () => {
     getNumber: k => (typeof store.get(k) === 'number' ? store.get(k) : undefined),
     set: (k, v) => store.set(k, v),
     delete: k => store.delete(k),
+    remove: k => store.delete(k),
     contains: k => store.has(k),
     clearAll: () => store.clear(),
   };

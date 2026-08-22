@@ -23,6 +23,8 @@ export interface WaxSealProps {
   children?: React.ReactNode;
   /** When set, the seal becomes a button (the stamp FABs). */
   onPress?: () => void;
+  /** Screen-reader name for the button form — the glyph carries no text. */
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -33,6 +35,7 @@ export function WaxSeal({
   shadow = 'seal',
   children,
   onPress,
+  accessibilityLabel,
   style,
 }: WaxSealProps) {
   const gradId = useRef(`waxGrad${sealGradientSeq++}`).current;
@@ -89,7 +92,13 @@ export function WaxSeal({
     return seal;
   }
   return (
-    <Pressable onPress={onPress} hitSlop={6} style={({ pressed }) => [pressed && styles.pressed, style]}>
+    <Pressable
+      onPress={onPress}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [pressed && styles.pressed, style]}
+    >
       {seal}
     </Pressable>
   );

@@ -24,7 +24,10 @@ import { colors, fonts, shadows } from '../../../design-system/tokens';
 import { Compass } from '../components/Compass';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useDeviceLocation } from '../../map/hooks';
+import { useSave } from '../../reveal/hooks';
 import { haversineMeters, bearingTo } from '../../../utils/geo';
+import { relativeTime } from '../../../utils/format';
+import { tap } from '../../../services/haptics';
 import { useCompassHeading } from '../../../services/location/useCompassHeading';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SecretDetail'>;
@@ -47,7 +50,8 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { secretId } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
-  const { coord } = useDeviceLocation();
+  const { coord, live } = useDeviceLocation();
+  const save = useSave(secretId);
 
   const deviceHeading = useCompassHeading();
 
@@ -78,8 +82,8 @@ export function SecretDetailScreen({ navigation, route }: Props) {
         <View style={[styles.inner, { paddingBottom: insets.bottom + 26 }]}>
           <Grabber style={styles.grabber} />
           <View style={styles.head}>
-            <EmotionTag label="ache" />
-            <CloseX onPress={() => navigation.goBack()} />
+            <EmotionTag label={secret?.mood ?? 'ache'} />
+            <CloseX label="Close this secret" onPress={() => navigation.goBack()} />
           </View>
 
           <Compass rotation={needleRotation} />
@@ -91,9 +95,11 @@ export function SecretDetailScreen({ navigation, route }: Props) {
             </Text>
           </View>
           <Text style={styles.walkMeta}>
-            {walkMins != null
-              ? `${walkMins} min walk${cardinal != null ? ` · heading ${cardinal}` : ''}`
-              : 'Locating…'}
+            {walkMins == null
+              ? 'Locating…'
+              : `${walkMins} min walk${cardinal != null ? ` · heading ${cardinal}` : ''}${
+                  live ? '' : ' · from your last known spot'
+                }`}
           </Text>
 
           <View style={styles.addrTag}>
@@ -101,7 +107,7 @@ export function SecretDetailScreen({ navigation, route }: Props) {
             <View style={styles.addrWho}>
               <Text style={styles.addrName}>{secret?.drop.placeLabel ?? 'Unknown place'}</Text>
               <Text style={styles.addrStreet}>
-                {secret ? new Date(secret.drop.createdAt).toLocaleDateString() : ''}
+                {secret ? relativeTime(secret.drop.createdAt) : ''}
               </Text>
             </View>
             <View style={styles.addrFound}>
@@ -134,7 +140,17 @@ export function SecretDetailScreen({ navigation, route }: Props) {
                 })
               }
             />
-            <AppButton label="Save to come back later" variant="ghost" onPress={() => navigation.goBack()} />
+            <AppButton
+              label={save.saved ? 'Saved for later' : 'Save to come back later'}
+              variant="ghost"
+              onPress={() => {
+                // The button used to just close the sheet — actually save now,
+                // and leave the screen open so the label confirms it.
+                if (save.isPending) return;
+                tap();
+                save.toggle();
+              }}
+            />
           </View>
         </View>
       </Sheet>

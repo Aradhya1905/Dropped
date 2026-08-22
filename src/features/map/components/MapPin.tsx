@@ -12,10 +12,13 @@ import { colors } from '../../../design-system/tokens';
 export function MapPin({
   deltaY = -9,
   duration = 9000,
+  accessibilityLabel,
   onPress,
 }: {
   deltaY?: number;
   duration?: number;
+  /** Screen-reader name — the pin is a lock glyph with no text. */
+  accessibilityLabel?: string;
   onPress?: () => void;
 }) {
   return (
@@ -23,6 +26,8 @@ export function MapPin({
       <Pressable
         onPress={onPress}
         hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? 'Sealed secret'}
         style={({ pressed }) => [styles.pin, pressed && styles.pressed]}
       >
         <LockIcon size={14} color={colors.inkSoft} strokeWidth={1.5} />

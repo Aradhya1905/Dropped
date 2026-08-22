@@ -20,8 +20,8 @@ import {
 } from '../../../design-system/components';
 import { AnonLockIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
-import { getCurrent, requestPermission } from '../../../services/location';
 import { requestPermission as requestActivityPermission } from '../../../services/pedometer';
+import { useLocationStore } from '../../../store/locationStore';
 import { setOnboardingComplete } from '../../../services/storage';
 import { LocationPermissionSheet } from '../../map/components';
 import { RadiusStage } from '../components/RadiusStage';
@@ -35,6 +35,10 @@ export function LocationScreen({ navigation }: Props) {
     navigation.replace('Main');
   };
 
+  // Go through the shared store, so granting here starts the app-wide GPS
+  // watch every other screen reads from.
+  const requestLocation = useLocationStore(s => s.request);
+
   const [busy, setBusy] = useState(false);
   // Sheet only surfaces when the OS will no longer prompt (Settings needed).
   const [blockedSheet, setBlockedSheet] = useState(false);
@@ -43,10 +47,10 @@ export function LocationScreen({ navigation }: Props) {
   const allow = async () => {
     setBusy(true);
     try {
-      const status = await requestPermission();
+      // `request()` starts the shared watch on grant, so the map has a fix
+      // waiting by the time we land on it.
+      const status = await requestLocation();
       if (status === 'granted') {
-        // Warm the GPS so the map has a fix waiting; don't block on it.
-        getCurrent().catch(() => {});
         // Ask for motion access here too, so the app start never prompts. The
         // step counter is optional — degrade silently if denied.
         requestActivityPermission().catch(() => {});

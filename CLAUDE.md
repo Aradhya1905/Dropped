@@ -57,8 +57,12 @@ To add a weight later: drop the `.ttf` in `assets/fonts/`, re-run `npx react-nat
 - `features/` — one folder per domain (`onboarding map nearby drop reveal trail settings`);
   each has `screens/ components/ hooks/ api/ types.ts`. `trail/` was added for
   the design's Trail tab (found/saved/dropped scrapbook).
-- `services/` — vendor integrations behind adapters (`api storage maps location notifications analytics`)
-- `store/` — global Zustand stores
+- `services/` — vendor integrations behind adapters (`api storage maps location notifications analytics haptics pedometer`)
+- `store/` — global Zustand stores. `locationStore` owns the app's **single** GPS
+  watch, permission state and resolved address — read it via
+  `features/map/hooks/useDeviceLocation`, never start a second watch.
+  `dropsStore` holds every secret the app knows about; list queries feed it
+  through `hydrateDrops` so detail/walk/reveal screens can find one by id.
 - `utils/` — `geo.ts` (haversine, isWithin), format, validators
 - `types/` — `Coordinate`, `Drop`, `Secret`, `RevealState`, `REVEAL_RADIUS_M = 50`
 
@@ -88,7 +92,8 @@ RootStack: Welcome → HowItWorks → Location → Main
 - Root `App.tsx` just re-exports `src/app/App.tsx` — edit the shell there.
 - Full architecture notes: [Documentation/2026-05-31-architecture.md](Documentation/2026-05-31-architecture.md);
   screens & navigation: [Documentation/2026-06-12-screens-and-navigation.md](Documentation/2026-06-12-screens-and-navigation.md);
-  remaining work / roadmap: [Documentation/2026-06-13-remaining-work.md](Documentation/2026-06-13-remaining-work.md).
+  remaining work / roadmap: [Documentation/2026-06-13-remaining-work.md](Documentation/2026-06-13-remaining-work.md);
+  UX repair pass + on-device test script: [Documentation/2026-08-22-ux-repair-pass.md](Documentation/2026-08-22-ux-repair-pass.md).
 
 ## Package manager
 Use **yarn** (not npm) for all installs. `yarn add <pkg>` / `yarn add -D <pkg>`.

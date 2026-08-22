@@ -26,7 +26,8 @@ export function LocChip({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? 'Refresh your location' : undefined}
+      accessibilityLabel={onPress ? `${kicker} ${place}. Tap to refresh your location.` : undefined}
+      hitSlop={8}
       style={({ pressed }) => [styles.chip, style, pressed && onPress ? styles.pressed : null]}
     >
       <View style={styles.dot} />
