@@ -7,11 +7,19 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 
-import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
+import {
+  FunKicker,
+  MapTexture,
+  PaperScreen,
+} from '../../../design-system/components';
 import { ClockIcon, HumIcon, LayersIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { Passport } from '../components/Passport';
-import { getDeviceId, getMapStyle, getNotificationMode } from '../../../services/storage';
+import {
+  getDeviceId,
+  getMapStyle,
+  getNotificationMode,
+} from '../../../services/storage';
 import { mapStyleLabel } from '../../../services/maps';
 import { useDeviceInfo } from '../hooks';
 
@@ -47,14 +55,20 @@ export function YouScreen() {
       <MapTexture blur />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 12 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 12 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <FunKicker centered style={styles.kicker}>
           hello, stranger.
         </FunKicker>
 
-        <Passport deviceId={deviceId} quotaRemaining={deviceInfo?.dropsQuotaRemaining} />
+        <Passport
+          deviceId={deviceId}
+          quotaRemaining={deviceInfo?.dropsQuotaRemaining}
+        />
 
         <View style={styles.setList}>
           {settings.map(s => (
@@ -72,14 +86,21 @@ export function YouScreen() {
             {RULES.map((rule, i) => (
               <View
                 key={rule}
-                style={[styles.rule, { transform: [{ rotate: i % 2 === 0 ? '-0.6deg' : '0.5deg' }] }]}
+                style={[
+                  styles.rule,
+                  {
+                    transform: [{ rotate: i % 2 === 0 ? '-0.6deg' : '0.5deg' }],
+                  },
+                ]}
               >
                 <Text style={styles.star}>✦</Text>
                 <Text style={styles.ruleText}>{rule}</Text>
               </View>
             ))}
           </View>
-          <Text style={styles.rulesSign}>— kept by everyone who walks here</Text>
+          <Text style={styles.rulesSign}>
+            — kept by everyone who walks here
+          </Text>
         </View>
       </ScrollView>
     </PaperScreen>

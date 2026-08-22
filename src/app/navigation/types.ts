@@ -2,6 +2,7 @@
  * Route maps for the whole app.
  *
  * RootStack (headerless native-stack)
+ * ├─ Splash                                    (launch screen 00, resets onward)
  * ├─ Welcome → HowItWorks → Location          (onboarding, screens 01–03)
  * ├─ Main → MainTabs: Map · Trail · You       (design tabbar)
  * │    └─ MapTab → MapStack: MapHome → Walk   (04 → 04a/b/c beats)
@@ -25,6 +26,7 @@ export type MainTabParamList = {
 };
 
 export type RootStackParamList = {
+  Splash: undefined;
   Welcome: undefined;
   HowItWorks: undefined;
   Location: undefined;

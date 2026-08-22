@@ -20,7 +20,13 @@
       "Bash(node -e \"const d=require\\('./v5gray.json'\\); console.log\\('SOURCES',JSON.stringify\\(d.sources,null,1\\)\\); console.log\\('SPRITE',d.sprite\\); console.log\\('GLYPHS',d.glyphs\\);\")",
       "Bash(git checkout *)",
       "Bash(git merge *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(yarn *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "PowerShell(yarn *)",
+      "PowerShell(npm *)",
+      "PowerShell(npx *)"
     ]
   },
   "plansDirectory": ".claude/plans"

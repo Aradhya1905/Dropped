@@ -4,3 +4,4 @@ export type {
   LocationStatus,
 } from './useDeviceLocation';
 export { useNearbyDrops } from './useNearbyDrops';
+export { useFootRoute } from './useFootRoute';

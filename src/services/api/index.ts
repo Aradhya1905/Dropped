@@ -113,6 +113,16 @@ export interface ApiSecret {
   distanceMeters?: number;
 }
 
+/** A walking route from the /route/foot proxy. `available` is false (and the
+ * rest null) when no provider could serve it — the client then draws no path. */
+export interface ApiFootRoute {
+  available: boolean;
+  provider: 'ors' | 'mapbox' | null;
+  geometry: { type: 'LineString'; coordinates: [number, number][] } | null;
+  distanceMeters: number | null;
+  durationSeconds: number | null;
+}
+
 export interface ApiDeviceInfo {
   deviceId: string;
   createdAt: number;
@@ -150,6 +160,14 @@ export const postDeviceSteps = (entries: { day: string; delta: number }[]) =>
 
 export const fetchNearbyDrops = (lat: number, lng: number, radiusMeters = 2000) =>
   api.get<{ secrets: ApiSecret[] }>('/drops/nearby', { params: { lat, lng, radiusMeters } }).then(r => r.data);
+
+/** Server-proxied walking route from `from` → `to` (for the Walk screen path). */
+export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>
+  api
+    .get<ApiFootRoute>('/route/foot', {
+      params: { fromLat: from.lat, fromLng: from.lng, toLat: to.lat, toLng: to.lng },
+    })
+    .then(r => r.data);
 
 export const createDrop = (body: string, mood: Mood, coordinate: Coordinate, placeLabel?: string, city?: string) =>
   api.post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city }).then(r => r.data);

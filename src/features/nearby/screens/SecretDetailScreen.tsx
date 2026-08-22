@@ -70,7 +70,10 @@ export function SecretDetailScreen({ navigation, route }: Props) {
       ? ((dropBearing - deviceHeading + 360) % 360)
       : dropBearing;
 
-  const cardinal = deviceHeading != null ? toCardinal(deviceHeading) : null;
+  // Text label points the way to walk: absolute bearing user → drop (pure GPS,
+  // independent of which way the phone faces). The needle above still uses
+  // deviceHeading so it spins with the phone.
+  const cardinal = dropBearing != null ? toCardinal(dropBearing) : null;
 
   const walkMins = distM != null ? Math.max(1, Math.round(distM / 80)) : null;
 

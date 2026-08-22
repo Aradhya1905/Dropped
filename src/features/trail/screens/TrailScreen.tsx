@@ -15,6 +15,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { FunKicker, MapTexture, PaperScreen } from '../../../design-system/components';
 import { colors, fonts } from '../../../design-system/tokens';
@@ -39,9 +41,17 @@ const EMPTY_COPY = {
 
 export function TrailScreen() {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<'found' | 'saved' | 'dropped'>('found');
   // How much of each feed we've asked for; grows as the user scrolls.
   const [limits, setLimits] = useState({ found: PAGE, saved: PAGE, dropped: PAGE });
+
+  // Coming back to the tab should show what changed while you were away.
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['trail'] });
+    }, [queryClient]),
+  );
 
   const found = useTrailFound(limits.found);
   const saved = useTrailSaved(limits.saved);

@@ -121,19 +121,33 @@ export function watch(
 ): () => void {
   const startedAt = Date.now();
   let best: GeoPosition | null = null;
+  // The accuracy floor is a *cold-start* gate only: it suppresses the junky
+  // network/cell fix GPS emits before satellites warm up. Once we've delivered
+  // a first fix we stream every subsequent one — a coarse fix at the user's new
+  // position still tracks movement better than a precise fix frozen at the old
+  // one (which is what pinned the dot in place before).
+  let acquired = false;
 
   const id = Geolocation.watchPosition(
     p => {
-      // Track the most accurate fix seen so far.
+      if (acquired) {
+        onCoordinate(toCoordinate(p));
+        return;
+      }
+
+      // Acquisition phase: track the most accurate fix seen so far.
       if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
 
       const accurate = p.coords.accuracy <= ACCURACY_FLOOR_M;
       const graceExpired = Date.now() - startedAt >= ACCURACY_GRACE_MS;
 
       if (accurate) {
+        acquired = true;
         onCoordinate(toCoordinate(p));
       } else if (graceExpired && best) {
-        // No GPS-grade fix arrived in time; surface the best we got.
+        // No GPS-grade fix arrived in time; surface the best we got, then start
+        // streaming so the dot keeps up even where accuracy stays coarse.
+        acquired = true;
         onCoordinate(toCoordinate(best));
       }
       // else: coarse early fix, still within grace — wait for a better one.

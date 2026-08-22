@@ -76,3 +76,22 @@ jest.mock('@maplibre/maplibre-react-native', () => {
     Camera: CameraMock,
   };
 });
+
+// Firebase Crashlytics ships untranspiled ESM and needs a native binding;
+// services/analytics pulls it in from App. Stub the modular API surface.
+jest.mock('@react-native-firebase/crashlytics', () => ({
+  __esModule: true,
+  getCrashlytics: jest.fn(() => ({})),
+  setUserId: jest.fn(),
+  log: jest.fn(),
+  recordError: jest.fn(),
+  setCrashlyticsCollectionEnabled: jest.fn(),
+  crash: jest.fn(),
+}));
+
+// react-native-bootsplash is native-only; App hides the splash on mount.
+jest.mock('react-native-bootsplash', () => ({
+  __esModule: true,
+  default: { hide: jest.fn(() => Promise.resolve()), isVisible: jest.fn(() => Promise.resolve(false)) },
+  hide: jest.fn(() => Promise.resolve()),
+}));

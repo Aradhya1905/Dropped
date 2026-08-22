@@ -3,9 +3,10 @@
  * your geo-anchored position dot (via MapLibre UserLocation), the drop FAB,
  * and the "within range" card when you're within 50 m of a drop.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -19,7 +20,11 @@ import type {
 } from '../../../app/navigation/types';
 import { WaxSeal } from '../../../design-system/components';
 import { useMaplibreAdapter } from '../../../services/maps';
-import { LayersIcon, LocateIcon, QuillIcon } from '../../../design-system/icons';
+import {
+  LayersIcon,
+  LocateIcon,
+  QuillIcon,
+} from '../../../design-system/icons';
 import { colors, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation, useNearbyDrops } from '../hooks';
 import { LocChip } from '../components/LocChip';
@@ -47,7 +52,8 @@ export function MapScreen({ navigation }: Props) {
   const { coord, live, shortAddress, status, request, refresh } = useDeviceLocation();
   // Open the map already centered on the user (or on the last place we knew
   // them to be) so the default center never flashes.
-  const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } = useMaplibreAdapter(coord ?? undefined);
+  const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
+    useMaplibreAdapter(coord ?? undefined);
   const { data: drops = [], isError: dropsFailed, refetch: refetchDrops } = useNearbyDrops(coord);
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
   const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
@@ -71,6 +77,37 @@ export function MapScreen({ navigation }: Props) {
   useEffect(() => {
     if (needsPermission) setPermissionSheetOpen(true);
   }, [needsPermission]);
+
+  // RN has no window-focus events, so react-query never refetches on its own
+  // when we come back from the composer/reveal flow. Pull the list again on
+  // screen focus so a fresh drop shows up without an app restart.
+  useFocusEffect(
+    useCallback(() => {
+      refetchDrops();
+    }, [refetchDrops]),
+  );
+
+  // Secret markers depend only on the drops list — memoize so streaming GPS
+  // fixes (which re-render this screen) don't rebuild every marker and churn
+  // the native map (flicker). Must run before the coord==null early return.
+  const dropMarkers = useMemo(
+    () =>
+      drops.map((secret, i) => (
+        <Marker
+          key={secret.id}
+          id={secret.id}
+          lngLat={[secret.drop.coordinate.lng, secret.drop.coordinate.lat]}
+        >
+          <MapPin
+            deltaY={i % 2 === 0 ? -9 : 9}
+            duration={9000 + i * 1000}
+            accessibilityLabel={`Sealed secret at ${secret.drop.placeLabel ?? 'an unnamed spot'}`}
+            onPress={() => navigation.navigate('SecretDetail', { secretId: secret.id })}
+          />
+        </Marker>
+      )),
+    [drops, navigation],
+  );
 
   // Recenter map on first real fix.
   const centeredRef = useRef(false);
@@ -112,26 +149,20 @@ export function MapScreen({ navigation }: Props) {
   // Nearest drop within 50 m drives the RangeCard.
   const nearestInRange = drops.find(s => isWithin(coord, s.drop.coordinate));
 
+  // FAB vertical anchors. With the RangeCard docked the drop seal should
+  // half-overlap the card's top-right corner (per design 04), with the recenter
+  // FAB stacked just above it. Card bottom = insets.bottom + 12, height ~96, so
+  // its top edge sits at insets.bottom + 108; the 58px drop seal straddles it.
+  const dropFabBottom = nearestInRange ? insets.bottom + 49 : 100;
+  const recenterFabBottom = dropFabBottom + 70;
+
   return (
     <View style={styles.root}>
       <MaplibreView>
         <Marker id="user-location" lngLat={[coord.lng, coord.lat]}>
           <UserDot />
         </Marker>
-        {drops.map((secret, i) => (
-          <Marker
-            key={secret.id}
-            id={secret.id}
-            lngLat={[secret.drop.coordinate.lng, secret.drop.coordinate.lat]}
-          >
-            <MapPin
-              deltaY={i % 2 === 0 ? -9 : 9}
-              duration={9000 + i * 1000}
-              accessibilityLabel={`Sealed secret at ${secret.drop.placeLabel ?? 'an unnamed spot'}`}
-              onPress={() => navigation.navigate('SecretDetail', { secretId: secret.id })}
-            />
-          </Marker>
-        ))}
+        {dropMarkers}
       </MaplibreView>
 
       <LocChip
@@ -171,7 +202,11 @@ export function MapScreen({ navigation }: Props) {
           refresh();
           adapter.flyTo(coord);
         }}
-        style={({ pressed }) => [styles.recenterFab, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.recenterFab,
+          { bottom: recenterFabBottom },
+          pressed && styles.pressed,
+        ]}
       >
         <LocateIcon size={21} />
       </Pressable>
@@ -181,7 +216,7 @@ export function MapScreen({ navigation }: Props) {
         shadow="sealLarge"
         accessibilityLabel="Drop a secret here"
         onPress={() => navigation.navigate('Composer')}
-        style={styles.dropFab}
+        style={[styles.dropFab, { bottom: dropFabBottom }]}
       >
         <QuillIcon size={25} />
       </WaxSeal>
@@ -242,7 +277,6 @@ const styles = StyleSheet.create({
   recenterFab: {
     position: 'absolute',
     right: 18,
-    bottom: 168,
     zIndex: 21,
     width: 46,
     height: 46,
@@ -254,7 +288,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     boxShadow: shadows.chip,
   },
-  dropFab: { position: 'absolute', right: 18, bottom: 100, zIndex: 21 },
+  dropFab: { position: 'absolute', right: 18, zIndex: 21 },
   rangeCard: {
     position: 'absolute',
     left: 16,

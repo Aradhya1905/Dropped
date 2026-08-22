@@ -45,7 +45,9 @@ export function droppedMapStyle(
   const style = {
     version: 8,
     glyphs: useGeist ? glyphsUrl : NOTO_GLYPHS,
-    sprite: 'https://protomaps.github.io/basemaps-assets/sprites/v4/light',
+    // No `sprite`: this style draws only fills, lines, and text labels — no
+    // icon-image symbols — so a sprite sheet is unused. Including one just makes
+    // MapLibre fetch it and log a load error when the host is unreachable.
     sources: {
       protomaps: {
         type: 'vector',

@@ -2,32 +2,10 @@ import React, { useEffect } from 'react';
 import { AppState, type AppStateStatus, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClientProvider } from '@tanstack/react-query';
 
-import type { ApiError } from '../../services/api';
 import { useLocationStore } from '../../store/locationStore';
-
-/**
- * Defaults matter here: everything this app shows is tied to where the user is
- * standing *now*, so stale-but-instant beats a spinner, and a dropped
- * connection should retry rather than dead-end.
- */
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      gcTime: 30 * 60_000,
-      // Retry connection problems; a 4xx won't fix itself.
-      retry: (failureCount, error) => {
-        const code = (error as unknown as ApiError)?.code;
-        return (code === 'network' || code === 'timeout') && failureCount < 2;
-      },
-      retryDelay: attempt => Math.min(1000 * 2 ** attempt, 8000),
-      refetchOnReconnect: true,
-    },
-    mutations: { retry: 0 },
-  },
-});
+import { queryClient } from '../queryClient';
 
 /**
  * React Query's web focus detection doesn't exist on native — wire it to

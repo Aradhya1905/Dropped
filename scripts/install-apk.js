@@ -9,7 +9,7 @@
  *   - adb install -r <debug apk>
  *   - adb shell am start -n <package>/.MainActivity
  *
- * Run `yarn start-free` (or start-auto) in another terminal first.
+ * Run `yarn start` in another terminal first.
  *
  * Usage:
  *   node scripts/install-apk.js                 -> first device (prefers emulator)
@@ -111,7 +111,7 @@ const port = readMetroPort();
 if (port === null) {
   console.error(
     '\nNo Metro port found (scripts/.metro-port missing).\n' +
-      'Start Metro first in another terminal:  yarn start-free\n',
+      'Start Metro first in another terminal:  yarn start\n',
   );
   process.exit(1);
 }

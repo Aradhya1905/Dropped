@@ -29,7 +29,7 @@ function merge(prev: Secret | undefined, next: Secret): Secret {
   };
 }
 
-export const useDropsStore = create<DropsState>(set => ({
+export const useDropsStore = create<DropsState>()(set => ({
   drops: [],
 
   upsertDrop(secret: Secret) {

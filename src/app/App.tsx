@@ -8,7 +8,9 @@ import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { enableFreeze } from 'react-native-screens';
 
 import { colors } from '../design-system/tokens';
+import { identifyDevice } from '../services/analytics';
 import { initStepCounting } from '../services/pedometer';
+import { getDeviceId } from '../services/storage';
 import { bootstrapLocation, useLocationStore } from '../store/locationStore';
 import { RootNavigator } from './navigation';
 import { AppProviders } from './providers';
@@ -29,6 +31,9 @@ const theme = {
 };
 
 export default function App(): React.JSX.Element {
+  // Tag crash reports with the anonymous device id (no PII).
+  useEffect(() => identifyDevice(getDeviceId()), []);
+
   // Count steps for the Trail's "steps this month" stat while the app is open.
   useEffect(() => initStepCounting(), []);
 

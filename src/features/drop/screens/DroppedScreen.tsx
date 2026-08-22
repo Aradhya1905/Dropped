@@ -35,7 +35,10 @@ export function DroppedScreen({ navigation, route }: Props) {
       <Postmark style={[styles.postmark, { top: insets.top + 16 }]} />
 
       <View
-        style={[styles.view, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 26 }]}
+        style={[
+          styles.view,
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 26 },
+        ]}
       >
         <FunKicker centered style={styles.kicker}>
           and… it's out of your hands.
@@ -57,11 +60,16 @@ export function DroppedScreen({ navigation, route }: Props) {
           ))}
           <FloatBob rotate={-3} deltaRotate={-0.6} deltaY={-7} duration={9000}>
             <View style={styles.card}>
-              <Tape width={56} height={18} rotate={-3} style={styles.cardTape} />
-              <Text style={styles.place}>{secret?.drop.placeLabel ?? 'Here'}</Text>
-              <Text style={styles.quote}>
-                "{secret?.body ?? ''}"
+              <Tape
+                width={56}
+                height={18}
+                rotate={-3}
+                style={styles.cardTape}
+              />
+              <Text style={styles.place}>
+                {secret?.drop.placeLabel ?? 'Here'}
               </Text>
+              <Text style={styles.quote}>"{secret?.body ?? ''}"</Text>
               <View style={styles.dash} />
               <View style={styles.foot}>
                 <Text style={styles.footLbl}>sealed · {secret?.mood ?? 'ache'}</Text>
@@ -77,7 +85,8 @@ export function DroppedScreen({ navigation, route }: Props) {
 
         <Text style={styles.title}>It's here now.</Text>
         <Text style={styles.sub}>
-          Anyone who walks within 50 meters can read it. Come back to see who's stood here.
+          Anyone who walks within 50 meters can read it. Come back to see who's
+          stood here.
         </Text>
 
         <View style={styles.actions}>
@@ -89,7 +98,13 @@ export function DroppedScreen({ navigation, route }: Props) {
           />
           <AppButton
             label="Drop another"
-            iconLeft={<SealPinIcon size={18} color={colors.paperCard} dotColor={colors.paperCard} />}
+            iconLeft={
+              <SealPinIcon
+                size={18}
+                color={colors.paperCard}
+                dotColor={colors.paperCard}
+              />
+            }
             style={styles.dropAnother}
             onPress={() => navigation.replace('Composer')}
           />
@@ -122,7 +137,12 @@ const styles = StyleSheet.create({
     boxShadow: '0 26px 46px -24px rgba(43,33,20,0.5)',
   },
   cardTape: { position: 'absolute', top: -9, left: '50%', marginLeft: -28 },
-  place: { fontFamily: fonts.handSemibold, fontSize: 20, lineHeight: 24, color: colors.inkSoft },
+  place: {
+    fontFamily: fonts.handSemibold,
+    fontSize: 20,
+    lineHeight: 24,
+    color: colors.inkSoft,
+  },
   quote: {
     fontFamily: fonts.serifItalic,
     fontSize: 16.5,
@@ -137,7 +157,11 @@ const styles = StyleSheet.create({
     marginTop: 15,
     marginBottom: 11,
   },
-  foot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  foot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   footLbl: {
     fontFamily: fonts.mono,
     fontSize: 8,
@@ -157,7 +181,12 @@ const styles = StyleSheet.create({
     color: colors.accentDeep,
     transform: [{ rotate: '-9deg' }],
   },
-  title: { fontFamily: fonts.serifItalic, fontSize: 32, color: colors.ink, marginTop: 18 },
+  title: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 32,
+    color: colors.ink,
+    marginTop: 18,
+  },
   sub: {
     fontFamily: fonts.sans,
     fontSize: 13.5,
@@ -172,9 +201,10 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
     width: '100%',
   },
-  walkAway: { width: 'auto', paddingHorizontal: 18, height: 56 },
-  dropAnother: { flex: 1, width: 'auto' },
+  walkAway: { flex: 0.6, paddingHorizontal: 18, height: 56 },
+  dropAnother: { flex: 1 },
 });

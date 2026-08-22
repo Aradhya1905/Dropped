@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "381260963063",
+    "project_id": "dropped-de982",
+    "storage_bucket": "dropped-de982.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:381260963063:android:e254d1b67d7b11894107f2",
+        "android_client_info": {
+          "package_name": "com.dropped"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2JP6S8KwtfP9siBiq0h5txkKP2ygKEps"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,7 +2,14 @@
  * The taped "you're within range" card docked over the map (`.range-card`).
  */
 import React from 'react';
-import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 
 import { Tape, WaxSeal } from '../../../design-system/components';
 import { LockWideIcon } from '../../../design-system/icons';
@@ -22,7 +29,10 @@ export function RangeCard({
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed, style]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed, style]}
+    >
       <Tape width={56} height={18} rotate={-3} style={styles.tape} />
       <View style={styles.copy}>
         <Text style={styles.kicker}>{kicker}</Text>
@@ -49,7 +59,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 17,
     boxShadow: shadows.card,
-    transform: [{ rotate: '-0.5deg' }],
+    transform: [{ rotate: '-0.9deg' }],
   },
   pressed: { opacity: 0.9 },
   tape: { position: 'absolute', top: -9, left: '50%', marginLeft: -28 },

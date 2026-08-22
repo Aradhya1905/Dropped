@@ -1,4 +1,4 @@
-import { haversineMeters, isWithin } from './geo';
+import { haversineMeters, isWithin, samplePathSteps } from './geo';
 import { REVEAL_RADIUS_M } from '../types';
 
 // Two points on Bengaluru's MG Road, ~1 block apart.
@@ -27,5 +27,29 @@ describe('geo', () => {
 
   it('exports the documented reveal radius', () => {
     expect(REVEAL_RADIUS_M).toBe(50);
+  });
+});
+
+describe('samplePathSteps', () => {
+  // A due-east leg from a: heading should be ~90°.
+  const east = { lat: a.lat, lng: a.lng + 0.01 };
+
+  it('skips the start vertex and spaces points along the line', () => {
+    const steps = samplePathSteps([a, east], 100);
+    expect(steps.length).toBeGreaterThan(0);
+    // First step must be past the start, not sitting on it.
+    expect(haversineMeters(steps[0].coord, a)).toBeGreaterThan(50);
+  });
+
+  it('tags each step with the segment travel heading', () => {
+    const steps = samplePathSteps([a, east], 100);
+    // Walking due east → heading near 90°.
+    expect(steps[0].headingDeg).toBeGreaterThan(80);
+    expect(steps[0].headingDeg).toBeLessThan(100);
+  });
+
+  it('returns nothing for a degenerate line', () => {
+    expect(samplePathSteps([], 50)).toEqual([]);
+    expect(samplePathSteps([a], 50)).toEqual([]);
   });
 });

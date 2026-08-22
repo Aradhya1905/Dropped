@@ -24,7 +24,8 @@ export function useCreateDrop() {
     onSuccess: secret => {
       upsert(secret);
       // Without this the fresh drop doesn't reach the map for up to a minute
-      // and the Trail counts stay behind.
+      // (the nearby query keeps serving its cached list) and the Trail counts
+      // stay behind.
       queryClient.invalidateQueries({ queryKey: ['drops'] });
       queryClient.invalidateQueries({ queryKey: ['trail'] });
       queryClient.invalidateQueries({ queryKey: ['device'] });
