@@ -8,3 +8,6 @@ export { FindCard } from './FindCard';
 export { LocationPermissionSheet } from './LocationPermissionSheet';
 export { MapLoader } from './MapLoader';
 export { LayerSheet } from './LayerSheet';
+export { ChainPin } from './ChainPin';
+export { TrailPill } from './TrailPill';
+export { NextStopCard } from './NextStopCard';

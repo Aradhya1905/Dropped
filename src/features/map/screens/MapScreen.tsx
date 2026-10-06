@@ -2,6 +2,11 @@
  * 04 Map — the living city map: sealed pins at real GPS coords bobbing,
  * your geo-anchored position dot (via MapLibre UserLocation), the drop FAB,
  * and the "within range" card when you're within 50 m of a drop.
+ *
+ * Trails (chain drops): stops are joined by a dashed ink line, opened stops
+ * show a broken seal, and the stop you just unlocked a numbered wax pin. While
+ * you're following one, the location chip becomes an "on a trail" pill and a
+ * next-stop card offers to walk you there.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
@@ -19,7 +24,7 @@ import type {
   RootStackParamList,
 } from '../../../app/navigation/types';
 import { WaxSeal } from '../../../design-system/components';
-import { useMaplibreAdapter } from '../../../services/maps';
+import { MapPolyline, useMaplibreAdapter } from '../../../services/maps';
 import {
   LayersIcon,
   LocateIcon,
@@ -28,13 +33,23 @@ import {
 import { colors, shadows } from '../../../design-system/tokens';
 import { useDeviceLocation, useNearbyDrops, useStarterDrops } from '../hooks';
 import { LocChip } from '../components/LocChip';
+import { ChainPin } from '../components/ChainPin';
 import { MapPin } from '../components/MapPin';
+import { NextStopCard } from '../components/NextStopCard';
+import { TrailPill } from '../components/TrailPill';
 import { MapLoader } from '../components/MapLoader';
 import { RangeCard } from '../components/RangeCard';
 import { LayerSheet } from '../components/LayerSheet';
 import { LocationPermissionSheet } from '../components/LocationPermissionSheet';
-import { isWithin } from '../../../utils/geo';
-import { relativeTime } from '../../../utils/format';
+import { bearingTo, compassPoint, haversineMeters, isWithin } from '../../../utils/geo';
+import { formatDistance, relativeTime, walkMinutes } from '../../../utils/format';
+import {
+  activeTrail,
+  chainPinKind,
+  hiddenAfterLine,
+  trailDots,
+  trailsOnMap,
+} from '../../../utils/chains';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MapStackParamList, 'MapHome'>,
@@ -60,6 +75,8 @@ export function MapScreen({ navigation }: Props) {
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
   const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
   const [stalled, setStalled] = useState(false);
+  // Measured so the FABs can straddle the next-stop card's top edge.
+  const [nextCardH, setNextCardH] = useState(0);
 
   const needsPermission = status === 'denied' || status === 'blocked';
 
@@ -92,23 +109,67 @@ export function MapScreen({ navigation }: Props) {
   // Secret markers depend only on the drops list — memoize so streaming GPS
   // fixes (which re-render this screen) don't rebuild every marker and churn
   // the native map (flicker). Must run before the coord==null early return.
+  const trails = useMemo(() => trailsOnMap(drops), [drops]);
   const dropMarkers = useMemo(
     () =>
-      drops.map((secret, i) => (
-        <Marker
-          key={secret.id}
-          id={secret.id}
-          lngLat={[secret.drop.coordinate.lng, secret.drop.coordinate.lat]}
-        >
-          <MapPin
-            deltaY={i % 2 === 0 ? -9 : 9}
-            duration={9000 + i * 1000}
-            accessibilityLabel={`Sealed secret at ${secret.drop.placeLabel ?? 'an unnamed spot'}`}
-            onPress={() => navigation.navigate('SecretDetail', { secretId: secret.id })}
+      drops.map((secret, i) => {
+        const place = secret.drop.placeLabel ?? 'an unnamed spot';
+        const kind = chainPinKind(secret, trails);
+        return (
+          <Marker
+            key={secret.id}
+            id={secret.id}
+            lngLat={[secret.drop.coordinate.lng, secret.drop.coordinate.lat]}
+          >
+            {kind && secret.chain ? (
+              <ChainPin
+                kind={kind}
+                pos={secret.chain.pos}
+                length={secret.chain.length}
+                deltaY={i % 2 === 0 ? -9 : 9}
+                duration={9000 + i * 1000}
+                accessibilityLabel={
+                  kind === 'read'
+                    ? `Trail stop ${secret.chain.pos}, already read, at ${place}`
+                    : `${kind === 'next' ? 'Next trail stop' : 'Trail stop'} ${secret.chain.pos} of ${secret.chain.length}, sealed, at ${place}`
+                }
+                onPress={() =>
+                  kind === 'read'
+                    ? navigation.navigate('Secret', { secretId: secret.id })
+                    : navigation.navigate('SecretDetail', { secretId: secret.id })
+                }
+              />
+            ) : (
+              <MapPin
+                deltaY={i % 2 === 0 ? -9 : 9}
+                duration={9000 + i * 1000}
+                accessibilityLabel={`Sealed secret at ${place}`}
+                onPress={() => navigation.navigate('SecretDetail', { secretId: secret.id })}
+              />
+            )}
+          </Marker>
+        );
+      }),
+    [drops, trails, navigation],
+  );
+
+  // The dashed ink line through each trail's stops that are on the map.
+  const trailLines = useMemo(
+    () =>
+      trails
+        .filter(t => t.stops.length > 1)
+        .map(t => (
+          <MapPolyline
+            key={t.id}
+            id={`trail-${t.id}`}
+            coordinates={t.stops.map(s => s.drop.coordinate)}
+            color={colors.ink}
+            width={2.2}
+            dashArray={[0.5, 3]}
+            opacity={0.85}
           />
-        </Marker>
-      )),
-    [drops, navigation],
+        )),
+    [trails],
   );
 
   // Recenter map on first real fix.
@@ -151,11 +212,23 @@ export function MapScreen({ navigation }: Props) {
   // Nearest drop within 50 m drives the RangeCard.
   const nearestInRange = drops.find(s => isWithin(coord, s.drop.coordinate));
 
+  // Following a trail: the next stop gets the bottom card (unless something is
+  // already within range — breaking a seal comes first).
+  const following = activeTrail(drops, coord);
+  const nextStop = following?.next;
+  const showNextCard = !!nextStop && !nearestInRange;
+  const nextDist = nextStop ? haversineMeters(coord, nextStop.drop.coordinate) : 0;
+
   // FAB vertical anchors. With the RangeCard docked the drop seal should
   // half-overlap the card's top-right corner (per design 04), with the recenter
   // FAB stacked just above it. Card bottom = insets.bottom + 12, height ~96, so
   // its top edge sits at insets.bottom + 108; the 58px drop seal straddles it.
-  const dropFabBottom = nearestInRange ? insets.bottom + 49 : 100;
+  // The taller next-stop card is measured instead.
+  const dropFabBottom = nearestInRange
+    ? insets.bottom + 49
+    : showNextCard && nextCardH > 0
+      ? insets.bottom + 12 + nextCardH - 29
+      : 100;
   const recenterFabBottom = dropFabBottom + 70;
 
   return (
@@ -164,28 +237,42 @@ export function MapScreen({ navigation }: Props) {
         <Marker id="user-location" lngLat={[coord.lng, coord.lat]}>
           <UserDot />
         </Marker>
+        {trailLines}
         {dropMarkers}
       </MaplibreView>
 
-      <LocChip
-        kicker={
-          dropsFailed
-            ? 'offline · last known'
-            : drops.length === 0
-              ? 'nothing sealed near'
-              : live
-                ? "You're in"
-                : 'last seen in'
-        }
-        place={shortAddress ?? (live ? 'Locating…' : 'somewhere you were')}
-        count={drops.length}
-        onPress={() => {
-          refresh();
-          // After a failed load the chip is the only retry the user has.
-          if (dropsFailed) refetchDrops();
-        }}
-        style={[styles.locChip, { top: insets.top + 10 }]}
-      />
+      {following && nextStop?.chain ? (
+        <TrailPill
+          stop={nextStop.chain.pos}
+          of={following.trail.length}
+          place={nextStop.drop.placeLabel ?? shortAddress ?? 'the next stop'}
+          dots={trailDots(following)}
+          onPress={() =>
+            adapter.fitBounds([coord, ...following.trail.stops.map(s => s.drop.coordinate)], 96)
+          }
+          style={[styles.trailPill, { top: insets.top + 8 }]}
+        />
+      ) : (
+        <LocChip
+          kicker={
+            dropsFailed
+              ? 'offline · last known'
+              : drops.length === 0
+                ? 'nothing sealed near'
+                : live
+                  ? "You're in"
+                  : 'last seen in'
+          }
+          place={shortAddress ?? (live ? 'Locating…' : 'somewhere you were')}
+          count={drops.length}
+          onPress={() => {
+            refresh();
+            // After a failed load the chip is the only retry the user has.
+            if (dropsFailed) refetchDrops();
+          }}
+          style={[styles.locChip, { top: insets.top + 10 }]}
+        />
+      )}
       <Pressable
         accessibilityLabel="Map layers"
         onPress={() => setLayerSheetOpen(true)}
@@ -233,6 +320,18 @@ export function MapScreen({ navigation }: Props) {
         />
       ) : null}
 
+      {showNextCard && nextStop?.chain ? (
+        <NextStopCard
+          mood={nextStop.mood}
+          distance={formatDistance(nextDist)}
+          way={`${compassPoint(bearingTo(coord, nextStop.drop.coordinate))} · ~${walkMinutes(nextDist)} min`}
+          after={hiddenAfterLine(nextStop.chain.pos, following!.trail.length)}
+          onWalk={() => navigation.navigate('Walk', { secretId: nextStop.id })}
+          onLayout={e => setNextCardH(Math.round(e.nativeEvent.layout.height))}
+          style={[styles.rangeCard, { bottom: insets.bottom + 12 }]}
+        />
+      ) : null}
+
       <LocationPermissionSheet
         visible={permissionSheetOpen}
         blocked={status === 'blocked'}
@@ -261,6 +360,8 @@ export function MapScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   locChip: { position: 'absolute', left: 16, zIndex: 20 },
+  // Stops short of the layers button (16 + 46 + 10).
+  trailPill: { position: 'absolute', left: 16, right: 72, zIndex: 20 },
   layersFab: {
     position: 'absolute',
     right: 16,

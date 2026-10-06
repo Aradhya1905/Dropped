@@ -18,5 +18,7 @@ export {
   ClockIcon,
   HumIcon,
   LocateIcon,
+  TrailIcon,
+  ArrowUpIcon,
 } from './Icons';
 export type { IconProps } from './Icons';

@@ -26,6 +26,8 @@ function merge(prev: Secret | undefined, next: Secret): Secret {
     // A revealed secret never re-seals for this device.
     sealed: prev.sealed === false ? false : next.sealed,
     revealCount: next.revealCount ?? prev.revealCount,
+    // A stub seeded from a "next stop" ticket carries no trail info yet.
+    chain: next.chain ?? prev.chain,
   };
 }
 

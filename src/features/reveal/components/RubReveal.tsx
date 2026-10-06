@@ -76,6 +76,12 @@ export function RubReveal({ active, children, style, onDone }: Props) {
 
   const on = active && !screenReader && !done;
 
+  // With a screen reader on there's nothing to rub — the words are read out
+  // straight away, so the reveal is already done.
+  useEffect(() => {
+    if (active && screenReader) onDone?.();
+  }, [active, screenReader, onDone]);
+
   // The layers bleed past the text box on every side; `size` is the layer
   // size, and all stroke coordinates live in that space.
   const onLayout = (e: LayoutChangeEvent) => {

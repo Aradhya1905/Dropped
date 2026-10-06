@@ -56,7 +56,50 @@ export interface Secret {
   starter?: boolean;
   /** Steps this device took to reach it (only on its own reveals). */
   walkSteps?: number;
+  /** Set when this drop is a stop on a trail of 2+ visible stops. */
+  chain?: ChainInfo;
 }
+
+/** Where a drop sits on a trail ("stop 2 of 3"), and — once earned — what's next. */
+export interface ChainInfo {
+  /** The trail's id (its first stop's id). Groups stops on the map. */
+  id: string;
+  /** 1-based position among the trail's visible stops. */
+  pos: number;
+  /** How many visible stops the trail has. */
+  length: number;
+  /** The next stop. Only for a device that revealed (or authored) this one. */
+  next?: ChainNextStop;
+}
+
+export interface ChainNextStop {
+  id: string;
+  coordinate: Coordinate;
+  /** Straight-line metres from this stop to the next. */
+  distanceMeters: number;
+  placeLabel?: string;
+  mood: Mood;
+  /** ms epoch. */
+  createdAt: number;
+}
+
+/** One of the author's own recent drops, offered as the previous stop. */
+export interface ChainCandidate {
+  id: string;
+  placeLabel?: string;
+  mood: Mood;
+  /** ms epoch. */
+  createdAt: number;
+  /** Metres from where the author is standing now. */
+  distanceMeters: number;
+  /** The stop number the new drop would become (this one's + 1). */
+  nextStopNumber: number;
+  /** Why it can't be picked: already has a next stop, or the trail is full. */
+  blocked?: 'leads-on' | 'full';
+}
+
+/** Longest trail allowed, in stops (server-enforced; mirrored for copy). */
+export const CHAIN_MAX_STOPS = 8;
 
 /**
  * Per-viewer reveal state for a secret:

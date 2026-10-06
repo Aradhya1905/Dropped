@@ -12,6 +12,8 @@ interface CreateDropParams {
   coordinate: Coordinate;
   placeLabel?: string;
   city?: string;
+  /** Continue a trail from this earlier drop of yours. */
+  prevDropId?: string;
 }
 
 export function useCreateDrop() {
@@ -20,7 +22,14 @@ export function useCreateDrop() {
 
   const mutation = useMutation<Secret, ApiError, CreateDropParams>({
     mutationFn: params =>
-      postDrop(params.body, params.mood, params.coordinate, params.placeLabel, params.city).then(apiSecretToSecret),
+      postDrop(
+        params.body,
+        params.mood,
+        params.coordinate,
+        params.placeLabel,
+        params.city,
+        params.prevDropId,
+      ).then(apiSecretToSecret),
     onSuccess: secret => {
       upsert(secret);
       // Without this the fresh drop doesn't reach the map for up to a minute
@@ -29,6 +38,7 @@ export function useCreateDrop() {
       queryClient.invalidateQueries({ queryKey: ['drops'] });
       queryClient.invalidateQueries({ queryKey: ['trail'] });
       queryClient.invalidateQueries({ queryKey: ['device'] });
+      queryClient.invalidateQueries({ queryKey: ['chainCandidates'] });
     },
   });
 

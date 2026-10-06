@@ -11,7 +11,7 @@ import axios, {
 } from 'axios';
 
 import { getDeviceId } from '../storage';
-import type { Coordinate, Mood, Weather } from '../../types';
+import type { ChainCandidate, ChainInfo, Coordinate, Mood, Weather } from '../../types';
 
 // Dev server — update to prod URL before release
 export const DROPPED_API_URL = 'https://droppeddev.duckdns.org';
@@ -116,6 +116,8 @@ export interface ApiSecret {
   starter?: boolean;
   /** Steps this device took to reach it (its own reveal only). */
   walkSteps?: number;
+  /** Trail stop info; `next` only once this device revealed (or wrote) it. */
+  chain?: ChainInfo;
 }
 
 /** Result of the one-shot onboarding starter-drop seed. */
@@ -187,8 +189,26 @@ export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>
     })
     .then(r => r.data);
 
-export const createDrop = (body: string, mood: Mood, coordinate: Coordinate, placeLabel?: string, city?: string) =>
-  api.post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city }).then(r => r.data);
+/** `prevDropId`: continue a trail from one of this device's own recent drops. */
+export const createDrop = (
+  body: string,
+  mood: Mood,
+  coordinate: Coordinate,
+  placeLabel?: string,
+  city?: string,
+  prevDropId?: string,
+) =>
+  api
+    .post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city, prevDropId })
+    .then(r => r.data);
+
+/** This device's own recent drops near `coordinate` that a new drop could follow. */
+export const fetchChainCandidates = (coordinate: Coordinate) =>
+  api
+    .get<{ candidates: ChainCandidate[] }>('/drops/chain-candidates', {
+      params: { lat: coordinate.lat, lng: coordinate.lng },
+    })
+    .then(r => r.data.candidates);
 
 /** `steps`: how far the walk took (see pedometer.walkStepsFor); optional. */
 export const revealDrop = (id: string, coordinate: Coordinate, steps?: number) =>

@@ -39,6 +39,23 @@ export function bearingTo(from: Coordinate, to: Coordinate): number {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+const COMPASS_POINTS = [
+  'north',
+  'north-east',
+  'east',
+  'south-east',
+  'south',
+  'south-west',
+  'west',
+  'north-west',
+] as const;
+
+/** A bearing as one of eight compass words ("north-east"). */
+export function compassPoint(bearing: number): string {
+  const i = Math.round((((bearing % 360) + 360) % 360) / 45) % 8;
+  return COMPASS_POINTS[i];
+}
+
 /** True when `a` is within `meters` of `b` (default = the 50 m reveal radius). */
 export function isWithin(
   a: Coordinate,

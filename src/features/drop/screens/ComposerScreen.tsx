@@ -1,6 +1,8 @@
 /**
  * 08 Composer — "What happened here?" Pin your spot, write the confession on
- * ruled paper, pick a mood, drop it forever.
+ * ruled paper, pick a mood, drop it forever. Optionally continue a trail: the
+ * "Part of a trail?" row picks one of your own recent drops as the stop before
+ * this one (chain drops).
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
@@ -22,6 +24,8 @@ import {
 } from '../../../design-system/components';
 import { PinIcon, SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts, shadows } from '../../../design-system/tokens';
+import { ChainPickerSheet } from '../components/ChainPickerSheet';
+import { ChainRow, type ChainPick } from '../components/ChainRow';
 import { MoodChips } from '../components/MoodChips';
 import { WriteCard } from '../components/WriteCard';
 import { useDeviceLocation } from '../../map/hooks';
@@ -47,6 +51,8 @@ export function ComposerScreen({ navigation }: Props) {
   const [body, setBody] = useState(restored?.body ?? '');
   const { coord, shortAddress, city } = useDeviceLocation();
   const { create, isPending } = useCreateDrop();
+  const [chain, setChain] = useState<ChainPick | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Autosave every keystroke; MMKV writes are synchronous and tiny.
   useEffect(() => {
@@ -98,6 +104,7 @@ export function ComposerScreen({ navigation }: Props) {
         coordinate: coord,
         placeLabel: shortAddress ?? undefined,
         city: city ?? undefined,
+        prevDropId: chain?.id,
       });
       clearComposerDraft();
       submittedRef.current = true;
@@ -175,6 +182,12 @@ export function ComposerScreen({ navigation }: Props) {
             onSelect={v => setMood(v as Mood)}
           />
 
+          <ChainRow
+            pick={chain}
+            onOpen={() => setPickerOpen(true)}
+            onClear={() => setChain(null)}
+          />
+
           <AppButton
             label={dropLabel}
             iconLeft={
@@ -189,6 +202,21 @@ export function ComposerScreen({ navigation }: Props) {
           />
         </View>
       </Sheet>
+
+      <ChainPickerSheet
+        visible={pickerOpen}
+        coord={coord}
+        current={chain}
+        onPick={pick => {
+          setChain(pick);
+          setPickerOpen(false);
+        }}
+        onClear={() => {
+          setChain(null);
+          setPickerOpen(false);
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
     </PaperScreen>
   );
 }

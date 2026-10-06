@@ -41,6 +41,14 @@ export function formatDistance(meters: number): string {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
 }
 
+/** Average walking pace, metres per minute (~5 km/h). */
+const WALK_M_PER_MIN = 84;
+
+/** Minutes on foot for a straight-line distance — never less than one. */
+export function walkMinutes(meters: number): number {
+  return Math.max(1, Math.round(meters / WALK_M_PER_MIN));
+}
+
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /** Adjective for each stored weather word ("left on a rainy …"). */

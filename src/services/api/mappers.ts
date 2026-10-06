@@ -23,5 +23,6 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     distanceMeters: s.distanceMeters,
     starter: s.starter,
     walkSteps: s.walkSteps,
+    chain: s.chain,
   };
 }

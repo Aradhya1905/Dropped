@@ -176,7 +176,11 @@ export function TrailScreen() {
                   mood={s.mood}
                   quote={`"${s.body ?? ''}"`}
                   footLeft={stepsLine(s.walkSteps) ?? s.drop.placeLabel ?? ''}
-                  footRight={`unlocked · ${relativeTime(s.createdAt)}`}
+                  footRight={
+                    s.chain
+                      ? `stop ${s.chain.pos} of ${s.chain.length} · ${relativeTime(s.createdAt)}`
+                      : `unlocked · ${relativeTime(s.createdAt)}`
+                  }
                 />
               ))}
               {hasMore ? (

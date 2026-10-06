@@ -310,3 +310,33 @@ export function LocateIcon({ size = 21, color = colors.ink, strokeWidth = 1.6 }:
     </Svg>
   );
 }
+
+/** Hooked arrow — "continues a trail" (chain drops, `↳`). */
+export function TrailIcon({ size = 22, color = colors.accentDeep, strokeWidth = 1.7 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M5 4v7a4 4 0 0 0 4 4h10M15 11l4 4-4 4"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Straight arrow pointing up — rotate it to point at a bearing. */
+export function ArrowUpIcon({ size = 24, color = colors.accentDeep, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 20V4M6 10l6-6 6 6"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
