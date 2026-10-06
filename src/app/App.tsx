@@ -10,6 +10,7 @@ import { enableFreeze } from 'react-native-screens';
 import { colors } from '../design-system/tokens';
 import { identifyDevice } from '../services/analytics';
 import { initStepCounting } from '../services/pedometer';
+import { preloadSounds, releaseSounds } from '../services/sound';
 import { getDeviceId } from '../services/storage';
 import { bootstrapLocation, useLocationStore } from '../store/locationStore';
 import { RootNavigator } from './navigation';
@@ -36,6 +37,12 @@ export default function App(): React.JSX.Element {
 
   // Count steps for the Trail's "steps this month" stat while the app is open.
   useEffect(() => initStepCounting(), []);
+
+  // Warm the three paper sounds so the first seal-crack isn't silent.
+  useEffect(() => {
+    preloadSounds();
+    return releaseSounds;
+  }, []);
 
   // Start the app's single GPS watch as early as possible (silently — this
   // never prompts) so every screen has a fix waiting instead of each one

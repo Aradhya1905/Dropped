@@ -3,7 +3,7 @@
  * address tag, blurred preview, and the "walk here to unlock" CTA, all on a
  * sheet over the blurred map.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -28,6 +28,7 @@ import { useSave } from '../../reveal/hooks';
 import { haversineMeters, bearingTo } from '../../../utils/geo';
 import { relativeTime } from '../../../utils/format';
 import { tap } from '../../../services/haptics';
+import { markWalkStart } from '../../../services/pedometer';
 import { useCompassHeading } from '../../../services/location/useCompassHeading';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SecretDetail'>;
@@ -52,6 +53,15 @@ export function SecretDetailScreen({ navigation, route }: Props) {
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
   const { coord, live } = useDeviceLocation();
   const save = useSave(secretId);
+
+  // Looking at a sealed secret is where a walk to it usually begins — mark it
+  // (kept if the Walk screen marks later) for "N steps to read this".
+  const walkMarkedRef = useRef(false);
+  useEffect(() => {
+    if (walkMarkedRef.current || !coord || !live || !secret?.sealed) return;
+    walkMarkedRef.current = true;
+    markWalkStart(secret.id, coord);
+  }, [coord, live, secret]);
 
   const deviceHeading = useCompassHeading();
 

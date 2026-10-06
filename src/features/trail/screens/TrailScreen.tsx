@@ -23,7 +23,7 @@ import { colors, fonts } from '../../../design-system/tokens';
 import { Receipt } from '../components/Receipt';
 import { TrailCard } from '../components/TrailCard';
 import { useTrailFound, useTrailSaved, useTrailDropped, useTrailStats, useSteps } from '../hooks';
-import { relativeTime } from '../../../utils/format';
+import { relativeTime, stepsLine } from '../../../utils/format';
 import { tap } from '../../../services/haptics';
 import type { Secret } from '../../../types';
 
@@ -175,7 +175,7 @@ export function TrailScreen() {
                   place={s.drop.placeLabel ?? 'Here'}
                   mood={s.mood}
                   quote={`"${s.body ?? ''}"`}
-                  footLeft={s.drop.placeLabel ?? ''}
+                  footLeft={stepsLine(s.walkSteps) ?? s.drop.placeLabel ?? ''}
                   footRight={`unlocked · ${relativeTime(s.createdAt)}`}
                 />
               ))}

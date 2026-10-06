@@ -11,7 +11,7 @@ import axios, {
 } from 'axios';
 
 import { getDeviceId } from '../storage';
-import type { Coordinate, Mood } from '../../types';
+import type { Coordinate, Mood, Weather } from '../../types';
 
 // Dev server — update to prod URL before release
 export const DROPPED_API_URL = 'https://droppeddev.duckdns.org';
@@ -96,6 +96,7 @@ export interface ApiDrop {
   coordinate: Coordinate;
   placeLabel?: string;
   createdAt: number;
+  weather?: Weather;
 }
 
 export interface ApiSecret {
@@ -113,6 +114,8 @@ export interface ApiSecret {
   distanceMeters?: number;
   /** Server-seeded starter drop (not left by a person). */
   starter?: boolean;
+  /** Steps this device took to reach it (its own reveal only). */
+  walkSteps?: number;
 }
 
 /** Result of the one-shot onboarding starter-drop seed. */
@@ -187,8 +190,9 @@ export const fetchFootRoute = (from: Coordinate, to: Coordinate) =>
 export const createDrop = (body: string, mood: Mood, coordinate: Coordinate, placeLabel?: string, city?: string) =>
   api.post<ApiSecret>('/drops', { body, mood, coordinate, placeLabel, city }).then(r => r.data);
 
-export const revealDrop = (id: string, coordinate: Coordinate) =>
-  api.post<ApiSecret>(`/drops/${id}/reveal`, { coordinate }).then(r => r.data);
+/** `steps`: how far the walk took (see pedometer.walkStepsFor); optional. */
+export const revealDrop = (id: string, coordinate: Coordinate, steps?: number) =>
+  api.post<ApiSecret>(`/drops/${id}/reveal`, { coordinate, steps }).then(r => r.data);
 
 export const saveDrop = (id: string) =>
   api.post<{ saved: boolean }>(`/drops/${id}/save`).then(r => r.data);

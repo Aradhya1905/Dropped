@@ -33,7 +33,8 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   SecretDetail: { secretId: string };
   Opening: { secretId: string };
-  Secret: { secretId: string };
+  /** `rub`: a fresh reveal — the note starts blank and is rubbed up. */
+  Secret: { secretId: string; rub?: boolean };
   Composer: undefined;
   Dropped: { secretId: string };
 };

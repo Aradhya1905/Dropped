@@ -3,6 +3,8 @@
  * never reads "just now" on one screen and "3mo ago" on another.
  */
 
+import type { Weather } from '../types';
+
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -37,4 +39,50 @@ export function droppedAgo(ms: number, now: number = Date.now()): string {
 /** Distance to a drop: metres up close, one decimal of a km beyond 1000 m. */
 export function formatDistance(meters: number): string {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
+}
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Adjective for each stored weather word ("left on a rainy …"). */
+const WEATHER_ADJ: Record<Weather, string> = {
+  clear: 'clear',
+  cloudy: 'cloudy',
+  overcast: 'grey',
+  foggy: 'foggy',
+  drizzly: 'drizzly',
+  rainy: 'rainy',
+  snowy: 'snowy',
+  stormy: 'stormy',
+};
+
+/** night 21–4 · morning 5–11 · afternoon 12–16 · evening 17–20 (local hours). */
+function partOfDay(hour: number): string {
+  if (hour >= 21 || hour < 5) return 'night';
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+/**
+ * The weather postmark under a revealed note: "left on a rainy Tuesday night".
+ * Formatted in the reader's local time — the reader is standing within 50 m of
+ * the drop, so their timezone is the drop's. Without weather (lookup failed or
+ * older drop) it's just "left on a Tuesday night".
+ */
+export function postmarkLine(createdAt: number, weather?: Weather): string {
+  const d = new Date(createdAt);
+  const day = `${WEEKDAYS[d.getDay()]} ${partOfDay(d.getHours())}`;
+  const adj = weather ? WEATHER_ADJ[weather] : undefined;
+  return adj ? `left on a ${adj} ${day}` : `left on a ${day}`;
+}
+
+/** Below this, the walk wasn't really a walk — no line. */
+export const MIN_WALK_STEPS = 10;
+
+/** "1,240 steps to read this", or null when there's nothing worth printing. */
+export function stepsLine(steps?: number): string | null {
+  if (steps == null || steps < MIN_WALK_STEPS) return null;
+  // Manual grouping — no reliance on Intl being compiled into Hermes.
+  const n = String(Math.round(steps)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${n} steps to read this`;
 }

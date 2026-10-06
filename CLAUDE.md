@@ -28,6 +28,7 @@ anonymous device id. Moderation is the hard problem, not engineering.
   - **Identity** — `react-native-device-info` (stable anonymous id from `ANDROID_ID`/IDFV, behind `services/device`; survives app-data-clear)
   - **Camera/media** — `react-native-vision-camera` v5 + `react-native-nitro-image` (paired), `react-native-svg`
   - **UI** — `react-native-modal`, `@react-native-clipboard/clipboard`
+  - **Sound** — `react-native-sound` (3 paper SFX in `assets/sounds/`, made by `scripts/gen-sounds.py`; behind `services/sound`, `Ambient` category so it follows silent mode)
   - **Map** — `@maplibre/maplibre-react-native` with Protomaps CDN tiles, custom paper/ink/sage style JSON (`services/maps/droppedStyle.ts`), adapter at `services/maps/maplibreAdapter.ts`
 - Deferred: local notifications.
 

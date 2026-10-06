@@ -22,6 +22,9 @@ function buzz(pattern: number | number[]): void {
 /** A light acknowledgement — toggles, chips, selections. */
 export const tap = () => buzz(12);
 
+/** One grain of the pencil-rubbing reveal — barely there, fired while rubbing. */
+export const rub = () => buzz(6);
+
 /** The wax cracking open: two beats, the second heavier. */
 export const sealBreak = () => buzz([0, 24, 60, 70]);
 

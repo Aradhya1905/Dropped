@@ -1,3 +1,5 @@
+import type { Coordinate } from '../../types';
+
 /** MMKV key names. Kept in one place so persisted keys never drift. */
 export const StorageKeys = {
   deviceId: 'device.id',
@@ -10,6 +12,8 @@ export const StorageKeys = {
   lastCoord: 'location.last',
   composerDraft: 'drop.draft',
   hapticsEnabled: 'settings.haptics',
+  soundsEnabled: 'settings.sounds',
+  walkMarks: 'walk.marks',
   starterRequested: 'onboarding.starterRequested',
 } as const;
 
@@ -23,6 +27,18 @@ export interface ComposerDraft {
 
 /** Drafts older than this are dropped rather than resurrected. */
 export const DRAFT_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * Where (and at what pedometer reading) the user set off toward a secret.
+ * Keyed by secret id; read back at the reveal to print "N steps to read this".
+ */
+export interface WalkMark {
+  /** ms epoch the walk started. */
+  at: number;
+  /** The pedometer's process-lifetime counter at the start. */
+  counter: number;
+  origin: Coordinate;
+}
 
 /** Hard cap on a confession's length (enforced in the composer). */
 export const DROP_MAX_CHARS = 500;

@@ -16,10 +16,11 @@ import {
   type MapStyle,
   type NotificationMode,
   type StepState,
+  type WalkMark,
 } from './keys';
 import type { Coordinate } from '../../types';
 
-export type { ComposerDraft, MapStyle, NotificationMode, StepState } from './keys';
+export type { ComposerDraft, MapStyle, NotificationMode, StepState, WalkMark } from './keys';
 export { DROP_MAX_CHARS } from './keys';
 
 const mmkv = createMMKV({ id: 'dropped' });
@@ -218,6 +219,24 @@ export function getHapticsEnabled(): boolean {
 
 export function setHapticsEnabled(on: boolean): void {
   mmkv.set(StorageKeys.hapticsEnabled, on);
+}
+
+export function getSoundsEnabled(): boolean {
+  return mmkv.getBoolean(StorageKeys.soundsEnabled) ?? true;
+}
+
+export function setSoundsEnabled(on: boolean): void {
+  mmkv.set(StorageKeys.soundsEnabled, on);
+}
+
+// --- walk marks (steps-to-read) -------------------------------------------------
+
+export function getWalkMarks(): Record<string, WalkMark> {
+  return getJSON<Record<string, WalkMark>>(StorageKeys.walkMarks, {});
+}
+
+export function setWalkMarks(marks: Record<string, WalkMark>): void {
+  setJSON(StorageKeys.walkMarks, marks);
 }
 
 /** Test/escape hatch: wipe everything. */

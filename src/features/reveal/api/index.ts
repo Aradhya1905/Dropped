@@ -8,7 +8,8 @@ import {
 } from '../../../services/api';
 import type { Coordinate } from '../../../types';
 
-export const postReveal = (id: string, coordinate: Coordinate) => revealDrop(id, coordinate);
+export const postReveal = (id: string, coordinate: Coordinate, steps?: number) =>
+  revealDrop(id, coordinate, steps);
 export const postSave = (id: string) => saveDrop(id);
 export const deleteSave = (id: string) => unsaveDrop(id);
 export const postHeart = (id: string) => heartDrop(id);

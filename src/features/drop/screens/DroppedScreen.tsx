@@ -2,7 +2,7 @@
  * 09 It's here now — the freshly sealed confession settling onto the spot,
  * live rings pulsing under it, "sealed!" in the corner.
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,6 +22,7 @@ import {
 import { SealPinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
+import { softThud } from '../../../services/sound';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dropped'>;
 
@@ -29,6 +30,10 @@ export function DroppedScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { secretId } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
+
+  // The note lands on the desk.
+  useEffect(() => softThud(), []);
+
   return (
     <PaperScreen>
       <MapTexture dense blur />

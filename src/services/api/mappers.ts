@@ -10,6 +10,7 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
       coordinate: s.drop.coordinate,
       placeLabel: s.drop.placeLabel,
       createdAt: s.drop.createdAt,
+      weather: s.drop.weather,
     },
     createdAt: s.createdAt,
     revealCount: s.revealCount,
@@ -21,5 +22,6 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     hearted: s.hearted,
     distanceMeters: s.distanceMeters,
     starter: s.starter,
+    walkSteps: s.walkSteps,
   };
 }

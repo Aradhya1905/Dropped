@@ -1,6 +1,10 @@
 /**
  * 07 The secret — the unlocked confession on a spacious taped card, with the
  * "unlocked · here, now" pill, save and heart actions.
+ *
+ * A fresh reveal (`rub`) starts blank: the words are rubbed up like a pencil
+ * over a coin (RubReveal). Under the words, the weather postmark ("left on a
+ * rainy Tuesday night"); in the foot, how many steps the walk took.
  */
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -20,14 +24,15 @@ import { BookmarkIcon, HeartIcon, PinIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
 import { useDropsStore } from '../../../store/dropsStore';
 import { useSave, useHeart, useReport } from '../hooks';
-import { droppedAgo } from '../../../utils/format';
+import { droppedAgo, postmarkLine, stepsLine } from '../../../utils/format';
+import { RubReveal } from '../components/RubReveal';
 import { tap } from '../../../services/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Secret'>;
 
 export function SecretScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const { secretId } = route.params;
+  const { secretId, rub } = route.params;
   const secret = useDropsStore(s => s.drops.find(d => d.id === secretId));
 
   const save = useSave(secretId);
@@ -76,12 +81,17 @@ export function SecretScreen({ navigation, route }: Props) {
           </View>
           <View style={styles.cardRule} />
 
-          <View style={styles.quote}>
+          <RubReveal active={!!rub} style={styles.quote}>
             <Text style={styles.qmark}>"</Text>
             <Text style={styles.quoteText}>
               {secret?.body ?? ''}
             </Text>
-          </View>
+            {secret && !secret.starter ? (
+              <Text style={styles.postmark}>
+                {postmarkLine(secret.drop.createdAt, secret.drop.weather)}
+              </Text>
+            ) : null}
+          </RubReveal>
 
           <View style={styles.cardFoot}>
             <View style={styles.dash} />
@@ -95,6 +105,9 @@ export function SecretScreen({ navigation, route }: Props) {
                 <Text style={styles.stoodLbl}>have stood here too</Text>
               </View>
             </View>
+            {stepsLine(secret?.walkSteps) ? (
+              <Text style={styles.steps}>{stepsLine(secret?.walkSteps)}</Text>
+            ) : null}
           </View>
         </Pressable>
 
@@ -230,7 +243,23 @@ const styles = StyleSheet.create({
     color: colors.ink,
     paddingLeft: 24,
   },
+  postmark: {
+    fontFamily: fonts.hand,
+    fontSize: 18,
+    color: colors.inkSoft,
+    marginTop: 12,
+    paddingLeft: 24,
+    transform: [{ rotate: '-1deg' }],
+  },
   cardFoot: { marginTop: 'auto', paddingTop: 20 },
+  steps: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 9 * 0.16,
+    textTransform: 'uppercase',
+    color: colors.accentDeep,
+    marginTop: 12,
+  },
   dash: {
     borderTopWidth: 1.5,
     borderStyle: 'dashed',

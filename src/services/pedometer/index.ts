@@ -20,7 +20,9 @@ import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import type { EventSubscription } from 'react-native';
 
 import { postDeviceSteps } from '../api';
-import { getStepState, setStepState } from '../storage';
+import { getStepState, getWalkMarks, setStepState, setWalkMarks } from '../storage';
+import type { Coordinate } from '../../types';
+import { haversineMeters } from '../../utils/geo';
 
 /** Max day-entries to sync per request (matches the backend's cap). */
 const MAX_SYNC_DAYS = 60;
@@ -48,9 +50,16 @@ export function isAvailable(): boolean {
   return available;
 }
 
+/**
+ * Steps counted since this process started — monotonic, never synced. Walk
+ * marks snapshot it so a reveal can say how many steps the walk took.
+ */
+let walkCounter = 0;
+
 /** Add a step delta to today's local unsynced buffer. */
 function bufferSteps(delta: number): void {
   if (delta <= 0) return;
+  walkCounter += delta;
   const state = getStepState();
   const key = dayKey();
   setStepState({
@@ -213,4 +222,45 @@ export function initStepCounting(): () => void {
     sub.remove();
     stopCounting();
   };
+}
+
+// ── steps-to-read (walk marks) ───────────────────────────────────────────────
+
+/** Average adult stride, m — turns a straight-line distance into a step floor. */
+const STRIDE_M = 0.76;
+/** A mark this old is a different outing; a new walk may replace it. */
+const WALK_MARK_TTL_MS = 12 * 3600 * 1000;
+/** Keep the newest N marks. */
+const WALK_MARK_CAP = 30;
+
+/**
+ * Note that the user set off toward `secretId` from `origin`. A fresh mark is
+ * never overwritten, so backing out of the Walk screen and coming back doesn't
+ * restart the count.
+ */
+export function markWalkStart(secretId: string, origin: Coordinate): void {
+  const now = Date.now();
+  const marks = getWalkMarks();
+  const existing = marks[secretId];
+  if (existing && now - existing.at < WALK_MARK_TTL_MS) return;
+  const next = Object.entries({ ...marks, [secretId]: { at: now, counter: walkCounter, origin } })
+    .filter(([, m]) => now - m.at < WALK_MARK_TTL_MS)
+    .sort((a, b) => b[1].at - a[1].at)
+    .slice(0, WALK_MARK_CAP);
+  setWalkMarks(Object.fromEntries(next));
+}
+
+/**
+ * Steps the walk to `secretId` took, ending at `here`, or undefined if no walk
+ * was marked. The live counter only runs while the app is open (a pocketed
+ * phone counts nothing), so the result is never less than the straight-line
+ * distance walked ÷ stride — an honest floor that real counting can only beat.
+ */
+export function walkStepsFor(secretId: string, here: Coordinate): number | undefined {
+  const mark = getWalkMarks()[secretId];
+  if (!mark || Date.now() - mark.at >= WALK_MARK_TTL_MS) return undefined;
+  // The counter restarts with the process — a negative delta means it did.
+  const counted = Math.max(walkCounter - mark.counter, 0);
+  const floor = Math.round(haversineMeters(mark.origin, here) / STRIDE_M);
+  return Math.max(counted, floor);
 }

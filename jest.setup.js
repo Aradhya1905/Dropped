@@ -95,3 +95,25 @@ jest.mock('react-native-bootsplash', () => ({
   default: { hide: jest.fn(() => Promise.resolve()), isVisible: jest.fn(() => Promise.resolve(false)) },
   hide: jest.fn(() => Promise.resolve()),
 }));
+
+// react-native-sound needs its native module; services/sound only ever plays
+// fire-and-forget, so a silent stub is enough.
+jest.mock('react-native-sound', () => {
+  function Sound(_uri, _base, cb) {
+    if (typeof cb === 'function') cb(null);
+  }
+  Sound.prototype.isLoaded = () => true;
+  Sound.prototype.setVolume = function () {
+    return this;
+  };
+  Sound.prototype.stop = function (cb) {
+    if (cb) cb();
+    return this;
+  };
+  Sound.prototype.play = function (cb) {
+    if (cb) cb(true);
+  };
+  Sound.prototype.release = () => {};
+  Sound.setCategory = jest.fn();
+  return { __esModule: true, default: Sound };
+});

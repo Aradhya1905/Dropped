@@ -5,6 +5,7 @@ import { useLocationStore } from '../../../store/locationStore';
 import { apiSecretToSecret } from '../../../services/api/mappers';
 import { useDeviceLocation } from '../../map/hooks';
 import { addSeenId } from '../../../services/storage';
+import { walkStepsFor } from '../../../services/pedometer';
 import { postReveal } from '../api';
 
 /** Thrown when we still can't place the user after trying for a fix. */
@@ -25,7 +26,7 @@ export function useReveal() {
         position = useLocationStore.getState().coord;
       }
       if (!position) throw new Error(NO_FIX);
-      return postReveal(id, position).then(apiSecretToSecret);
+      return postReveal(id, position, walkStepsFor(id, position)).then(apiSecretToSecret);
     },
     onSuccess: secret => {
       upsert(secret);

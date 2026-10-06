@@ -4,6 +4,10 @@
  * shards fly, rays and a glow flash, and a handwritten "snap!" pops —
  * all on a 4.4s loop. One master timeline drives every part, with the
  * keyframe fractions lifted straight from the CSS.
+ *
+ * Controlled mode (`timeline` + `hold`): the screen owns the timeline, parked
+ * at CRACK_AT (whole seal, nothing flying) until it runs the burst once, and
+ * `hold` (0→1) makes the seal tremble and squeeze while the user presses.
  */
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
@@ -14,9 +18,16 @@ import { colors, fonts } from '../../../design-system/tokens';
 const STAGE = 230;
 const SEAL = 128;
 
-function useBreakTimeline() {
-  const t = useRef(new Animated.Value(0)).current;
+/** Timeline frame just before the seal snaps: whole, still, no rays or glow yet. */
+export const CRACK_AT = 0.4;
+/** Timeline frame where the halves have landed and the note is still up. */
+export const BURST_END = 0.86;
+
+function useBreakTimeline(controlled?: Animated.Value) {
+  const own = useRef(new Animated.Value(0)).current;
+  const t = controlled ?? own;
   useEffect(() => {
+    if (controlled) return;
     const loop = Animated.loop(
       Animated.timing(t, {
         toValue: 1,
@@ -27,8 +38,26 @@ function useBreakTimeline() {
     );
     loop.start();
     return () => loop.stop();
-  }, [t]);
+  }, [t, controlled]);
   return t;
+}
+
+/** A fast ±1 oscillator — the raw tremble, scaled by how hard you hold. */
+function useTremble(active: boolean) {
+  const osc = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!active) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(osc, { toValue: 1, duration: 45, useNativeDriver: true }),
+        Animated.timing(osc, { toValue: -1, duration: 90, useNativeDriver: true }),
+        Animated.timing(osc, { toValue: 0, duration: 45, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [active, osc]);
+  return osc;
 }
 
 function WaxHalf({ side }: { side: 'l' | 'r' }) {
@@ -108,18 +137,33 @@ function Shard({
   );
 }
 
-export function SealBurst() {
-  const t = useBreakTimeline();
+interface SealBurstProps {
+  /** Drive the burst yourself instead of looping. Park it at CRACK_AT. */
+  timeline?: Animated.Value;
+  /** 0→1 press strength: the seal trembles and squeezes as it rises. */
+  hold?: Animated.Value;
+}
 
-  // seal wobble (wind-up before the crack)
-  const wobbleRotate = t.interpolate({
-    inputRange: [0, 0.2, 0.3, 0.38, 0.44, 1],
-    outputRange: ['0deg', '-3deg', '3deg', '-2deg', '0deg', '0deg'],
-  });
-  const wobbleScale = t.interpolate({
-    inputRange: [0, 0.2, 0.3, 0.38, 0.44, 1],
-    outputRange: [1, 1.02, 0.96, 1.08, 1, 1],
-  });
+export function SealBurst({ timeline, hold }: SealBurstProps = {}) {
+  const t = useBreakTimeline(timeline);
+  const osc = useTremble(hold != null);
+
+  // seal wobble (wind-up before the crack) — or, held, a tremble that grows
+  const wobbleRotate = hold
+    ? Animated.multiply(osc, hold).interpolate({
+        inputRange: [-1, 1],
+        outputRange: ['-5deg', '5deg'],
+      })
+    : t.interpolate({
+        inputRange: [0, 0.2, 0.3, 0.38, 0.44, 1],
+        outputRange: ['0deg', '-3deg', '3deg', '-2deg', '0deg', '0deg'],
+      });
+  const wobbleScale = hold
+    ? hold.interpolate({ inputRange: [0, 1], outputRange: [1, 0.93] })
+    : t.interpolate({
+        inputRange: [0, 0.2, 0.3, 0.38, 0.44, 1],
+        outputRange: [1, 1.02, 0.96, 1.08, 1, 1],
+      });
 
   // halves fling out, hold, then reset for the next loop
   const burst = (sign: 1 | -1) => [

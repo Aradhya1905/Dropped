@@ -18,7 +18,21 @@ export interface Drop {
   placeLabel?: string;
   /** ms epoch. */
   createdAt: number;
+  /** Weather at the drop moment, stamped server-side after the drop saves.
+   * Absent when the lookup failed or hasn't landed yet. */
+  weather?: Weather;
 }
+
+/** The postmark's weather word (server maps WMO codes onto these). */
+export type Weather =
+  | 'clear'
+  | 'cloudy'
+  | 'overcast'
+  | 'foggy'
+  | 'drizzly'
+  | 'rainy'
+  | 'snowy'
+  | 'stormy';
 
 export type Mood = 'joy' | 'ache' | 'trouble' | 'wonder';
 
@@ -40,6 +54,8 @@ export interface Secret {
   distanceMeters?: number;
   /** Seeded by the server into an empty area, not left by a person. */
   starter?: boolean;
+  /** Steps this device took to reach it (only on its own reveals). */
+  walkSteps?: number;
 }
 
 /**

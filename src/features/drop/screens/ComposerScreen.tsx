@@ -34,6 +34,7 @@ import {
 } from '../../../services/storage';
 import { dropped as hapticDropped, failed as hapticFailed } from '../../../services/haptics';
 import type { ApiError } from '../../../services/api';
+import { penScratch } from '../../../services/sound';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Composer'>;
 
@@ -88,6 +89,8 @@ export function ComposerScreen({ navigation }: Props) {
 
   const handleDrop = async () => {
     if (!canDrop) return;
+    // The nib touches paper on the tap itself, not after the round-trip.
+    penScratch();
     try {
       const secret = await create({
         body: body.trim(),

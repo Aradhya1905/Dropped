@@ -42,6 +42,7 @@ import {
 } from '../../../utils/geo';
 import { relativeTime } from '../../../utils/format';
 import { crossedIntoRange, sealBreak } from '../../../services/haptics';
+import { markWalkStart } from '../../../services/pedometer';
 import type { Coordinate } from '../../../types';
 import { REVEAL_RADIUS_M } from '../../../types';
 
@@ -177,6 +178,15 @@ export function WalkSequenceScreen({ navigation, route }: Props) {
       fitBounds([coord, drop], 96);
     }
   }, [coord, drop, beat, fitBounds]);
+
+  // Remember where this walk began (first live fix) — the reveal turns it into
+  // "N steps to read this". A fresh mark is kept if you come back to it.
+  const walkMarkedRef = useRef(false);
+  useEffect(() => {
+    if (walkMarkedRef.current || !coord || !live || !secret) return;
+    walkMarkedRef.current = true;
+    markWalkStart(secret.id, coord);
+  }, [coord, live, secret]);
 
   // Buzz once as each threshold is crossed — the phone is usually in a pocket
   // on the way here, so the screen alone can't carry the moment.

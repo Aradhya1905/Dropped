@@ -1,6 +1,8 @@
 module.exports = {
   preset: '@react-native/jest-preset',
   setupFiles: ['./jest.setup.js'],
+  // The preset only stubs image assets; services/sound requires .wav files.
+  moduleNameMapper: { '\\.(wav|mp3)$': '<rootDir>/__mocks__/soundFile.js' },
   // Sibling git worktrees live under .claude/worktrees — their suites belong to
   // their own checkout and shouldn't run (or fail) from this one.
   testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/worktrees/'],
