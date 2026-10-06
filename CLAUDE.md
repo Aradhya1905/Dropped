@@ -101,7 +101,8 @@ RootStack: Welcome → HowItWorks → Location → Main
 - Full architecture notes: [Documentation/2026-05-31-architecture.md](Documentation/2026-05-31-architecture.md);
   screens & navigation: [Documentation/2026-06-12-screens-and-navigation.md](Documentation/2026-06-12-screens-and-navigation.md);
   remaining work / roadmap: [Documentation/2026-06-13-remaining-work.md](Documentation/2026-06-13-remaining-work.md);
-  UX repair pass + on-device test script: [Documentation/2026-08-22-ux-repair-pass.md](Documentation/2026-08-22-ux-repair-pass.md).
+  UX repair pass + on-device test script: [Documentation/2026-08-22-ux-repair-pass.md](Documentation/2026-08-22-ux-repair-pass.md);
+  starter drops (first-run seeding of empty areas): [Documentation/2026-10-06-starter-drops.md](Documentation/2026-10-06-starter-drops.md).
 
 ## Package manager
 

@@ -26,7 +26,7 @@ import {
   QuillIcon,
 } from '../../../design-system/icons';
 import { colors, shadows } from '../../../design-system/tokens';
-import { useDeviceLocation, useNearbyDrops } from '../hooks';
+import { useDeviceLocation, useNearbyDrops, useStarterDrops } from '../hooks';
 import { LocChip } from '../components/LocChip';
 import { MapPin } from '../components/MapPin';
 import { MapLoader } from '../components/MapLoader';
@@ -55,6 +55,8 @@ export function MapScreen({ navigation }: Props) {
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
     useMaplibreAdapter(coord ?? undefined);
   const { data: drops = [], isError: dropsFailed, refetch: refetchDrops } = useNearbyDrops(coord);
+  // First run in an empty area: the server seeds a few starter drops nearby.
+  useStarterDrops();
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
   const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
   const [stalled, setStalled] = useState(false);

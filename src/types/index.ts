@@ -38,6 +38,8 @@ export interface Secret {
   saved: boolean;
   hearted: boolean;
   distanceMeters?: number;
+  /** Seeded by the server into an empty area, not left by a person. */
+  starter?: boolean;
 }
 
 /**

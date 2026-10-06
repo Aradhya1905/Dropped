@@ -5,3 +5,4 @@ export type {
 } from './useDeviceLocation';
 export { useNearbyDrops } from './useNearbyDrops';
 export { useFootRoute } from './useFootRoute';
+export { useStarterDrops } from './useStarterDrops';

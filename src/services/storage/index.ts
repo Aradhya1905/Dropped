@@ -93,6 +93,18 @@ export function setOnboardingComplete(done: boolean): void {
   mmkv.set(StorageKeys.onboardingComplete, done);
 }
 
+/**
+ * Whether this device already made its one starter-drop request. Only saves a
+ * pointless call — the server's per-device claim is the real guard.
+ */
+export function getStarterRequested(): boolean {
+  return mmkv.getBoolean(StorageKeys.starterRequested) ?? false;
+}
+
+export function setStarterRequested(done: boolean): void {
+  mmkv.set(StorageKeys.starterRequested, done);
+}
+
 // --- saved secrets -----------------------------------------------------------
 
 export function getSavedIds(): string[] {

@@ -10,6 +10,7 @@ export const StorageKeys = {
   lastCoord: 'location.last',
   composerDraft: 'drop.draft',
   hapticsEnabled: 'settings.haptics',
+  starterRequested: 'onboarding.starterRequested',
 } as const;
 
 /** The composer's unsent confession, restored if the app dies mid-write. */

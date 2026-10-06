@@ -11,6 +11,8 @@ export async function getNearbyDrops(lat: number, lng: number, radiusMeters = 20
   return res.secrets;
 }
 
+export { requestStarterDropsOnce } from './starterDrops';
+
 export async function getFootRoute(from: Coordinate, to: Coordinate): Promise<ApiFootRoute> {
   return fetchFootRoute(from, to);
 }

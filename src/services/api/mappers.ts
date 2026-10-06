@@ -20,5 +20,6 @@ export function apiSecretToSecret(s: ApiSecret): Secret {
     saved: s.saved,
     hearted: s.hearted,
     distanceMeters: s.distanceMeters,
+    starter: s.starter,
   };
 }

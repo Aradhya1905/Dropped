@@ -111,6 +111,14 @@ export interface ApiSecret {
   saved: boolean;
   hearted: boolean;
   distanceMeters?: number;
+  /** Server-seeded starter drop (not left by a person). */
+  starter?: boolean;
+}
+
+/** Result of the one-shot onboarding starter-drop seed. */
+export interface ApiStarterDropsResult {
+  seeded: boolean;
+  outcome: 'seeded' | 'area-occupied' | 'already-claimed' | 'disabled';
 }
 
 /** A walking route from the /route/foot proxy. `available` is false (and the
@@ -157,6 +165,13 @@ export const fetchDeviceSteps = () =>
 /** Sync locally-counted, day-tagged step deltas; returns the new steps total. */
 export const postDeviceSteps = (entries: { day: string; delta: number }[]) =>
   api.post<{ steps: number }>('/devices/me/steps', { entries }).then(r => r.data.steps);
+
+/**
+ * Once per device, with its first live fix: the server pins a few starter drops
+ * around `coordinate` if no drops exist nearby yet.
+ */
+export const postStarterDrops = (coordinate: Coordinate) =>
+  api.post<ApiStarterDropsResult>('/devices/me/starter-drops', { coordinate }).then(r => r.data);
 
 export const fetchNearbyDrops = (lat: number, lng: number, radiusMeters = 2000) =>
   api.get<{ secrets: ApiSecret[] }>('/drops/nearby', { params: { lat, lng, radiusMeters } }).then(r => r.data);
