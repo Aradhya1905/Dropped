@@ -1,6 +1,6 @@
 /**
- * 11 You — "hello, stranger." The anonymous passport, setting stubs, and the
- * handwritten house rules.
+ * 11 You — "hello, stranger." The anonymous passport, setting stubs, the
+ * "show me" mood filter, and the handwritten house rules.
  */
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -14,7 +14,7 @@ import {
 } from '../../../design-system/components';
 import { ClockIcon, HumIcon, LayersIcon } from '../../../design-system/icons';
 import { colors, fonts } from '../../../design-system/tokens';
-import { Passport } from '../components/Passport';
+import { MoodFilter, Passport } from '../components';
 import {
   getDeviceId,
   getMapStyle,
@@ -78,6 +78,7 @@ export function YouScreen() {
               <Text style={styles.setVal}>{s.value}</Text>
             </View>
           ))}
+          <MoodFilter />
         </View>
 
         <View style={styles.rulesBlock}>

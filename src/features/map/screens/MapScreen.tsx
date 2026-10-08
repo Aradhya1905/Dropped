@@ -43,6 +43,8 @@ import { LayerSheet } from '../components/LayerSheet';
 import { LocationPermissionSheet } from '../components/LocationPermissionSheet';
 import { bearingTo, compassPoint, haversineMeters, isWithin } from '../../../utils/geo';
 import { formatDistance, relativeTime, walkMinutes } from '../../../utils/format';
+import { filterByMood, isAllMoods } from '../../../utils/moods';
+import { useMoodFilterStore } from '../../../store/moodFilterStore';
 import {
   activeTrail,
   chainPinKind,
@@ -69,7 +71,12 @@ export function MapScreen({ navigation }: Props) {
   // them to be) so the default center never flashes.
   const { adapter, MaplibreView, activeStyleKey, setMapStyle, styleOptions } =
     useMaplibreAdapter(coord ?? undefined);
-  const { data: drops = [], isError: dropsFailed, refetch: refetchDrops } = useNearbyDrops(coord);
+  const { data: nearby = [], isError: dropsFailed, refetch: refetchDrops } = useNearbyDrops(coord);
+  // The You tab's "show me" filter. Everything below works off the filtered
+  // list, so a hidden mood gets no pin, no range card and no count.
+  const moods = useMoodFilterStore(s => s.moods);
+  const drops = useMemo(() => filterByMood(nearby, moods), [nearby, moods]);
+  const filtered = !isAllMoods(moods);
   // First run in an empty area: the server seeds a few starter drops nearby.
   useStarterDrops();
   const [layerSheetOpen, setLayerSheetOpen] = useState(false);
@@ -258,7 +265,9 @@ export function MapScreen({ navigation }: Props) {
             dropsFailed
               ? 'offline · last known'
               : drops.length === 0
-                ? 'nothing sealed near'
+                ? filtered && nearby.length > 0
+                  ? 'none in your moods'
+                  : 'nothing sealed near'
                 : live
                   ? "You're in"
                   : 'last seen in'

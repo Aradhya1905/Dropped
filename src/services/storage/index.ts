@@ -18,7 +18,7 @@ import {
   type StepState,
   type WalkMark,
 } from './keys';
-import type { Coordinate } from '../../types';
+import { MOODS, type Coordinate, type Mood } from '../../types';
 
 export type { ComposerDraft, MapStyle, NotificationMode, StepState, WalkMark } from './keys';
 export { DROP_MAX_CHARS } from './keys';
@@ -166,6 +166,20 @@ export function getNotificationMode(): NotificationMode {
 
 export function setNotificationMode(mode: NotificationMode): void {
   mmkv.set(StorageKeys.notificationMode, mode);
+}
+
+/**
+ * Which moods the map shows. Defaults to all of them; anything unknown in the
+ * persisted value is dropped, and an empty result falls back to all.
+ */
+export function getMoodFilter(): Mood[] {
+  const saved = getJSON<string[]>(StorageKeys.moodFilter, []);
+  const known = MOODS.filter(m => saved.includes(m));
+  return known.length > 0 ? known : [...MOODS];
+}
+
+export function setMoodFilter(moods: Mood[]): void {
+  setJSON(StorageKeys.moodFilter, moods);
 }
 
 // --- steps (locally counted, see pedometer service) --------------------------

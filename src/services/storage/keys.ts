@@ -15,6 +15,7 @@ export const StorageKeys = {
   soundsEnabled: 'settings.sounds',
   walkMarks: 'walk.marks',
   starterRequested: 'onboarding.starterRequested',
+  moodFilter: 'settings.moodFilter',
 } as const;
 
 /** The composer's unsent confession, restored if the app dies mid-write. */

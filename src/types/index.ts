@@ -36,6 +36,9 @@ export type Weather =
 
 export type Mood = 'joy' | 'ache' | 'trouble' | 'wonder';
 
+/** Every mood, in the order the composer and the You-tab filter show them. */
+export const MOODS: readonly Mood[] = ['joy', 'ache', 'trouble', 'wonder'];
+
 /** The anonymous confession itself, tied to one drop. */
 export interface Secret {
   id: string;
